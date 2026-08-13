@@ -8,8 +8,8 @@
 
 const DEFAULT_KEYMAP = {
   favoriteTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: false },
-  pinTab: null,
-  tidyDuplicates: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: true },
+  pinTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: true },
+  tidyDuplicates: { code: 'KeyD', meta: true, ctrl: false, alt: true, shift: false },
   togglePanel: null,   // панель просит жест пользователя — надёжно только нативным ⌃⇧S
   bookmarkTab: null,
   openPalette: null,

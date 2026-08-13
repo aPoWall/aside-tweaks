@@ -47,13 +47,14 @@ body {
 
 .tile {
   display: flex; flex-direction: column; gap: 2px;
-  padding: 8px 11px; text-align: left; cursor: pointer;
+  padding: 10px 12px; text-align: left; cursor: pointer;
   font: inherit; color: var(--tile-fg); background: var(--tile);
   border: 1px solid var(--line); border-radius: var(--radius);
   transition: border-color .1s, background .1s;
 }
-.tile:hover { border-color: var(--fg); }
-.tile:active { background: var(--sel); }
+.tile:hover { border-color: var(--fg); transform: translateY(-1px); }
+.tile:active { background: var(--sel); transform: translateY(0) scale(.985); }
+.tile { transition: border-color .12s, background .12s, transform .1s ease; }
 .tile.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .tile.on .tile-sub { color: var(--accent-fg); opacity: .72; }
 .tile-main { display: flex; align-items: baseline; gap: 8px; }

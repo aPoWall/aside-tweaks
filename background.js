@@ -5,8 +5,8 @@
 // раскладка: одна запись = одно сочетание, code вместо key (не зависит от русской раскладки)
 const DEFAULT_KEYMAP = {
   favoriteTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: false },
-  pinTab: null,
-  tidyDuplicates: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: true },
+  pinTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: true },
+  tidyDuplicates: { code: 'KeyD', meta: true, ctrl: false, alt: true, shift: false },
   togglePanel: null,   // панель просит жест пользователя — надёжно только нативным ⌃⇧S
   bookmarkTab: null,
   openPalette: null,
@@ -389,6 +389,7 @@ async function pinTab(windowId) {
   if (!tab) return 0;
   const willPin = !tab.pinned;
   await chrome.tabs.update(tab.id, { pinned: willPin });
+  if (willPin) await chrome.storage.session.set({ lastPinId: tab.id, lastPinAt: Date.now() }).catch(() => { });
   flash(willPin ? 'PIN' : 'UN', willPin
     ? 'pinned ↑\nmoved to the pinned squares on top of the sidebar'
     : 'unpinned — back in the tab list');
@@ -396,47 +397,47 @@ async function pinTab(windowId) {
 }
 
 
-// ---------- favorites: пин по смыслу, закладка по технике ----------
-// вкладка не дублируется — она уходит в папку favorites и закрывается,
-// как это делает Arc со своими верхними квадратами
+// ---------- закладка наверх: пин по смыслу, закладка по технике ----------
+// Никакой отдельной папки: страница ложится ПЕРВОЙ строкой панели закладок,
+// вкладка при этом закрывается — страница переезжает, а не двоится.
 
-const FAV_FOLDER = 'Favorites';
+const BAR = '1'; // Bookmarks Bar в Chromium
 
-async function favFolderId() {
-  const bar = '1'; // Bookmarks Bar в Chromium
-  const kids = await chrome.bookmarks.getChildren(bar).catch(() => []);
-  const found = kids.find(k => !k.url && k.title === FAV_FOLDER);
-  if (found) return found.id;
-  const made = await chrome.bookmarks.create({ parentId: bar, title: FAV_FOLDER, index: 0 }).catch(() => null);
-  return made?.id ?? null;
+// одноразовый переезд со старой схемы: содержимое папки Favorites поднимаем в корень
+async function migrateFavoritesFolder() {
+  const kids = await chrome.bookmarks.getChildren(BAR).catch(() => []);
+  const folder = kids.find(k => !k.url && k.title === 'Favorites');
+  if (!folder) return;
+  const inside = await chrome.bookmarks.getChildren(folder.id).catch(() => []);
+  for (const b of inside) await chrome.bookmarks.move(b.id, { parentId: BAR, index: 0 }).catch(() => { });
+  const left = await chrome.bookmarks.getChildren(folder.id).catch(() => []);
+  if (!left.length) await chrome.bookmarks.remove(folder.id).catch(() => { });
 }
+migrateFavoritesFolder();
 
 async function listFavorites() {
-  const id = await favFolderId();
-  if (!id) return { items: [] };
-  const kids = await chrome.bookmarks.getChildren(id).catch(() => []);
+  const kids = await chrome.bookmarks.getChildren(BAR).catch(() => []);
   return { items: kids.filter(k => k.url).map(k => ({ id: k.id, title: k.title, url: k.url })) };
 }
 
 async function favoriteTab(windowId) {
   const wid = await targetWindowId(windowId);
   const [tab] = await chrome.tabs.query(wid != null ? { active: true, windowId: wid } : { active: true, currentWindow: true });
-  if (!tab?.url || !/^https?:\/\//.test(tab.url)) { flash('—', 'this page cannot be favorited', false); return 0; }
-  const folder = await favFolderId();
-  if (!folder) return 0;
+  if (!tab?.url || !/^https?:\/\//.test(tab.url)) { flash('—', 'this page cannot be bookmarked', false); return 0; }
 
-  const kids = await chrome.bookmarks.getChildren(folder).catch(() => []);
+  const kids = await chrome.bookmarks.getChildren(BAR).catch(() => []);
   const twin = kids.find(k => k.url && normalizeUrl(k.url) === normalizeUrl(tab.url));
   if (twin) {
     await chrome.bookmarks.remove(twin.id).catch(() => { });
-    flash('FAV−', 'removed from favorites');
+    flash('BM−', 'removed from the bookmarks bar');
     return -1;
   }
 
-  await chrome.bookmarks.create({ parentId: folder, title: tab.title || tab.url, url: tab.url });
-  // переносим, а не копируем: вкладка уходит из дерева, если окно не останется пустым
+  // index 0 — самая первая закладка на панели, туда и смотрит взгляд
+  const made = await chrome.bookmarks.create({ parentId: BAR, index: 0, title: tab.title || tab.url, url: tab.url });
+  await chrome.storage.session.set({ lastFavId: made?.id ?? null, lastFavAt: Date.now() }).catch(() => { });
   const siblings = await chrome.tabs.query({ windowId: tab.windowId }).catch(() => []);
-  flash('FAV+', 'moved to favorites ↑\nopen it from the panel or ⌘K');
+  flash('BM+', 'moved to the top of the bookmarks bar ↑');
   if (siblings.length > 1) await chrome.tabs.remove(tab.id).catch(() => { });
   return 1;
 }

@@ -1,6 +1,7 @@
 const LABELS = {
   tidyDuplicates: n => n ? `closed ${n}` : 'nothing to clean',
-  pinTab: n => n === 1 ? 'pinned ↑' : 'unpinned',
+  pinTab: n => n === 1 ? 'pinned ↑ · squares on top' : 'unpinned',
+  favoriteTab: n => n === 1 ? 'bookmarked ↑ · first row of the bar' : 'removed from the bar',
   bookmarkTab: n => n === 1 ? 'bookmarked ✓' : 'bookmark removed',
   groupByRules: n => n ? `${n} groups` : 'nothing to group',
   groupByDomain: n => n ? `${n} groups` : 'nothing to group',

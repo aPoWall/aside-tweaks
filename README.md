@@ -64,11 +64,14 @@ browser's: keydown reaches the page in the capture phase *before* the browser ap
 accelerator, so `preventDefault()` takes over `⌘D`, `⌘⇧D`, `⌘S`, `⌘P`. Combos are stored by
 `event.code`, not `event.key` — a non-Latin keyboard layout doesn't break them.
 
-Defaults: `⌘D` favorite · `⌘⇧D` clean up. Native fallbacks: `⌃D`, `⌃⇧D`, `⌃⇧S` panel, `⌘K` palette.
+Defaults: `⌘D` bookmark up · `⇧⌘D` pin · `⌥⌘D` clean up.
+Native fallbacks: `⌃D` pin, `⌃⇧D` clean, `⌃⇧S` panel, `⌘K` palette.
 
-**Favorites — ⌘D.** The current page is written into a `Favorites` folder on the bookmarks bar and
-the tab closes: it moves up rather than existing twice. Press it again on the same page to take it
-back out. The panel's first section lists the folder, one click reopens the page.
+**Bookmark up — ⌘D.** The current page becomes the *first* row of the bookmarks bar and the tab
+closes: it moves rather than existing twice. Press it again on the same page to take it back out.
+No dedicated folder — the bar's own top is the destination, which is where the eye already goes.
+The panel's first section mirrors that top, and the freshly added row flashes so you see where it
+landed.
 
 **Pins, Arc-style.** A pin moves the tab into the squares on top of the sidebar. Closing a pinned
 tab brings the pin back asleep instead of dropping it; to remove it, unpin first. A pin is not a
@@ -83,8 +86,8 @@ so it never closes itself.
 created, so a guard keeps putting it back until it stops drifting (window configurable, 2.5 s by
 default). Other modes: at the end of the list, or leave it to the browser.
 
-**Panel — ⌃⇧S.** Own side panel via `chrome.sidePanel`, four numbered sections: favorites, pinned
-tabs, the rest grouped by blocks, commands. Rows carry three actions on hover — move up to
+**Panel — ⌃⇧S.** Own side panel via `chrome.sidePanel`, four numbered sections: the top of the
+bookmarks bar, pinned tabs, the rest grouped by blocks, commands. Rows carry three actions on hover — move up to
 favorites, pin, close — and drag reorders the window.
 
 **Blocks.** A block is a name plus substrings. Blocks drive tab grouping, the palette's

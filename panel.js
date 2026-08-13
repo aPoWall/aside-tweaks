@@ -4,7 +4,8 @@
 // Поиска здесь нет намеренно — он живёт в палитре ⌘K.
 
 const SECOND_LEVEL = new Set(['co.uk', 'org.uk', 'com.br', 'com.au', 'co.jp', 'com.tr']);
-const FAV_FOLDER = 'Favorites';
+const BAR = '1';           // Bookmarks Bar — закладки лежат в корне, без папки
+const FLASH_WINDOW = 4000; // сколько времени свежий пин/закладка подсвечиваются
 
 let winId = null;
 let rules = [];
@@ -70,11 +71,6 @@ function act(glyph, title, on, fn) {
 
 // ---------- favorites ----------
 
-async function favFolderId() {
-  const kids = await chrome.bookmarks.getChildren('1').catch(() => []);
-  return kids.find(k => !k.url && k.title === FAV_FOLDER)?.id ?? null;
-}
-
 function favRow(mark) {
   const d = document.createElement('div');
   d.className = 'row';
@@ -83,9 +79,9 @@ function favRow(mark) {
   t.className = 't';
   t.textContent = mark.title || mark.url;
   d.append(iconFor(mark.url), t);
-  d.append(act('×', 'remove from favorites', false, async () => {
+  d.append(act('×', 'remove from the bar', false, async () => {
     await chrome.bookmarks.remove(mark.id).catch(() => { });
-    say('removed from favorites');
+    say('removed from the bar');
     render();
   }));
   d.addEventListener('click', () => {
@@ -107,10 +103,10 @@ function tabRow(tab) {
   t.textContent = tab.title || tab.url || 'untitled';
   d.append(iconFor(tab.url), t);
 
-  d.append(act('↑', 'move to favorites (bookmark + close the tab)', false, async () => {
+  d.append(act('↑', 'bookmark to the top of the bar and close the tab', false, async () => {
     await chrome.tabs.update(tab.id, { active: true });
     await chrome.runtime.sendMessage({ action: 'favoriteTab', windowId: tab.windowId });
-    say('moved to favorites ↑');
+    say('bookmarked ↑');
   }));
   d.append(act(tab.pinned ? '◆' : '◇', tab.pinned ? 'unpin' : 'pin to the sidebar squares', tab.pinned, async () => {
     await chrome.tabs.update(tab.id, { pinned: !tab.pinned });
@@ -162,9 +158,13 @@ async function render() {
   if (winId == null) winId = (await chrome.windows.getCurrent().catch(() => null))?.id ?? null;
 
   const all = await chrome.tabs.query(winId != null ? { windowId: winId } : { currentWindow: true }).catch(() => []);
-  const folder = await favFolderId();
-  const marks = folder ? (await chrome.bookmarks.getChildren(folder).catch(() => [])).filter(k => k.url) : [];
+  const marks = (await chrome.bookmarks.getChildren(BAR).catch(() => [])).filter(k => k.url).slice(0, 14);
+  const hi = await chrome.storage.session.get({ lastFavId: null, lastFavAt: 0, lastPinId: null, lastPinAt: 0 }).catch(() => ({}));
   if (my !== renderSeq) return;
+
+  const now = Date.now();
+  const freshFav = (now - (hi.lastFavAt || 0) < FLASH_WINDOW) ? hi.lastFavId : null;
+  const freshPin = (now - (hi.lastPinAt || 0) < FLASH_WINDOW) ? hi.lastPinId : null;
 
   const favsEl = document.getElementById('favs');
   const pinsEl = document.getElementById('pins');
@@ -173,12 +173,20 @@ async function render() {
   pinsEl.replaceChildren();
   tabsEl.replaceChildren();
 
-  if (!marks.length) favsEl.append(emptyLine('empty · ⌘D moves the current page up here'));
-  else for (const m of marks) favsEl.append(favRow(m));
+  if (!marks.length) favsEl.append(emptyLine('empty · ⌘D puts the current page here'));
+  else for (const m of marks) {
+    const r = favRow(m);
+    if (m.id === freshFav) r.classList.add('flash');
+    favsEl.append(r);
+  }
 
   const pins = all.filter(t => t.pinned).sort((a, b) => a.index - b.index);
-  if (!pins.length) pinsEl.append(emptyLine('empty · ◇ on a row pins to the sidebar squares'));
-  else for (const t of pins) pinsEl.append(tabRow(t));
+  if (!pins.length) pinsEl.append(emptyLine('empty · ⇧⌘D pins to the squares on top'));
+  else for (const t of pins) {
+    const r = tabRow(t);
+    if (t.id === freshPin) r.classList.add('flash');
+    pinsEl.append(r);
+  }
 
   const rest = all.filter(t => !t.pinned).sort((a, b) => a.index - b.index);
   const buckets = new Map();

@@ -40,6 +40,14 @@
   .row:hover { background: var(--sel); }
   .row.active { background: var(--sel); box-shadow: inset 2px 0 0 var(--accent); }
   .row.drop-into { box-shadow: inset 0 -2px 0 var(--accent); }
+  /* только что улетевшее наверх подсвечивается, как делал Arc */
+  @keyframes flashrow {
+    0%   { background: var(--accent); color: var(--accent-fg); }
+    70%  { background: var(--accent); color: var(--accent-fg); }
+    100% { background: transparent; }
+  }
+  .row.flash { animation: flashrow 1.6s ease both; }
+  .row.flash .t { color: inherit; }
   .row img { width: 14px; height: 14px; flex: none; border-radius: 2px; }
   .row .glyph { width: 14px; text-align: center; flex: none; color: var(--dim); font-size: 10px; }
   .row .t { flex: 1; overflow: hidden; text-overflow: ellipsis; }
@@ -76,7 +84,7 @@
   </header>
 
   <main>
-    <div class="sec-hdr"><span class="n">01</span> favorites <span id="nFav">0</span></div>
+    <div class="sec-hdr"><span class="n">01</span> bookmarks · top of the bar <span id="nFav">0</span></div>
     <div id="favs"></div>
 
     <div class="sec-hdr"><span class="n">02</span> pinned <span id="nPins">0</span></div>
@@ -97,7 +105,7 @@
   </main>
 
   <footer>
-    <span id="status">⌘D favorite · ⌃D pin · ⌘⇧D clean up</span>
+    <span id="status">⌘D bookmark up · ⇧⌘D pin · ⌥⌘D clean up</span>
     <a href="https://github.com/aPoWall/aside-tweaks" target="_blank">apowall ↗</a>
   </footer>
 
