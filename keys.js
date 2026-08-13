@@ -17,7 +17,8 @@ const DEFAULT_KEYMAP = {
   groupByRules: null,
   groupByDomain: null,
   ungroupAll: null,
-  sortByDomain: null
+  sortByDomain: null,
+  sortByOpened: null
 };
 
 let enabled = true;

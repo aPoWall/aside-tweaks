@@ -19,7 +19,8 @@ const CMDS = [
   { keys: 'blocks group rules', title: 'Group tabs by my blocks', action: 'groupByRules' },
   { keys: 'group site domain', title: 'Group tabs by site', action: 'groupByDomain' },
   { keys: 'ungroup flat', title: 'Ungroup everything', action: 'ungroupAll' },
-  { keys: 'sort order', title: 'Sort tabs by site', action: 'sortByDomain' },
+  { keys: 'sort order site', title: 'Sort tabs by site', action: 'sortByDomain' },
+  { keys: 'opened order time recent', title: 'Order tabs by when they were opened', action: 'sortByOpened' },
   { keys: 'pin unpin', title: 'Pin / unpin current tab', action: 'pinTab' },
   { keys: 'bookmark bm save', title: 'Bookmark current tab (no dialog)', action: 'bookmarkTab' },
   { keys: 'panel sidebar', title: 'Open the tweaks panel', action: 'togglePanel' }

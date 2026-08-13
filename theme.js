@@ -3,7 +3,7 @@
 // его цвета берутся из kColorAside* внутри браузера и расширению недоступны.
 // Поэтому красим то, что действительно наше.
 
-const THEME_DEFAULT = { mode: 'auto', accent: '#111111', tint: 8, density: 'normal' };
+const THEME_DEFAULT = { mode: 'light', accent: '#111111', tint: 8, density: 'normal' };
 
 const ACCENT_PRESETS = [
   { name: 'ink', value: '#111111' },

@@ -14,11 +14,12 @@ const DEFAULT_KEYMAP = {
   groupByRules: null,
   groupByDomain: null,
   ungroupAll: null,
-  sortByDomain: null
+  sortByDomain: null,
+  sortByOpened: null
 };
 
 const DEFAULT_THEME = {
-  mode: 'auto',        // auto | light | dark
+  mode: 'light',       // auto | light | dark — инструменты живут на бумаге
   accent: '#111111',   // цвет панели, палитры, попапа
   tint: 8,             // сколько акцента подмешано в фон панели, %
   density: 'normal'    // normal | compact
@@ -370,149 +371,52 @@ async function ungroupAll(windowId) {
   return ids.length;
 }
 
-async function sortByDomain(windowId) {
+async function reorder(windowId, keyFn, label) {
   const wid = await targetWindowId(windowId);
   if (wid == null) return 0;
   const all = await chrome.tabs.query({ windowId: wid, pinned: false });
-  const sortable = all.map(t => {
-    let host = '~';
-    try { host = new URL(t.url).hostname.replace(/^www\./, ''); } catch { }
-    return { id: t.id, host };
-  });
-  sortable.sort((a, b) => a.host.localeCompare(b.host));
+  const sortable = all.map(t => ({ id: t.id, key: keyFn(t) }));
+  sortable.sort((a, b) => (typeof a.key === 'number' ? a.key - b.key : String(a.key).localeCompare(String(b.key))));
   const startIndex = all.length ? Math.min(...all.map(t => t.index)) : 0;
-  for (let i = 0; i < sortable.length; i++) await chrome.tabs.move(sortable[i].id, { index: startIndex + i });
-  flash(String(sortable.length), `${sortable.length} tabs sorted by site`);
-  return sortable.length;
-}
-
-async function pinTab(windowId) {
-  const wid = await targetWindowId(windowId);
-  const [tab] = await chrome.tabs.query(wid != null ? { active: true, windowId: wid } : { active: true, currentWindow: true });
-  if (!tab) return 0;
-  const willPin = !tab.pinned;
-  await chrome.tabs.update(tab.id, { pinned: willPin });
-  if (willPin) await chrome.storage.session.set({ lastPinId: tab.id, lastPinAt: Date.now() }).catch(() => { });
-  flash(willPin ? 'PIN' : 'UN', willPin
-    ? 'pinned ↑\nmoved to the pinned squares on top of the sidebar'
-    : 'unpinned — back in the tab list');
-  return willPin ? 1 : -1;
-}
-
-
-// ---------- закладка наверх: пин по смыслу, закладка по технике ----------
-// Никакой отдельной папки: страница ложится ПЕРВОЙ строкой панели закладок,
-// вкладка при этом закрывается — страница переезжает, а не двоится.
-
-const BAR = '1'; // Bookmarks Bar в Chromium
-
-// одноразовый переезд со старой схемы: содержимое папки Favorites поднимаем в корень
-async function migrateFavoritesFolder() {
-  const kids = await chrome.bookmarks.getChildren(BAR).catch(() => []);
-  const folder = kids.find(k => !k.url && k.title === 'Favorites');
-  if (!folder) return;
-  const inside = await chrome.bookmarks.getChildren(folder.id).catch(() => []);
-  for (const b of inside) await chrome.bookmarks.move(b.id, { parentId: BAR, index: 0 }).catch(() => { });
-  const left = await chrome.bookmarks.getChildren(folder.id).catch(() => []);
-  if (!left.length) await chrome.bookmarks.remove(folder.id).catch(() => { });
-}
-migrateFavoritesFolder();
-
-async function listFavorites() {
-  const kids = await chrome.bookmarks.getChildren(BAR).catch(() => []);
-  return { items: kids.filter(k => k.url).map(k => ({ id: k.id, title: k.title, url: k.url })) };
-}
-
-async function favoriteTab(windowId) {
-  const wid = await targetWindowId(windowId);
-  const [tab] = await chrome.tabs.query(wid != null ? { active: true, windowId: wid } : { active: true, currentWindow: true });
-  if (!tab?.url || !/^https?:\/\//.test(tab.url)) { flash('—', 'this page cannot be bookmarked', false); return 0; }
-
-  const kids = await chrome.bookmarks.getChildren(BAR).catch(() => []);
-  const twin = kids.find(k => k.url && normalizeUrl(k.url) === normalizeUrl(tab.url));
-  if (twin) {
-    await chrome.bookmarks.remove(twin.id).catch(() => { });
-    flash('BM−', 'removed from the bookmarks bar');
-    return -1;
+  let moved = 0;
+  for (let i = 0; i < sortable.length; i++) {
+    // сгруппированная вкладка может отказаться уезжать за границу группы —
+    // это не повод ронять весь проход
+    const ok = await chrome.tabs.move(sortable[i].id, { index: startIndex + i }).then(() => true).catch(() => false);
+    if (ok) moved++;
   }
-
-  // index 0 — самая первая закладка на панели, туда и смотрит взгляд
-  const made = await chrome.bookmarks.create({ parentId: BAR, index: 0, title: tab.title || tab.url, url: tab.url });
-  await chrome.storage.session.set({ lastFavId: made?.id ?? null, lastFavAt: Date.now() }).catch(() => { });
-  const siblings = await chrome.tabs.query({ windowId: tab.windowId }).catch(() => []);
-  flash('BM+', 'moved to the top of the bookmarks bar ↑');
-  if (siblings.length > 1) await chrome.tabs.remove(tab.id).catch(() => { });
-  return 1;
+  flash(String(moved), `${moved} tabs ordered ${label}`);
+  return moved;
 }
 
-async function bookmarkTab(windowId) {
-  const wid = await targetWindowId(windowId);
-  const [tab] = await chrome.tabs.query(wid != null ? { active: true, windowId: wid } : { active: true, currentWindow: true });
-  if (!tab?.url) return 0;
-  const existing = await chrome.bookmarks.search({ url: tab.url }).catch(() => []);
-  if (existing.length) {
-    for (const b of existing) await chrome.bookmarks.remove(b.id).catch(() => { });
-    flash('BM−', 'bookmark removed');
-    return -1; // убрали из закладок
-  }
-  // '1' = Bookmarks Bar в Chromium
-  await chrome.bookmarks.create({ parentId: '1', title: tab.title || tab.url, url: tab.url });
-  flash('BM+', 'bookmarked ✓ — bookmarks section of the sidebar');
-  return 1;
+function hostOfTab(t) {
+  try { return new URL(t.url).hostname.replace(/^www\./, ''); } catch { return '~'; }
 }
 
-async function togglePanel(windowId) {
-  const wid = windowId ?? (await chrome.windows.getLastFocused({ windowTypes: ['normal'] }).catch(() => null))?.id;
-  if (wid == null) return 0;
-  try {
-    await chrome.sidePanel.open({ windowId: wid });
-    return 1;
-  } catch {
-    // open() требует жеста пользователя; из страницы жест не долетает
-    flash('◧', 'panel opens with the native ⌃⇧S or the popup button', false);
-    return 0;
-  }
+async function sortByDomain(windowId) {
+  return reorder(windowId, hostOfTab, 'by site');
 }
 
-// открыть адрес: в обычном окне, под текущей вкладкой, при желании сразу в блок или в пин
-async function openUrl({ url, windowId, groupName, pinned } = {}) {
-  if (!url) return 0;
-  const wid = await targetWindowId(windowId);
-  if (wid == null) return 0;
-  const active = (await chrome.tabs.query({ active: true, windowId: wid }).catch(() => []))[0];
-  const tab = await chrome.tabs.create({
-    url, windowId: wid, active: true,
-    index: active ? active.index + 1 : undefined,
-    pinned: !!pinned
-  }).catch(() => null);
-  if (!tab) return 0;
-  await chrome.windows.update(wid, { focused: true }).catch(() => { });
-
-  if (groupName && !pinned) {
-    // сначала ищем существующую группу с этим именем в том же окне
-    const groups = await chrome.tabGroups.query({ windowId: wid, title: groupName }).catch(() => []);
-    if (groups.length) {
-      await chrome.tabs.group({ tabIds: [tab.id], groupId: groups[0].id }).catch(() => { });
-    } else {
-      const gid = await chrome.tabs.group({ tabIds: [tab.id] }).catch(() => null);
-      if (gid != null) await chrome.tabGroups.update(gid, { title: groupName, collapsed: false }).catch(() => { });
-    }
-  }
-  return 1;
+// id вкладки в Chromium растёт монотонно, поэтому он же и есть порядок открытия
+async function sortByOpened(windowId) {
+  return reorder(windowId, t => t.id, 'by when opened');
 }
 
-// один жест вместо трёх: убрать лишнее, разложить по блокам, выровнять порядок
+// один жест вместо четырёх. Порядок важен: группы расплетаются ДО сортировки,
+// иначе перемещения упираются в границы групп и шаг падает целиком.
 async function tidyUp(windowId) {
   quiet = true;
-  let closed = 0, groups = 0, sorted = 0;
+  const step = async (fn) => { try { return await fn(); } catch { return null; } };
+  let closed = 0, ordered = 0, groups = 0, failed = 0;
   try {
-    closed = await tidyDuplicates();
-    groups = await groupByRules(windowId);
-    sorted = await sortByDomain(windowId);
+    closed = await step(() => tidyDuplicates()) ?? (failed++, 0);
+    await step(() => ungroupAll(windowId));
+    ordered = await step(() => sortByDomain(windowId)) ?? (failed++, 0);
+    groups = await step(() => groupByRules(windowId)) ?? (failed++, 0);
   } finally {
     quiet = false;
   }
-  flash('TIDY', `tidied up\n${closed} closed · ${groups} blocks · ${sorted} ordered`);
+  flash('TIDY', `tidied up\n${closed} closed · ${ordered} ordered · ${groups} blocks` + (failed ? `\n${failed} steps refused` : ''));
   return closed + groups;
 }
 
@@ -538,6 +442,7 @@ const OMNI_COMMANDS = [
   { keys: ['rules', 'блоки'], desc: 'Group tabs by my blocks', run: groupByRules },
   { keys: ['ungroup', 'разгруп'], desc: 'Ungroup everything', run: ungroupAll },
   { keys: ['sort', 'сорт'], desc: 'Sort tabs by site', run: sortByDomain },
+  { keys: ['opened', 'порядок'], desc: 'Order tabs by when they were opened', run: sortByOpened },
   { keys: ['pin', 'пин'], desc: 'Pin / unpin current tab', run: pinTab },
   { keys: ['bm', 'закладка'], desc: 'Bookmark without the dialog (toggle)', run: bookmarkTab }
 ];
@@ -639,7 +544,7 @@ chrome.windows.onRemoved.addListener(id => { if (id === paletteWinId) { paletteW
 
 const ACTIONS = {
   tidyDuplicates, groupByDomain, groupByRules, ungroupAll, sortByDomain,
-  pinTab, favoriteTab, listFavorites, bookmarkTab, tidyUp, getStats, openPalette, togglePanel
+  pinTab, favoriteTab, listFavorites, bookmarkTab, tidyUp, sortByOpened, getStats, openPalette, togglePanel
 };
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -661,6 +566,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 chrome.commands.onCommand.addListener((cmd, tab) => {
+  if (cmd === 'favorite-tab') favoriteTab(tab?.windowId);
+  if (cmd === 'tidy-up') tidyUp(tab?.windowId);
   if (cmd === 'tidy-duplicates') tidyDuplicates();
   if (cmd === 'pin-tab') pinTab();
   if (cmd === 'bookmark-tab') bookmarkTab();

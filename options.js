@@ -11,7 +11,8 @@ const DEFAULT_KEYMAP = {
   groupByRules: null,
   groupByDomain: null,
   ungroupAll: null,
-  sortByDomain: null
+  sortByDomain: null,
+  sortByOpened: null
 };
 
 const DEFAULTS = {
@@ -19,7 +20,7 @@ const DEFAULTS = {
   keepPins: true, keymapEnabled: true, dimBehindPalette: true,
   tabPlacement: 'underCurrent', placementGuardMs: 2500,
   keymap: DEFAULT_KEYMAP,
-  theme: { mode: 'auto', accent: '#111111', tint: 8, density: 'normal' },
+  theme: { mode: 'light', accent: '#111111', tint: 8, density: 'normal' },
   groupRules: [{ name: 'aim', patterns: ['aimindset', 'aim-'] }]
 };
 
@@ -34,7 +35,8 @@ const ACTIONS = [
   ['groupByRules', 'group by my blocks', ''],
   ['groupByDomain', 'group by site', ''],
   ['ungroupAll', 'ungroup everything', ''],
-  ['sortByDomain', 'sort by site', '']
+  ['sortByDomain', 'sort by site', ''],
+  ['sortByOpened', 'order by when opened', 'tab id is the open order']
 ];
 
 // сочетания, которые macOS/браузер забирают до страницы — перехватить нельзя
