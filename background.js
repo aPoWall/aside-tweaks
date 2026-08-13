@@ -32,6 +32,7 @@ const DEFAULTS = {
   placementGuardMs: 2500,           // сколько держим вкладку на месте, если Aside её двигает
   keepPins: true,
   keymapEnabled: true,
+  dimBehindPalette: true,
   keymap: DEFAULT_KEYMAP,
   theme: DEFAULT_THEME,
   groupRules: [
@@ -576,6 +577,7 @@ chrome.omnibox.onInputEntered.addListener(async (input) => {
 
 // пока палитра открыта — гасим страницу под ней
 async function dimPage(on) {
+  if (on && settings.dimBehindPalette === false) return;
   try {
     const tabs = await chrome.tabs.query({ active: true });
     for (const t of tabs) {

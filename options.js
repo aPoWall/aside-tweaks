@@ -15,7 +15,7 @@ const DEFAULT_KEYMAP = {
 
 const DEFAULTS = {
   dedupAuto: true, dedupIgnoreHash: true, dedupIgnoreUtm: true,
-  keepPins: true, keymapEnabled: true,
+  keepPins: true, keymapEnabled: true, dimBehindPalette: true,
   tabPlacement: 'underCurrent', placementGuardMs: 2500,
   keymap: DEFAULT_KEYMAP,
   theme: { mode: 'auto', accent: '#111111', tint: 8, density: 'normal' },
@@ -265,7 +265,7 @@ function seg(id, value, onPick) {
 
 // ---------- сборка ----------
 
-const TOGGLES = ['dedupAuto', 'dedupIgnoreHash', 'dedupIgnoreUtm', 'keepPins', 'keymapEnabled'];
+const TOGGLES = ['dedupAuto', 'dedupIgnoreHash', 'dedupIgnoreUtm', 'keepPins', 'keymapEnabled', 'dimBehindPalette'];
 
 function renderAll() {
   for (const k of TOGGLES) document.getElementById(k).checked = !!state[k];
@@ -317,9 +317,13 @@ document.getElementById('addRule').addEventListener('click', async () => {
 });
 
 document.getElementById('copyDefaults')?.addEventListener('click', async () => {
-  const cmd = `defaults write at.studio.AsideBrowser NSUserKeyEquivalents -dict-add "Bookmark This Tab…" "^@b"`;
+  const cmd = [
+    'defaults write at.studio.AsideBrowser NSUserKeyEquivalents -dict-add "Bookmark This Tab…" "^@b"',
+    'defaults write at.studio.AsideBrowser NSUserKeyEquivalents -dict-add "Bookmark All Tabs…" "^@$b"',
+    'defaults write at.studio.AsideBrowser NSUserKeyEquivalents -dict-add "Always Show Bookmarks Bar" "~@$b"'
+  ].join('\n');
   await navigator.clipboard.writeText(cmd).catch(() => { });
-  flash('command copied · run it, then restart Aside');
+  flash('three commands copied · run them, then restart Aside');
 });
 
 document.getElementById('resetKeys').addEventListener('click', async () => {

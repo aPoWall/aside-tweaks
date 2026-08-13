@@ -171,6 +171,9 @@
           <button data-v="auto">auto</button><button data-v="light">light</button><button data-v="dark">dark</button>
         </div>
       </div>
+      <label class="opt" style="margin:0 0 11px"><input type="checkbox" id="dimBehindPalette">
+        <span>dim the page behind the palette<small>the page under ⌘K fades and blurs slightly while the palette is open</small></span>
+      </label>
       <div class="row2">
         <span style="width:70px">density</span>
         <div class="seg" id="density" style="flex:1">
@@ -183,16 +186,27 @@
   <div class="card">
     <div class="head"><span class="idx">07</span><span class="ttl">native shortcuts</span></div>
     <div class="body">
-      <small style="margin-bottom:9px">
-        keys the browser owns before any page — <code>⌘T</code>, <code>⌘W</code>, the bookmark dialog on <code>⌘D</code> —
-        are menu commands, and macOS re-binds any menu command per app. that is the layer above extensions:
-        System Settings → Keyboard → Keyboard Shortcuts → App Shortcuts does the same thing by hand.
+      <small style="margin-bottom:10px">
+        keys the browser owns before any page exists — <code>⌘T</code>, <code>⌘W</code>, the bookmark dialog —
+        are menu commands. no extension reaches them, but macOS re-binds any menu command per app,
+        which is exactly what System&nbsp;Settings → Keyboard → Keyboard Shortcuts → App&nbsp;Shortcuts does by hand.
       </small>
-      <small style="margin-bottom:9px">
-        already applied here: Aside's <code>Bookmark This Tab…</code> moved off <code>⌘D</code> to <code>⌃⌘B</code>,
-        which leaves <code>⌘D</code> free for the pin. it takes effect after Aside restarts.
+      <table style="margin-bottom:10px">
+        <tr><td style="width:210px">Bookmark This Tab…</td><td><code>⌃⌘B</code></td><td style="color:var(--dim)">frees ⌘D</td></tr>
+        <tr><td>Bookmark All Tabs…</td><td><code>⌃⇧⌘B</code></td><td style="color:var(--dim)">frees ⇧⌘D</td></tr>
+        <tr><td>Always Show Bookmarks Bar</td><td><code>⌥⇧⌘B</code></td><td style="color:var(--dim)">frees ⇧⌘B</td></tr>
+      </table>
+      <small style="margin-bottom:10px">
+        already written to <code>~/Library/Preferences/at.studio.AsideBrowser.plist</code>.
+        menus build their key equivalents at launch, so this bites only after Aside is quit and reopened —
+        until then the menu still shows the old keys. the App&nbsp;Shortcuts list also reads that file,
+        so «Aside» shows up there once System&nbsp;Settings is reopened.
       </small>
-      <button id="copyDefaults">copy the terminal command</button>
+      <small style="margin-bottom:10px">
+        modifiers in the syntax: <code>@</code> ⌘ · <code>^</code> ⌃ · <code>~</code> ⌥ · <code>$</code> ⇧.
+        the repo ships <code>scripts/native-shortcuts.sh</code> — run it to apply the table, <code>--reset</code> to undo.
+      </small>
+      <button id="copyDefaults">copy the terminal commands</button>
     </div>
   </div>
 

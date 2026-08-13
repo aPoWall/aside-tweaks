@@ -114,6 +114,19 @@ defaults write at.studio.AsideBrowser NSUserKeyEquivalents -dict-add "Bookmark T
 defaults write at.studio.AsideBrowser NSUserKeyEquivalents -dict-add "Bookmark All Tabs…" "^@\$b"
 ```
 
+The repo ships this as a script — `scripts/native-shortcuts.sh` applies the whole table,
+`--reset` puts the stock keys back:
+
+| menu item | new binding | frees |
+|-----------|-------------|-------|
+| `Bookmark This Tab…` | `⌃⌘B` | `⌘D` |
+| `Bookmark All Tabs…` | `⌃⇧⌘B` | `⇧⌘D` |
+| `Always Show Bookmarks Bar` | `⌥⇧⌘B` | `⇧⌘B` |
+
+Menus build their key equivalents at launch, so nothing changes until the browser is quit and
+reopened — the menu keeps showing the old keys in the meantime, which looks like the write failed.
+It didn't; check with `defaults read at.studio.AsideBrowser NSUserKeyEquivalents`.
+
 Menu titles are exact strings — read them with
 `osascript -e 'tell application "System Events" to tell process "Aside" to get name of menu items of menu 1 of menu bar item "Bookmarks" of menu bar 1'`.
 
@@ -138,6 +151,7 @@ Everything this extension draws is themable instead: palette, popup, settings, p
 | `options.js` / `.html` | settings: keys, pins, tabs, cleanup, blocks, appearance |
 | `popup.js` / `.html` | toolbar popup |
 | `theme.js` · `instrument.css` | shared surface: paper palette, accent, numbered sections, tiles |
+| `scripts/native-shortcuts.sh` | re-binds Aside's own menu shortcuts at the macOS level |
 
 ## Adjacent: Raycast snippets losing their first letter
 

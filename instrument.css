@@ -8,7 +8,7 @@
   --bg: #f4f1e7; --bg-soft: #faf8f2; --line: #ddd8c9;
   --fg: #1b1a17; --muted: #8d887a; --dim: #6b675c;
   --sel: #e9e5d8; --tile: #faf8f2; --tile-fg: #1b1a17;
-  --radius: 9px; --pad: 18px;
+  --radius: 8px; --pad: 14px;
 }
 
 * { box-sizing: border-box; margin: 0; }
@@ -21,33 +21,33 @@ body {
 
 /* ---------- шапка инструмента ---------- */
 
-.inst-head { padding: var(--pad) var(--pad) 14px; }
+.inst-head { padding: var(--pad) var(--pad) 10px; }
 .inst-title {
-  font-size: 25px; line-height: 1.05; font-weight: 400;
-  letter-spacing: -.01em; margin-bottom: 7px;
+  font-size: 21px; line-height: 1.05; font-weight: 400;
+  letter-spacing: -.01em; margin-bottom: 5px;
 }
 .inst-sub { font-size: 10px; color: var(--muted); letter-spacing: .02em; }
 .inst-sub b { font-weight: 400; color: var(--dim); }
 
 /* ---------- нумерованная секция ---------- */
 
-.sec { padding: 0 var(--pad) 14px; }
+.sec { padding: 0 var(--pad) 11px; }
 .sec-label {
-  font-size: 10px; color: var(--muted); letter-spacing: .04em;
-  margin-bottom: 7px; display: flex; gap: 7px; align-items: baseline;
+  font-size: 9.5px; color: var(--muted); letter-spacing: .04em;
+  margin-bottom: 6px; display: flex; gap: 7px; align-items: baseline;
 }
 .sec-label .n { color: var(--accent); }
 .sec-label .hint { color: var(--muted); opacity: .8; }
 
 /* ---------- плитки ---------- */
 
-.tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
+.tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
 .tiles.one { grid-template-columns: 1fr; }
 .tiles.three { grid-template-columns: repeat(3, 1fr); }
 
 .tile {
   display: flex; flex-direction: column; gap: 2px;
-  padding: 11px 13px; text-align: left; cursor: pointer;
+  padding: 8px 11px; text-align: left; cursor: pointer;
   font: inherit; color: var(--tile-fg); background: var(--tile);
   border: 1px solid var(--line); border-radius: var(--radius);
   transition: border-color .1s, background .1s;
@@ -59,30 +59,30 @@ body {
 .tile-main { display: flex; align-items: baseline; gap: 8px; }
 .tile-main .k { margin-left: auto; font-size: 10px; color: var(--muted); }
 .tile.on .tile-main .k { color: var(--accent-fg); opacity: .7; }
-.tile-sub { font-size: 9.5px; color: var(--muted); line-height: 1.35; }
+.tile-sub { font-size: 9px; color: var(--muted); line-height: 1.3; }
 
 /* ---------- строка состояния ---------- */
 
 .readout {
-  margin: 0 var(--pad) 14px; padding: 11px 13px;
+  margin: 0 var(--pad) 11px; padding: 9px 11px;
   border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-soft);
   font-size: 11px;
 }
-.readout .big { font-size: 15px; letter-spacing: -.01em; }
+.readout .big { font-size: 14px; letter-spacing: -.01em; }
 .readout .sub { font-size: 9.5px; color: var(--muted); margin-top: 3px; }
 
 /* ---------- нижняя строка подсказок и подпись ---------- */
 
 .hintbar {
   display: flex; flex-wrap: wrap; gap: 13px;
-  padding: 0 var(--pad) 10px; font-size: 9.5px; color: var(--muted);
+  padding: 0 var(--pad) 8px; font-size: 9px; color: var(--muted);
 }
 .hintbar b { font-weight: 400; color: var(--dim); }
 
 .sign {
   display: flex; align-items: center; gap: 8px;
-  padding: 9px var(--pad) 14px; border-top: 1px solid var(--line);
-  font-size: 9.5px; color: var(--muted);
+  padding: 7px var(--pad) 10px; border-top: 1px solid var(--line);
+  font-size: 9px; color: var(--muted);
 }
 .sign a { color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--line); }
 .sign a:hover { color: var(--fg); border-color: var(--fg); }
