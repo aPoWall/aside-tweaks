@@ -4,7 +4,8 @@
 
 // раскладка: одна запись = одно сочетание, code вместо key (не зависит от русской раскладки)
 const DEFAULT_KEYMAP = {
-  pinTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: false },
+  favoriteTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: false },
+  pinTab: null,
   tidyDuplicates: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: true },
   togglePanel: null,   // панель просит жест пользователя — надёжно только нативным ⌃⇧S
   bookmarkTab: null,
@@ -266,17 +267,16 @@ async function tidyDuplicates() {
     else toClose.push(t.id);
   }
 
-  // пустые схлопываем в одну на окно: активную, иначе последнюю
-  const byWindow = new Map();
-  for (const t of empties) {
-    if (!byWindow.has(t.windowId)) byWindow.set(t.windowId, []);
-    byWindow.get(t.windowId).push(t);
-  }
+  // пустые убираем целиком; последнюю вкладку окна не трогаем, иначе окно закроется
+  const perWindow = new Map();
+  for (const t of all) perWindow.set(t.windowId, (perWindow.get(t.windowId) || 0) + 1);
   let emptiesClosed = 0;
-  for (const list of byWindow.values()) {
-    if (list.length < 2) continue;
-    const keep = list.find(t => t.active) || list[list.length - 1];
-    for (const t of list) if (t.id !== keep.id) { toClose.push(t.id); emptiesClosed++; }
+  for (const t of empties) {
+    const left = perWindow.get(t.windowId) || 0;
+    if (left <= 1) continue;
+    perWindow.set(t.windowId, left - 1);
+    toClose.push(t.id);
+    emptiesClosed++;
   }
 
   if (toClose.length) await chrome.tabs.remove(toClose);
@@ -392,6 +392,52 @@ async function pinTab(windowId) {
     ? 'pinned ↑\nmoved to the pinned squares on top of the sidebar'
     : 'unpinned — back in the tab list');
   return willPin ? 1 : -1;
+}
+
+
+// ---------- favorites: пин по смыслу, закладка по технике ----------
+// вкладка не дублируется — она уходит в папку favorites и закрывается,
+// как это делает Arc со своими верхними квадратами
+
+const FAV_FOLDER = 'Favorites';
+
+async function favFolderId() {
+  const bar = '1'; // Bookmarks Bar в Chromium
+  const kids = await chrome.bookmarks.getChildren(bar).catch(() => []);
+  const found = kids.find(k => !k.url && k.title === FAV_FOLDER);
+  if (found) return found.id;
+  const made = await chrome.bookmarks.create({ parentId: bar, title: FAV_FOLDER, index: 0 }).catch(() => null);
+  return made?.id ?? null;
+}
+
+async function listFavorites() {
+  const id = await favFolderId();
+  if (!id) return { items: [] };
+  const kids = await chrome.bookmarks.getChildren(id).catch(() => []);
+  return { items: kids.filter(k => k.url).map(k => ({ id: k.id, title: k.title, url: k.url })) };
+}
+
+async function favoriteTab(windowId) {
+  const wid = await targetWindowId(windowId);
+  const [tab] = await chrome.tabs.query(wid != null ? { active: true, windowId: wid } : { active: true, currentWindow: true });
+  if (!tab?.url || !/^https?:\/\//.test(tab.url)) { flash('—', 'this page cannot be favorited', false); return 0; }
+  const folder = await favFolderId();
+  if (!folder) return 0;
+
+  const kids = await chrome.bookmarks.getChildren(folder).catch(() => []);
+  const twin = kids.find(k => k.url && normalizeUrl(k.url) === normalizeUrl(tab.url));
+  if (twin) {
+    await chrome.bookmarks.remove(twin.id).catch(() => { });
+    flash('FAV−', 'removed from favorites');
+    return -1;
+  }
+
+  await chrome.bookmarks.create({ parentId: folder, title: tab.title || tab.url, url: tab.url });
+  // переносим, а не копируем: вкладка уходит из дерева, если окно не останется пустым
+  const siblings = await chrome.tabs.query({ windowId: tab.windowId }).catch(() => []);
+  flash('FAV+', 'moved to favorites ↑\nopen it from the panel or ⌘K');
+  if (siblings.length > 1) await chrome.tabs.remove(tab.id).catch(() => { });
+  return 1;
 }
 
 async function bookmarkTab(windowId) {
@@ -527,6 +573,18 @@ chrome.omnibox.onInputEntered.addListener(async (input) => {
 
 // ---------- палитра (⌘K) ----------
 
+
+// пока палитра открыта — гасим страницу под ней
+async function dimPage(on) {
+  try {
+    const tabs = await chrome.tabs.query({ active: true });
+    for (const t of tabs) {
+      if (t.id == null) continue;
+      chrome.tabs.sendMessage(t.id, { type: 'dim', on }, () => void chrome.runtime.lastError);
+    }
+  } catch { }
+}
+
 let paletteWinId = null;
 
 async function openPalette() {
@@ -550,15 +608,16 @@ async function openPalette() {
     type: 'popup', width: W, height: H, left, top, focused: true
   });
   paletteWinId = w.id;
+  dimPage(true);
 }
 
-chrome.windows.onRemoved.addListener(id => { if (id === paletteWinId) paletteWinId = null; });
+chrome.windows.onRemoved.addListener(id => { if (id === paletteWinId) { paletteWinId = null; dimPage(false); } });
 
 // ---------- messages / commands ----------
 
 const ACTIONS = {
   tidyDuplicates, groupByDomain, groupByRules, ungroupAll, sortByDomain,
-  pinTab, bookmarkTab, getStats, openPalette, togglePanel
+  pinTab, favoriteTab, listFavorites, bookmarkTab, getStats, openPalette, togglePanel
 };
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {

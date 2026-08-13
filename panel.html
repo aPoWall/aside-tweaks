@@ -3,133 +3,102 @@
 <head>
 <meta charset="utf-8">
 <title>aside tweaks · panel</title>
+<link rel="stylesheet" href="instrument.css">
 <style>
-  * { box-sizing: border-box; margin: 0; }
-  :root {
-    --accent: #111; --accent-fg: #fff;
-    --bg: #fff; --bg-soft: #f6f6f6; --line: #e6e6e6;
-    --fg: #111; --muted: #8e8e8e; --dim: #6f6f6f; --sel: #eee;
-    --row: 28px; --pad: 10px;
-  }
-  :root[data-density="compact"] { --row: 23px; --pad: 7px; }
-
+  :root { --pad: 13px; --row: 27px; }
+  :root[data-density="compact"] { --pad: 10px; --row: 23px; }
   html, body { height: 100%; }
-  body {
-    font: 11.5px/1.4 "SF Mono", ui-monospace, Menlo, monospace;
-    background: var(--bg); color: var(--fg);
-    display: flex; flex-direction: column; overflow: hidden;
-  }
+  body { display: flex; flex-direction: column; overflow: hidden; font-size: 11.5px; }
 
   header {
-    display: flex; align-items: center; gap: 8px;
-    padding: 9px var(--pad) 8px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: baseline; gap: 9px;
+    padding: 12px var(--pad) 10px; border-bottom: 1px solid var(--line);
   }
-  header .dot {
-    width: 9px; height: 9px; border-radius: 50%;
-    background: var(--accent); flex: none;
-    box-shadow: 0 0 0 1px var(--line);
-  }
-  header .name { font-size: 11px; letter-spacing: .02em; }
-  header .count { margin-left: auto; font-size: 9px; color: var(--muted); }
-  header button.gear {
-    border: none; background: none; color: var(--muted);
-    font: inherit; cursor: pointer; padding: 0 2px;
-  }
-  header button.gear:hover { color: var(--fg); }
+  header .name { font-size: 15px; letter-spacing: -.01em; }
+  header .count { margin-left: auto; font-size: 9.5px; color: var(--muted); }
+  header .gear { border: none; background: none; color: var(--muted); font: inherit; cursor: pointer; }
+  header .gear:hover { color: var(--fg); }
 
-  #q {
-    width: 100%; padding: 8px var(--pad); font: inherit;
-    border: none; border-bottom: 1px solid var(--line); outline: none;
-    background: var(--bg-soft); color: var(--fg);
-  }
-  #q::placeholder { color: var(--muted); }
-
-  main { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+  main { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 6px; }
 
   .sec-hdr {
-    display: flex; align-items: center; gap: 6px;
-    padding: 10px var(--pad) 4px;
-    font-size: 8.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
+    display: flex; align-items: center; gap: 7px;
+    padding: 12px var(--pad) 5px;
+    font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
   }
-  .sec-hdr .n { color: var(--dim); }
+  .sec-hdr .n { color: var(--accent); }
   .sec-hdr::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 
-  .blk {
-    padding: 7px var(--pad) 2px;
-    font-size: 9px; letter-spacing: .06em; color: var(--dim);
-  }
-  .blk span { border-bottom: 1px solid var(--line); padding-bottom: 1px; }
+  .blk { padding: 8px var(--pad) 2px; font-size: 9px; letter-spacing: .05em; color: var(--dim); }
 
   .row {
-    display: flex; align-items: center; gap: 7px;
-    height: var(--row); padding: 0 var(--pad); cursor: default;
-    white-space: nowrap; position: relative;
+    display: flex; align-items: center; gap: 8px;
+    min-height: var(--row); padding: 2px var(--pad); cursor: default; white-space: nowrap;
+    animation: rowin .16s ease both;
   }
+  @keyframes rowin { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
   .row:hover { background: var(--sel); }
   .row.active { background: var(--sel); box-shadow: inset 2px 0 0 var(--accent); }
   .row.drop-into { box-shadow: inset 0 -2px 0 var(--accent); }
   .row img { width: 14px; height: 14px; flex: none; border-radius: 2px; }
   .row .glyph { width: 14px; text-align: center; flex: none; color: var(--dim); font-size: 10px; }
   .row .t { flex: 1; overflow: hidden; text-overflow: ellipsis; }
-  .row.sleeping .t { color: var(--muted); font-style: italic; }
+  .row.sleeping .t { color: var(--muted); }
   .row .act {
-    display: none; flex: none; border: none; background: none;
-    color: var(--muted); font: inherit; font-size: 11px; cursor: pointer; padding: 0 2px;
+    opacity: 0; flex: none; border: none; background: none;
+    color: var(--muted); font: inherit; font-size: 11px; cursor: pointer; padding: 0 3px;
+    transition: opacity .12s;
   }
-  .row:hover .act { display: block; }
+  .row:hover .act { opacity: 1; }
   .row .act:hover { color: var(--fg); }
-  .row .act.on { display: block; color: var(--accent); }
+  .row .act.on { opacity: 1; color: var(--accent); }
 
-  .cmds { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px var(--pad) 10px; }
-  .cmds button {
-    font: inherit; font-size: 10px; cursor: pointer;
-    padding: 4px 8px; border-radius: 3px;
-    background: var(--bg-soft); color: var(--fg); border: 1px solid var(--line);
-  }
-  .cmds button:hover { border-color: var(--accent); }
-  .cmds button:active { background: var(--accent); color: var(--accent-fg); }
+  .cmds { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; padding: 4px var(--pad) 12px; }
+  .cmds .tile { padding: 8px 10px; }
+  .cmds .tile-main { font-size: 11px; }
 
   footer {
-    display: flex; align-items: center; gap: 8px;
-    padding: 6px var(--pad); border-top: 1px solid var(--line);
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px var(--pad); border-top: 1px solid var(--line);
     font-size: 9px; color: var(--muted);
   }
   footer #status { flex: 1; overflow: hidden; text-overflow: ellipsis; }
-  .empty { padding: 4px var(--pad) 8px; font-size: 10px; color: var(--muted); }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--fg); }
+  .empty { padding: 3px var(--pad) 7px; font-size: 10px; color: var(--muted); }
 </style>
 </head>
 <body>
   <header>
-    <span class="dot"></span>
     <span class="name">tweaks</span>
     <span class="count" id="count">–</span>
     <button class="gear" id="gear" title="settings">⚙</button>
   </header>
 
-  <input id="q" placeholder="filter tabs" autocomplete="off" spellcheck="false">
-
   <main>
-    <div class="sec-hdr">pinned <span class="n" id="nPins">0</span></div>
+    <div class="sec-hdr"><span class="n">01</span> favorites <span id="nFav">0</span></div>
+    <div id="favs"></div>
+
+    <div class="sec-hdr"><span class="n">02</span> pinned <span id="nPins">0</span></div>
     <div id="pins"></div>
 
-    <div class="sec-hdr">tabs <span class="n" id="nTabs">0</span></div>
+    <div class="sec-hdr"><span class="n">03</span> tabs <span id="nTabs">0</span></div>
     <div id="tabs"></div>
 
-    <div class="sec-hdr">commands</div>
+    <div class="sec-hdr"><span class="n">04</span> commands</div>
     <div class="cmds">
-      <button data-action="tidyDuplicates">duplicates</button>
-      <button data-action="groupByRules">by blocks</button>
-      <button data-action="groupByDomain">by site</button>
-      <button data-action="ungroupAll">ungroup</button>
-      <button data-action="sortByDomain">sort</button>
-      <button data-action="bookmarkTab">bookmark</button>
+      <button class="tile" data-action="tidyDuplicates"><span class="tile-main">clean up</span></button>
+      <button class="tile" data-action="groupByRules"><span class="tile-main">by blocks</span></button>
+      <button class="tile" data-action="groupByDomain"><span class="tile-main">by site</span></button>
+      <button class="tile" data-action="ungroupAll"><span class="tile-main">ungroup</span></button>
+      <button class="tile" data-action="sortByDomain"><span class="tile-main">sort</span></button>
+      <button class="tile" data-action="openPalette"><span class="tile-main">palette ⌘K</span></button>
     </div>
   </main>
 
   <footer>
-    <span id="status">⌘D pin · ⌃D pin (native) · ⌃⇧D duplicates</span>
-    <a href="https://github.com/aPoWall/aside-tweaks" target="_blank"
-       style="color:var(--muted);text-decoration:none">apowall ↗</a>
+    <span id="status">⌘D favorite · ⌃D pin · ⌘⇧D clean up</span>
+    <a href="https://github.com/aPoWall/aside-tweaks" target="_blank">apowall ↗</a>
   </footer>
 
   <script src="theme.js"></script>

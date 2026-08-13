@@ -7,7 +7,8 @@
 // Не перебиваются только зарезервированные системой: ⌘T, ⌘W, ⌘N, ⌘Q, ⌘⇧W, ⌘M.
 
 const DEFAULT_KEYMAP = {
-  pinTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: false },
+  favoriteTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: false },
+  pinTab: null,
   tidyDuplicates: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: true },
   togglePanel: null,   // панель просит жест пользователя — надёжно только нативным ⌃⇧S
   bookmarkTab: null,
@@ -82,6 +83,34 @@ function toast(text) {
   hideTimer = setTimeout(() => { if (toastBox) toastBox.style.opacity = '0'; }, 1900);
 }
 
+
+// ---------- затемнение страницы, пока открыта палитра ----------
+
+let dimEl = null;
+
+function setDim(on) {
+  if (!document.body) return;
+  if (on) {
+    if (!dimEl || !dimEl.isConnected) {
+      dimEl = document.createElement('div');
+      dimEl.style.cssText = [
+        'position:fixed', 'inset:0', 'z-index:2147483646', 'pointer-events:none',
+        'background:rgba(12,11,9,.42)', 'backdrop-filter:blur(1.5px)',
+        '-webkit-backdrop-filter:blur(1.5px)',
+        'opacity:0', 'transition:opacity .16s ease'
+      ].join(';');
+      document.body.append(dimEl);
+    }
+    requestAnimationFrame(() => { if (dimEl) dimEl.style.opacity = '1'; });
+  } else if (dimEl) {
+    const el = dimEl;
+    dimEl = null;
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 200);
+  }
+}
+
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg?.type === 'toast' && typeof msg.text === 'string') toast(msg.text);
+  if (msg?.type === 'dim') setDim(!!msg.on);
 });

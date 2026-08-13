@@ -11,6 +11,13 @@
     --fg: #111; --muted: #8e8e8e; --dim: #6f6f6f; --sel: #eee;
   }
   html, body { height: 100%; }
+  /* мягкое появление окна и строк — палитра должна «вплывать», а не мигать */
+  @keyframes winin { from { opacity: 0; transform: scale(.985) translateY(-4px); } to { opacity: 1; transform: none; } }
+  @keyframes rowin { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
+  body { animation: winin .14s cubic-bezier(.2,.7,.3,1) both; }
+  .item { animation: rowin .13s ease both; }
+  .item.sel { transition: background .1s, box-shadow .1s; }
+  #scopes button { transition: background .12s, color .12s; }
   body {
     font: 12.5px/1.45 "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
     background: var(--bg); color: var(--fg);

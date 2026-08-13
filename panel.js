@@ -1,12 +1,13 @@
-// Aside Tweaks — своя боковая панель (chrome.sidePanel)
-// Нативный сайдбар Aside расширению недоступен, эта панель — то, что мы полностью
-// контролируем: секции, порядок, цвета (см. theme.js).
+// Aside Tweaks — панель (chrome.sidePanel)
+// Три яруса сверху вниз: favorites (страницы, перенесённые наверх), pinned
+// (нативные пины Chromium), tabs (всё остальное, разбитое по блокам).
+// Поиска здесь нет намеренно — он живёт в палитре ⌘K.
 
 const SECOND_LEVEL = new Set(['co.uk', 'org.uk', 'com.br', 'com.au', 'co.jp', 'com.tr']);
+const FAV_FOLDER = 'Favorites';
 
 let winId = null;
 let rules = [];
-let filter = '';
 
 function rootDomain(u) {
   try {
@@ -40,65 +41,90 @@ function favicon(u) {
 
 function say(text) {
   const el = document.getElementById('status');
-  const prev = el.dataset.base || el.textContent;
-  el.dataset.base = prev;
+  if (!el.dataset.base) el.dataset.base = el.textContent;
   el.textContent = text;
   clearTimeout(say._t);
   say._t = setTimeout(() => { el.textContent = el.dataset.base; }, 2600);
 }
 
-// ---------- строка вкладки ----------
-
-function row(tab) {
-  const d = document.createElement('div');
-  d.className = 'row' + (tab.active ? ' active' : '') + (tab.discarded ? ' sleeping' : '');
-  d.draggable = true;
-  d.dataset.id = String(tab.id);
-  d.title = (tab.title || '') + '\n' + (tab.url || '');
-
+function iconFor(url) {
   const img = document.createElement('img');
-  img.src = favicon(tab.url || '');
+  img.src = favicon(url || '');
   img.addEventListener('error', () => {
     const g = document.createElement('span');
     g.className = 'glyph';
     g.textContent = '·';
     img.replaceWith(g);
   });
+  return img;
+}
+
+function act(glyph, title, on, fn) {
+  const b = document.createElement('button');
+  b.className = 'act' + (on ? ' on' : '');
+  b.textContent = glyph;
+  b.title = title;
+  b.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
+  return b;
+}
+
+// ---------- favorites ----------
+
+async function favFolderId() {
+  const kids = await chrome.bookmarks.getChildren('1').catch(() => []);
+  return kids.find(k => !k.url && k.title === FAV_FOLDER)?.id ?? null;
+}
+
+function favRow(mark) {
+  const d = document.createElement('div');
+  d.className = 'row';
+  d.title = (mark.title || '') + '\n' + mark.url;
+  const t = document.createElement('span');
+  t.className = 't';
+  t.textContent = mark.title || mark.url;
+  d.append(iconFor(mark.url), t);
+  d.append(act('×', 'remove from favorites', false, async () => {
+    await chrome.bookmarks.remove(mark.id).catch(() => { });
+    say('removed from favorites');
+    render();
+  }));
+  d.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ action: 'openUrl', url: mark.url, windowId: winId });
+  });
+  return d;
+}
+
+// ---------- строка вкладки ----------
+
+function tabRow(tab) {
+  const d = document.createElement('div');
+  d.className = 'row' + (tab.active ? ' active' : '') + (tab.discarded ? ' sleeping' : '');
+  d.draggable = true;
+  d.title = (tab.title || '') + '\n' + (tab.url || '');
 
   const t = document.createElement('span');
   t.className = 't';
   t.textContent = tab.title || tab.url || 'untitled';
+  d.append(iconFor(tab.url), t);
 
-  const pin = document.createElement('button');
-  pin.className = 'act' + (tab.pinned ? ' on' : '');
-  pin.textContent = tab.pinned ? '◆' : '◇';
-  pin.title = tab.pinned ? 'unpin' : 'pin — goes to the squares on top of the sidebar';
-  pin.addEventListener('click', async (e) => {
-    e.stopPropagation();
+  d.append(act('↑', 'move to favorites (bookmark + close the tab)', false, async () => {
+    await chrome.tabs.update(tab.id, { active: true });
+    await chrome.runtime.sendMessage({ action: 'favoriteTab', windowId: tab.windowId });
+    say('moved to favorites ↑');
+  }));
+  d.append(act(tab.pinned ? '◆' : '◇', tab.pinned ? 'unpin' : 'pin to the sidebar squares', tab.pinned, async () => {
     await chrome.tabs.update(tab.id, { pinned: !tab.pinned });
     say(tab.pinned ? 'unpinned' : 'pinned ↑');
-  });
-
-  const close = document.createElement('button');
-  close.className = 'act';
-  close.textContent = '×';
-  close.title = 'close';
-  close.addEventListener('click', async (e) => {
-    e.stopPropagation();
-    await chrome.tabs.remove(tab.id).catch(() => { });
-  });
-
-  d.append(img, t, pin, close);
+  }));
+  d.append(act('×', 'close', false, () => chrome.tabs.remove(tab.id).catch(() => { })));
 
   d.addEventListener('click', async () => {
     await chrome.tabs.update(tab.id, { active: true });
     await chrome.windows.update(tab.windowId, { focused: true });
   });
-  d.addEventListener('auxclick', (e) => {
-    if (e.button === 1) chrome.tabs.remove(tab.id).catch(() => { });
-  });
+  d.addEventListener('auxclick', (e) => { if (e.button === 1) chrome.tabs.remove(tab.id).catch(() => { }); });
 
-  // перетаскивание: меняем порядок вкладок прямо в панели
+  // перетаскивание меняет порядок вкладок в окне
   d.addEventListener('dragstart', (e) => {
     e.dataTransfer.setData('text/plain', String(tab.id));
     e.dataTransfer.effectAllowed = 'move';
@@ -120,6 +146,13 @@ function row(tab) {
   return d;
 }
 
+function emptyLine(text) {
+  const e = document.createElement('div');
+  e.className = 'empty';
+  e.textContent = text;
+  return e;
+}
+
 // ---------- отрисовка ----------
 
 let renderSeq = 0;
@@ -127,30 +160,27 @@ let renderSeq = 0;
 async function render() {
   const my = ++renderSeq;
   if (winId == null) winId = (await chrome.windows.getCurrent().catch(() => null))?.id ?? null;
+
   const all = await chrome.tabs.query(winId != null ? { windowId: winId } : { currentWindow: true }).catch(() => []);
+  const folder = await favFolderId();
+  const marks = folder ? (await chrome.bookmarks.getChildren(folder).catch(() => [])).filter(k => k.url) : [];
   if (my !== renderSeq) return;
 
-  const q = filter.trim().toLowerCase();
-  const match = t => !q || (t.title || '').toLowerCase().includes(q) || (t.url || '').toLowerCase().includes(q);
-
-  const pins = all.filter(t => t.pinned && match(t)).sort((a, b) => a.index - b.index);
-  const rest = all.filter(t => !t.pinned && match(t)).sort((a, b) => a.index - b.index);
-
+  const favsEl = document.getElementById('favs');
   const pinsEl = document.getElementById('pins');
   const tabsEl = document.getElementById('tabs');
+  favsEl.replaceChildren();
   pinsEl.replaceChildren();
   tabsEl.replaceChildren();
 
-  if (!pins.length) {
-    const e = document.createElement('div');
-    e.className = 'empty';
-    e.textContent = q ? 'no matches' : 'empty · ⌘D or ◇ on a row pins a tab';
-    pinsEl.append(e);
-  } else {
-    for (const t of pins) pinsEl.append(row(t));
-  }
+  if (!marks.length) favsEl.append(emptyLine('empty · ⌘D moves the current page up here'));
+  else for (const m of marks) favsEl.append(favRow(m));
 
-  // группировка по блокам из настроек, внутри — порядок как в браузере
+  const pins = all.filter(t => t.pinned).sort((a, b) => a.index - b.index);
+  if (!pins.length) pinsEl.append(emptyLine('empty · ◇ on a row pins to the sidebar squares'));
+  else for (const t of pins) pinsEl.append(tabRow(t));
+
+  const rest = all.filter(t => !t.pinned).sort((a, b) => a.index - b.index);
   const buckets = new Map();
   for (const t of rest) {
     const b = blockOf(t);
@@ -161,20 +191,14 @@ async function render() {
     if (buckets.size > 1) {
       const h = document.createElement('div');
       h.className = 'blk';
-      const s = document.createElement('span');
-      s.textContent = `${name} · ${list.length}`;
-      h.append(s);
+      h.textContent = `${name} · ${list.length}`;
       tabsEl.append(h);
     }
-    for (const t of list) tabsEl.append(row(t));
+    for (const t of list) tabsEl.append(tabRow(t));
   }
-  if (!rest.length) {
-    const e = document.createElement('div');
-    e.className = 'empty';
-    e.textContent = q ? 'no matches' : 'empty';
-    tabsEl.append(e);
-  }
+  if (!rest.length) tabsEl.append(emptyLine('empty'));
 
+  document.getElementById('nFav').textContent = String(marks.length);
   document.getElementById('nPins').textContent = String(pins.length);
   document.getElementById('nTabs').textContent = String(rest.length);
   const sleeping = all.filter(t => t.discarded).length;
@@ -185,20 +209,22 @@ async function render() {
 let rerenderTimer = null;
 function rerender() {
   clearTimeout(rerenderTimer);
-  rerenderTimer = setTimeout(render, 60);
+  rerenderTimer = setTimeout(render, 70);
 }
 
 for (const ev of ['onCreated', 'onRemoved', 'onUpdated', 'onMoved', 'onActivated', 'onDetached', 'onAttached', 'onReplaced']) {
   chrome.tabs[ev]?.addListener(rerender);
 }
+for (const ev of ['onCreated', 'onRemoved', 'onChanged', 'onMoved']) {
+  chrome.bookmarks[ev]?.addListener(rerender);
+}
 
-document.getElementById('q').addEventListener('input', (e) => { filter = e.target.value; render(); });
 document.getElementById('gear').addEventListener('click', () => chrome.runtime.openOptionsPage());
 
-document.querySelectorAll('.cmds button[data-action]').forEach(btn => {
+document.querySelectorAll('.cmds .tile[data-action]').forEach(btn => {
   btn.addEventListener('click', async () => {
     const res = await chrome.runtime.sendMessage({ action: btn.dataset.action, windowId: winId });
-    say(res?.ok ? `${btn.textContent}: ${res.count ?? 'done'}` : 'error');
+    say(res?.ok ? `${btn.textContent.trim()}: ${res.count ?? 'done'}` : 'error');
     rerender();
   });
 });

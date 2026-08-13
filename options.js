@@ -1,7 +1,8 @@
 // Aside Tweaks — настройки
 
 const DEFAULT_KEYMAP = {
-  pinTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: false },
+  favoriteTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: false },
+  pinTab: null,
   tidyDuplicates: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: true },
   togglePanel: null,   // панель просит жест пользователя — надёжно только нативным ⌃⇧S
   bookmarkTab: null,
@@ -22,6 +23,7 @@ const DEFAULTS = {
 };
 
 const ACTIONS = [
+  ['favoriteTab', 'favorite — move page up', 'bookmark + closes the tab'],
   ['pinTab', 'pin / unpin tab', 'native ⌃D'],
   ['tidyDuplicates', 'clean duplicates + empty tabs', 'native ⌃⇧D'],
   ['togglePanel', 'open tweaks panel', 'native ⌃⇧S is more reliable'],
