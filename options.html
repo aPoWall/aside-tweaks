@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>aside tweaks · settings</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --accent: #111; --accent-fg: #fff;
+    --bg: #fff; --bg-soft: #f6f6f6; --line: #e6e6e6;
+    --fg: #111; --muted: #8e8e8e; --dim: #6f6f6f; --sel: #eee;
+  }
+  body {
+    max-width: 620px; margin: 40px auto 70px; padding: 0 24px;
+    font: 12px/1.65 "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
+    background: var(--bg); color: var(--fg);
+  }
+  h1 { font-size: 13px; font-weight: 400; margin: 0 0 3px; letter-spacing: .02em; }
+  .sub { color: var(--muted); font-size: 10px; margin: 0 0 26px; }
+
+  .card { border: 1px solid var(--fg); padding: 0 0 14px; margin: 0 0 14px; }
+  .head {
+    display: flex; align-items: baseline; gap: 9px;
+    padding: 9px 15px 10px; border-bottom: 1px solid var(--line); margin-bottom: 13px;
+  }
+  .head .idx { font-size: 9px; color: var(--muted); letter-spacing: .1em; }
+  .head .ttl { font-size: 9px; letter-spacing: .18em; text-transform: uppercase; }
+  .body { padding: 0 15px; }
+
+  label.opt { display: flex; gap: 9px; align-items: flex-start; margin: 8px 0; cursor: pointer; }
+  input[type=checkbox], input[type=radio] { margin-top: 4px; accent-color: var(--accent); }
+  small { color: var(--dim); display: block; font-size: 10.5px; line-height: 1.5; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 3px 7px 3px 0; vertical-align: middle; }
+  input[type=text] {
+    width: 100%; padding: 5px 8px; font: inherit;
+    border: 1px solid var(--line); outline: none;
+    background: var(--bg); color: var(--fg);
+  }
+  input[type=text]:focus { border-color: var(--accent); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  button {
+    padding: 5px 11px; font: inherit; cursor: pointer;
+    background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+  }
+  button:hover { border-color: var(--accent); }
+  .del { border: none; color: var(--muted); background: none; }
+  .del:hover { color: var(--fg); }
+  code { background: var(--bg-soft); padding: 1px 5px; }
+
+  .keys td:first-child { width: 210px; }
+  .combo { min-width: 120px; text-align: center; letter-spacing: .07em; background: var(--bg-soft); }
+  .combo.rec { border-color: var(--accent); color: var(--accent); }
+  .combo.warn { border-color: #d4761d; }
+  .keys .note { font-size: 9px; color: var(--muted); }
+
+  .swatches { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; margin-bottom: 11px; }
+  .sw { width: 22px; height: 22px; cursor: pointer; border: 1px solid var(--line); padding: 0; }
+  .sw.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--fg); }
+  input[type=color] {
+    width: 30px; height: 24px; padding: 1px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--bg);
+  }
+  .seg { display: flex; }
+  .seg button { margin-left: -1px; flex: 1; }
+  .seg button:first-child { margin-left: 0; }
+  .seg button.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+
+  #saved { color: var(--dim); min-height: 19px; font-size: 10px; }
+  .row2 { display: flex; gap: 11px; align-items: center; }
+  .row2 > span { white-space: nowrap; color: var(--dim); font-size: 10px; }
+  .foot { font-size: 10px; color: var(--muted); margin-top: 10px; }
+</style>
+</head>
+<body>
+  <h1>◐ aside tweaks</h1>
+  <p class="sub">v4 · keys, tabs, palette</p>
+
+  <div class="card">
+    <div class="head"><span class="idx">01</span><span class="ttl">keys</span></div>
+    <div class="body">
+      <label class="opt"><input type="checkbox" id="keymapEnabled">
+        <span>own keymap on top of the browser's<small>the page sees keydown before the browser applies its accelerator, so ⌘D and friends can be taken over</small></span>
+      </label>
+      <table class="keys" id="keys"></table>
+      <small style="margin-top:11px">
+        ⚠ <code>⌘T</code> <code>⌘W</code> <code>⌘N</code> <code>⌘Q</code> <code>⌘M</code> <code>⇧⌘W</code> stay with the system — the browser takes them before the page.
+        on <code>chrome://</code> pages, the new tab and inside Aside's own interface there is no page at all: only native shortcuts work there.
+      </small>
+      <div class="row2" style="margin-top:9px">
+        <button id="native">native browser shortcuts ↗</button>
+        <button id="resetKeys">reset to defaults</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="head"><span class="idx">02</span><span class="ttl">pin vs bookmark</span></div>
+    <div class="body">
+      <small style="margin-bottom:9px">
+        <b>pin</b> moves the tab into the squares on top of the sidebar and keeps it there — that is the Arc behaviour, bound to <code>⌘D</code> by default.<br>
+        <b>bookmark</b> puts the page into the bookmarks bar, no dialog, second call removes it. separate action, no key by default.
+      </small>
+      <label class="opt"><input type="checkbox" id="keepPins">
+        <span>Arc-style pins<small>closing a pinned tab brings the pin back asleep instead of dropping it. to remove it for good: unpin, then close</small></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="head"><span class="idx">03</span><span class="ttl">tabs</span></div>
+    <div class="body">
+      <div class="seg" id="placement" style="margin-bottom:11px">
+        <button data-v="underCurrent">under current</button><button data-v="end">at the end</button><button data-v="browser">browser decides</button>
+      </div>
+      <div class="row2">
+        <span>hold position</span>
+        <input type="range" id="guard" min="0" max="6000" step="250">
+        <span id="guardVal">2500 ms</span>
+      </div>
+      <small style="margin-top:7px">Aside moves a fresh tab after it is created, so the guard keeps putting it back until it stops drifting. raise it if new tabs still jump to the top.</small>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="head"><span class="idx">04</span><span class="ttl">cleanup</span></div>
+    <div class="body">
+      <label class="opt"><input type="checkbox" id="dedupAuto">
+        <span>auto-dedupe<small>close a fresh tab when the same url is already open and switch to the existing one</small></span>
+      </label>
+      <label class="opt"><input type="checkbox" id="dedupIgnoreHash">
+        <span>ignore #anchors</span>
+      </label>
+      <label class="opt"><input type="checkbox" id="dedupIgnoreUtm">
+        <span>ignore tracking params<small>utm_*, _gl, gclid, fbclid…</small></span>
+      </label>
+      <small style="margin-top:7px">the manual command also collapses empty new tabs — one per window stays.</small>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="head"><span class="idx">05</span><span class="ttl">blocks</span></div>
+    <div class="body">
+      <small style="margin-bottom:9px">
+        a block is a name plus substrings. blocks drive tab grouping, the palette's «open in block»
+        and the sections of the tweaks panel. anything unmatched falls back to its root domain.
+      </small>
+      <table id="rules"></table>
+      <button id="addRule" style="margin-top:7px">+ add block</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="head"><span class="idx">06</span><span class="ttl">appearance</span></div>
+    <div class="body">
+      <small style="margin-bottom:11px">
+        Aside's own sidebar is native browser chrome — an extension cannot repaint it.
+        these colours drive our surfaces: palette <code>⌘K</code>, popup, settings, tweaks panel.
+      </small>
+      <div class="swatches" id="swatches"></div>
+      <div class="row2" style="margin-bottom:11px">
+        <span>custom</span>
+        <input type="color" id="accentCustom">
+        <span>background tint</span>
+        <input type="range" id="tint" min="0" max="26" step="1">
+        <span id="tintVal">8%</span>
+      </div>
+      <div class="row2" style="margin-bottom:9px">
+        <span style="width:70px">theme</span>
+        <div class="seg" id="mode" style="flex:1">
+          <button data-v="auto">auto</button><button data-v="light">light</button><button data-v="dark">dark</button>
+        </div>
+      </div>
+      <div class="row2">
+        <span style="width:70px">density</span>
+        <div class="seg" id="density" style="flex:1">
+          <button data-v="normal">normal</button><button data-v="compact">compact</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="head"><span class="idx">07</span><span class="ttl">native shortcuts</span></div>
+    <div class="body">
+      <small style="margin-bottom:9px">
+        keys the browser owns before any page — <code>⌘T</code>, <code>⌘W</code>, the bookmark dialog on <code>⌘D</code> —
+        are menu commands, and macOS re-binds any menu command per app. that is the layer above extensions:
+        System Settings → Keyboard → Keyboard Shortcuts → App Shortcuts does the same thing by hand.
+      </small>
+      <small style="margin-bottom:9px">
+        already applied here: Aside's <code>Bookmark This Tab…</code> moved off <code>⌘D</code> to <code>⌃⌘B</code>,
+        which leaves <code>⌘D</code> free for the pin. it takes effect after Aside restarts.
+      </small>
+      <button id="copyDefaults">copy the terminal command</button>
+    </div>
+  </div>
+
+  <p id="saved"></p>
+
+  <div style="display:flex;gap:9px;align-items:center;border-top:1px solid var(--line);padding-top:11px;font-size:10px;color:var(--muted)">
+    <span>aside tweaks · alex povaliaev</span>
+    <span style="flex:1"></span>
+    <a href="https://github.com/aPoWall/aside-tweaks" target="_blank" style="color:var(--dim)">github ↗</a>
+  </div>
+
+  <script src="theme.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

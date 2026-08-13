@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="instrument.css">
+<style>
+  body { width: 344px; }
+  :root[data-density="compact"] { --pad: 13px; }
+</style>
+</head>
+<body>
+  <div class="inst-head">
+    <div class="inst-title">aside tweaks</div>
+    <div class="inst-sub">instrument 01 · tab surgery · <b>v4.2</b></div>
+  </div>
+
+  <div class="readout">
+    <div class="big" id="stats">–</div>
+    <div class="sub" id="statsub">counting tabs</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label"><span class="n">01</span> surfaces <span class="hint">· search and control</span></div>
+    <div class="tiles">
+      <button class="tile" id="openPanel">
+        <span class="tile-main">panel <span class="k">⌃⇧S</span></span>
+        <span class="tile-sub">pinned · tabs · commands</span>
+      </button>
+      <button class="tile" data-action="openPalette">
+        <span class="tile-main">palette <span class="k">⌘K</span></span>
+        <span class="tile-sub">tabs · history · marks</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label"><span class="n">02</span> current tab <span class="hint">· a pin is not a bookmark</span></div>
+    <div class="tiles">
+      <button class="tile" data-action="pinTab">
+        <span class="tile-main">pin / unpin <span class="k">⌘D</span></span>
+        <span class="tile-sub">to the sidebar squares</span>
+      </button>
+      <button class="tile" data-action="bookmarkTab">
+        <span class="tile-main">bookmark</span>
+        <span class="tile-sub">no dialog · toggles</span>
+      </button>
+    </div>
+    <div class="tiles one" style="margin-top:7px">
+      <button class="tile" data-action="tidyDuplicates">
+        <span class="tile-main">clean duplicates <span class="k">⌘⇧D</span></span>
+        <span class="tile-sub">also collapses empty new tabs, one per window</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label"><span class="n">03</span> order <span class="hint">· groups open expanded</span></div>
+    <div class="tiles">
+      <button class="tile" data-action="groupByRules">
+        <span class="tile-main">by my blocks</span>
+        <span class="tile-sub">rules from settings</span>
+      </button>
+      <button class="tile" data-action="groupByDomain">
+        <span class="tile-main">by site</span>
+        <span class="tile-sub">root domain</span>
+      </button>
+      <button class="tile" data-action="ungroupAll">
+        <span class="tile-main">ungroup</span>
+        <span class="tile-sub">flatten the window</span>
+      </button>
+      <button class="tile" data-action="sortByDomain">
+        <span class="tile-main">sort</span>
+        <span class="tile-sub">alphabetical by host</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="hintbar">
+    <span><b>⌘D</b> pin</span><span><b>⌘⇧D</b> clean</span><span><b>⌘K</b> palette</span><span id="status"></span>
+  </div>
+
+  <div class="sign">
+    <span>alex povaliaev</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/aPoWall/aside-tweaks" target="_blank">github ↗</a>
+    <a href="options.html" target="_blank">settings ↗</a>
+  </div>
+
+  <script src="theme.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
