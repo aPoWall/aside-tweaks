@@ -14,6 +14,7 @@ const SCOPES = ['all', 'tabs', 'history', 'bookmarks', 'commands'];
 let scope = 'all';
 
 const CMDS = [
+  { keys: 'tidy sweep clean order all', title: 'Tidy up — clean, group, sort', action: 'tidyUp' },
   { keys: 'dd dedup duplicates clean empty', title: 'Clean duplicates and empty tabs', action: 'tidyDuplicates' },
   { keys: 'blocks group rules', title: 'Group tabs by my blocks', action: 'groupByRules' },
   { keys: 'group site domain', title: 'Group tabs by site', action: 'groupByDomain' },

@@ -7,6 +7,7 @@ const DEFAULT_KEYMAP = {
   favoriteTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: false },
   pinTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: true },
   tidyDuplicates: { code: 'KeyD', meta: true, ctrl: false, alt: true, shift: false },
+  tidyUp: { code: 'KeyT', meta: true, ctrl: false, alt: true, shift: false },
   togglePanel: null,   // панель просит жест пользователя — надёжно только нативным ⌃⇧S
   bookmarkTab: null,
   openPalette: null,
@@ -61,9 +62,11 @@ chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() =>
 // ---------- обратная связь бейджем на иконке ----------
 
 let badgeTimer = null;
+let quiet = false;   // составная команда отчитывается один раз, а не за каждый шаг
 
 // бейдж на иконке + всплывашка в активной вкладке: видно, что сочетание сработало
 async function flash(badge, note = '', ok = true) {
+  if (quiet) return;
   try {
     await chrome.action.setBadgeBackgroundColor({ color: ok ? '#111111' : '#b00020' });
     await chrome.action.setBadgeTextColor?.({ color: '#ffffff' });
@@ -498,6 +501,21 @@ async function openUrl({ url, windowId, groupName, pinned } = {}) {
   return 1;
 }
 
+// один жест вместо трёх: убрать лишнее, разложить по блокам, выровнять порядок
+async function tidyUp(windowId) {
+  quiet = true;
+  let closed = 0, groups = 0, sorted = 0;
+  try {
+    closed = await tidyDuplicates();
+    groups = await groupByRules(windowId);
+    sorted = await sortByDomain(windowId);
+  } finally {
+    quiet = false;
+  }
+  flash('TIDY', `tidied up\n${closed} closed · ${groups} blocks · ${sorted} ordered`);
+  return closed + groups;
+}
+
 async function getStats() {
   const all = await chrome.tabs.query({});
   const seen = new Set(); let dups = 0, pinned = 0;
@@ -513,6 +531,7 @@ async function getStats() {
 // ---------- omnibox: tw + Tab ----------
 
 const OMNI_COMMANDS = [
+  { keys: ['tidy', 'убрать'], desc: 'Tidy up — clean, group by blocks, sort', run: tidyUp },
   { keys: ['dd', 'dedup', 'дубли'], desc: 'Clean duplicates and empty tabs', run: tidyDuplicates },
   { keys: ['panel', 'панель'], desc: 'Open the tweaks panel', run: () => togglePanel() },
   { keys: ['group', 'группы'], desc: 'Group tabs by site', run: groupByDomain },
@@ -620,7 +639,7 @@ chrome.windows.onRemoved.addListener(id => { if (id === paletteWinId) { paletteW
 
 const ACTIONS = {
   tidyDuplicates, groupByDomain, groupByRules, ungroupAll, sortByDomain,
-  pinTab, favoriteTab, listFavorites, bookmarkTab, getStats, openPalette, togglePanel
+  pinTab, favoriteTab, listFavorites, bookmarkTab, tidyUp, getStats, openPalette, togglePanel
 };
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {

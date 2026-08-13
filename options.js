@@ -4,6 +4,7 @@ const DEFAULT_KEYMAP = {
   favoriteTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: false },
   pinTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: true },
   tidyDuplicates: { code: 'KeyD', meta: true, ctrl: false, alt: true, shift: false },
+  tidyUp: { code: 'KeyT', meta: true, ctrl: false, alt: true, shift: false },
   togglePanel: null,   // панель просит жест пользователя — надёжно только нативным ⌃⇧S
   bookmarkTab: null,
   openPalette: null,
@@ -25,6 +26,7 @@ const DEFAULTS = {
 const ACTIONS = [
   ['favoriteTab', 'bookmark to the top', 'first row of the bar · closes the tab'],
   ['pinTab', 'pin / unpin tab', 'the squares on top of the sidebar · native ⌃D'],
+  ['tidyUp', 'tidy up — one sweep', 'clean, group by blocks, sort'],
   ['tidyDuplicates', 'clean duplicates + empty tabs', 'native ⌃⇧D'],
   ['togglePanel', 'open tweaks panel', 'native ⌃⇧S is more reliable'],
   ['bookmarkTab', 'bookmark, no dialog', ''],

@@ -7,6 +7,7 @@ const LABELS = {
   groupByDomain: n => n ? `${n} groups` : 'nothing to group',
   ungroupAll: n => n ? `${n} ungrouped` : 'no groups',
   sortByDomain: n => `${n} sorted`,
+  tidyUp: () => 'tidied up ✓',
   openPalette: () => 'palette opened'
 };
 
