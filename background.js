@@ -45,7 +45,9 @@ const DEFAULTS = {
 let settings = { ...DEFAULTS };
 
 chrome.storage.sync.get(DEFAULTS).then(s => {
-  settings = { ...DEFAULTS, ...s };
+  // раскладку накладываем поверх дефолтной: иначе действия, добавленные позже,
+  // остаются вообще без привязки — в хранилище лежит карта старой версии
+  settings = { ...DEFAULTS, ...s, keymap: { ...DEFAULT_KEYMAP, ...(s.keymap || {}) } };
   // миграция со старого булева тумблера: выключен → браузер решает сам
   if (s.tabPlacement == null && s.nextToCurrent === false) {
     settings.tabPlacement = 'browser';
@@ -55,6 +57,7 @@ chrome.storage.sync.get(DEFAULTS).then(s => {
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'sync') return;
   for (const [k, v] of Object.entries(changes)) settings[k] = v.newValue;
+  if (changes.keymap) settings.keymap = { ...DEFAULT_KEYMAP, ...(changes.keymap.newValue || {}) };
 });
 
 // панель открывается своей командой/кнопкой, а не кликом по иконке (там попап)
@@ -526,7 +529,7 @@ async function openPalette() {
     const arr = await chrome.tabs.query({ active: true, windowId: src.id }).catch(() => []);
     activeTab = arr[0] || null;
   }
-  const W = 680, H = 470;
+  const W = 560, H = 400;
   const left = src ? Math.round(src.left + (src.width - W) / 2) : undefined;
   const top = src ? Math.round(src.top + (src.height - H) / 3) : undefined;
   const page = 'palette.html?win=' + (src?.id ?? '') + '&tab=' + (activeTab?.id ?? '');

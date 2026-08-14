@@ -24,14 +24,15 @@ const DEFAULT_KEYMAP = {
 let enabled = true;
 let keymap = DEFAULT_KEYMAP;
 
-chrome.storage.sync.get({ keymap: DEFAULT_KEYMAP, keymapEnabled: true }).then(s => {
-  keymap = s.keymap || DEFAULT_KEYMAP;
+chrome.storage.sync.get({ keymap: null, keymapEnabled: true }).then(s => {
+  // поверх дефолтной, а не вместо неё — иначе новые действия остаются без клавиш
+  keymap = { ...DEFAULT_KEYMAP, ...(s.keymap || {}) };
   enabled = s.keymapEnabled !== false;
 }).catch(() => { });
 
 chrome.storage.onChanged.addListener((ch, area) => {
   if (area !== 'sync') return;
-  if (ch.keymap) keymap = ch.keymap.newValue || DEFAULT_KEYMAP;
+  if (ch.keymap) keymap = { ...DEFAULT_KEYMAP, ...(ch.keymap.newValue || {}) };
   if (ch.keymapEnabled) enabled = ch.keymapEnabled.newValue !== false;
 });
 

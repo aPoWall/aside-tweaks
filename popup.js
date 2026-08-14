@@ -16,7 +16,10 @@ const status = document.getElementById('status');
 const say = t => { status.textContent = t; };
 
 async function refreshStats() {
-  const res = await chrome.runtime.sendMessage({ action: 'getStats' });
+  // service worker может спать — первый вызов его будит, второй уже отвечает
+  let res = await chrome.runtime.sendMessage({ action: 'getStats' }).catch(() => null);
+  if (!res?.ok) res = await chrome.runtime.sendMessage({ action: 'getStats' }).catch(() => null);
+  if (!res?.ok) { document.getElementById('statsub').textContent = 'service worker asleep · press again'; return; }
   if (res?.ok && res.data) {
     const { total, dups, pinned } = res.data;
     document.getElementById('stats').textContent = `${total} tabs`;

@@ -5,16 +5,16 @@
 <title>aside tweaks · panel</title>
 <link rel="stylesheet" href="instrument.css">
 <style>
-  :root { --pad: 13px; --row: 27px; }
+  :root { --pad: 11px; --row: 24px; }
   :root[data-density="compact"] { --pad: 10px; --row: 23px; }
   html, body { height: 100%; }
-  body { display: flex; flex-direction: column; overflow: hidden; font-size: 11.5px; }
+  body { display: flex; flex-direction: column; overflow: hidden; font-size: 11px; }
 
   header {
     display: flex; align-items: baseline; gap: 9px;
-    padding: 12px var(--pad) 10px; border-bottom: 1px solid var(--line);
+    padding: 10px var(--pad) 8px; border-bottom: 1px solid var(--line);
   }
-  header .name { font-size: 15px; letter-spacing: -.01em; }
+  header .name { font-size: 13px; letter-spacing: -.01em; }
   header .count { margin-left: auto; font-size: 9.5px; color: var(--muted); }
   header .gear { border: none; background: none; color: var(--muted); font: inherit; cursor: pointer; }
   header .gear:hover { color: var(--fg); }

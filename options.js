@@ -292,7 +292,7 @@ function renderAll() {
 }
 
 chrome.storage.sync.get(DEFAULTS).then(s => {
-  state = { ...DEFAULTS, ...s, theme: { ...DEFAULTS.theme, ...(s.theme || {}) } };
+  state = { ...DEFAULTS, ...s, keymap: { ...DEFAULT_KEYMAP, ...(s.keymap || {}) }, theme: { ...DEFAULTS.theme, ...(s.theme || {}) } };
   renderAll();
 });
 
@@ -319,6 +319,23 @@ document.getElementById('addRule').addEventListener('click', async () => {
   await patch({ groupRules: [...(state.groupRules || []), { name: '', patterns: [] }] });
   renderRules();
 });
+
+// живая проверка: нажми сочетание и увидь, какое действие оно вызовет
+const probe = document.getElementById('probe');
+const probeout = document.getElementById('probeout');
+probe?.addEventListener('keydown', (e) => {
+  e.preventDefault();
+  if (['MetaLeft','MetaRight','ControlLeft','ControlRight','AltLeft','AltRight','ShiftLeft','ShiftRight'].includes(e.code)) return;
+  const combo = { code: e.code, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey };
+  const shown = comboLabel(combo);
+  if (!e.metaKey && !e.ctrlKey && !e.altKey) { probeout.textContent = shown + ' — no modifier, not intercepted'; return; }
+  const hitAction = Object.entries(state.keymap || {}).find(([, v]) => v && comboLabel(v) === shown)?.[0];
+  const label = hitAction ? (ACTIONS.find(a => a[0] === hitAction)?.[1] || hitAction) : null;
+  probeout.textContent = isReserved(combo)
+    ? shown + ' — the system takes it before the page'
+    : label ? shown + ' → ' + label : shown + ' — nothing bound';
+});
+probe?.addEventListener('focus', () => { probeout.textContent = 'listening…'; });
 
 document.getElementById('copyDefaults')?.addEventListener('click', async () => {
   const cmd = [
