@@ -158,7 +158,8 @@ async function render() {
   if (winId == null) winId = (await chrome.windows.getCurrent().catch(() => null))?.id ?? null;
 
   const all = await chrome.tabs.query(winId != null ? { windowId: winId } : { currentWindow: true }).catch(() => []);
-  const marks = (await chrome.bookmarks.getChildren(BAR).catch(() => [])).filter(k => k.url).slice(0, 14);
+  // закладка уезжает в конец панели — показываем хвост, свежая внизу, как в сайдбаре
+  const marks = (await chrome.bookmarks.getChildren(BAR).catch(() => [])).filter(k => k.url).slice(-14);
   const hi = await chrome.storage.session.get({ lastFavId: null, lastFavAt: 0, lastPinId: null, lastPinAt: 0 }).catch(() => ({}));
   if (my !== renderSeq) return;
 

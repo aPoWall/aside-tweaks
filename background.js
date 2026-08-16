@@ -26,7 +26,8 @@ const DEFAULT_THEME = {
 };
 
 const DEFAULTS = {
-  dedupAuto: true,
+  dedupAuto: false,          // молча закрывать свежую вкладку — слишком грубо
+  dedupNotice: true,         // вместо этого просто говорим, что такая уже открыта
   dedupIgnoreHash: true,
   dedupIgnoreUtm: true,
   nextToCurrent: true,              // legacy-тумблер, читается при миграции
@@ -227,7 +228,7 @@ chrome.tabs.onRemoved.addListener(async (id, info) => {
 const DEDUP_WINDOW_MS = 20000;
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (!settings.dedupAuto) return;
+  if (!settings.dedupAuto && !settings.dedupNotice) return;
   if (!changeInfo.url && changeInfo.status !== 'complete') return;
   const birth = tabBirth.get(tabId);
   if (!birth || Date.now() - birth > DEDUP_WINDOW_MS) return;
@@ -237,6 +238,11 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     const all = await chrome.tabs.query({});
     const twin = all.find(t => t.id !== tabId && normalizeUrl(t.url) === key && (tabBirth.get(t.id) ?? 0) < birth);
     if (!twin) return;
+    if (!settings.dedupAuto) {
+      // подсказка вместо действия: решение остаётся за человеком
+      flash('DUP', 'this page is already open\n⌥⌘D cleans duplicates');
+      return;
+    }
     const wasActive = tab.active;
     await chrome.tabs.remove(tabId);
     if (wasActive) {
@@ -459,10 +465,11 @@ async function favoriteTab(windowId) {
     return -1;
   }
 
-  const made = await chrome.bookmarks.create({ parentId: BAR, index: 0, title: tab.title || tab.url, url: tab.url });
+  // в конец панели закладок: последняя строка — там, куда смотришь после нажатия
+  const made = await chrome.bookmarks.create({ parentId: BAR, index: kids.length, title: tab.title || tab.url, url: tab.url });
   await chrome.storage.session.set({ lastFavId: made?.id ?? null, lastFavAt: Date.now() }).catch(() => { });
   const siblings = await chrome.tabs.query({ windowId: tab.windowId }).catch(() => []);
-  flash('BM+', 'moved to the top of the bookmarks bar ↑');
+  flash('BM+', 'moved to the end of the bookmarks bar ↓');
   if (siblings.length > 1) await chrome.tabs.remove(tab.id).catch(() => { });
   return 1;
 }

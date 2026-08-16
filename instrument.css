@@ -15,8 +15,11 @@
 
 body {
   font: 11px/1.45 "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
-  background: var(--bg); color: var(--fg);
+  color: var(--fg);
   -webkit-font-smoothing: antialiased;
+  /* зерно бумаги: лёгкий шум поверх цвета, чтобы плоскость не выглядела пластиковой */
+  background-color: var(--bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");
 }
 
 /* ---------- шапка инструмента ---------- */

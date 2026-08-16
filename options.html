@@ -130,8 +130,11 @@
   <div class="card">
     <div class="head"><span class="idx">04</span><span class="ttl">cleanup</span></div>
     <div class="body">
+      <label class="opt"><input type="checkbox" id="dedupNotice">
+        <span>say when a page is already open<small>a quiet note on the page, nothing is closed — you decide</small></span>
+      </label>
       <label class="opt"><input type="checkbox" id="dedupAuto">
-        <span>auto-dedupe<small>close a fresh tab when the same url is already open and switch to the existing one</small></span>
+        <span>auto-dedupe<small>off by default: closes the fresh tab on its own and jumps to the existing one</small></span>
       </label>
       <label class="opt"><input type="checkbox" id="dedupIgnoreHash">
         <span>ignore #anchors</span>

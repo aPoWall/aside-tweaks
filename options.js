@@ -16,7 +16,7 @@ const DEFAULT_KEYMAP = {
 };
 
 const DEFAULTS = {
-  dedupAuto: true, dedupIgnoreHash: true, dedupIgnoreUtm: true,
+  dedupAuto: false, dedupNotice: true, dedupIgnoreHash: true, dedupIgnoreUtm: true,
   keepPins: true, keymapEnabled: true, dimBehindPalette: true,
   tabPlacement: 'underCurrent', placementGuardMs: 2500,
   keymap: DEFAULT_KEYMAP,
@@ -269,7 +269,7 @@ function seg(id, value, onPick) {
 
 // ---------- сборка ----------
 
-const TOGGLES = ['dedupAuto', 'dedupIgnoreHash', 'dedupIgnoreUtm', 'keepPins', 'keymapEnabled', 'dimBehindPalette'];
+const TOGGLES = ['dedupAuto', 'dedupNotice', 'dedupIgnoreHash', 'dedupIgnoreUtm', 'keepPins', 'keymapEnabled', 'dimBehindPalette'];
 
 function renderAll() {
   for (const k of TOGGLES) document.getElementById(k).checked = !!state[k];
