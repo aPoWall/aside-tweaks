@@ -423,6 +423,116 @@ async function tidyUp(windowId) {
   return closed + groups;
 }
 
+// ---------- закладка наверх: пин по смыслу, закладка по технике ----------
+// Никакой отдельной папки: страница ложится ПЕРВОЙ строкой панели закладок,
+// вкладка при этом закрывается — страница переезжает, а не двоится.
+
+const BAR = '1'; // Bookmarks Bar в Chromium
+
+// одноразовый переезд со старой схемы: содержимое папки Favorites поднимаем в корень
+async function migrateFavoritesFolder() {
+  const kids = await chrome.bookmarks.getChildren(BAR).catch(() => []);
+  const folder = kids.find(k => !k.url && k.title === 'Favorites');
+  if (!folder) return;
+  const inside = await chrome.bookmarks.getChildren(folder.id).catch(() => []);
+  for (const b of inside) await chrome.bookmarks.move(b.id, { parentId: BAR, index: 0 }).catch(() => { });
+  const left = await chrome.bookmarks.getChildren(folder.id).catch(() => []);
+  if (!left.length) await chrome.bookmarks.remove(folder.id).catch(() => { });
+}
+migrateFavoritesFolder();
+
+async function listFavorites() {
+  const kids = await chrome.bookmarks.getChildren(BAR).catch(() => []);
+  return { items: kids.filter(k => k.url).map(k => ({ id: k.id, title: k.title, url: k.url })) };
+}
+
+async function favoriteTab(windowId) {
+  const wid = await targetWindowId(windowId);
+  const [tab] = await chrome.tabs.query(wid != null ? { active: true, windowId: wid } : { active: true, currentWindow: true });
+  if (!tab?.url || !/^https?:\/\//.test(tab.url)) { flash('—', 'this page cannot be bookmarked', false); return 0; }
+
+  const kids = await chrome.bookmarks.getChildren(BAR).catch(() => []);
+  const twin = kids.find(k => k.url && normalizeUrl(k.url) === normalizeUrl(tab.url));
+  if (twin) {
+    await chrome.bookmarks.remove(twin.id).catch(() => { });
+    flash('BM−', 'removed from the bookmarks bar');
+    return -1;
+  }
+
+  const made = await chrome.bookmarks.create({ parentId: BAR, index: 0, title: tab.title || tab.url, url: tab.url });
+  await chrome.storage.session.set({ lastFavId: made?.id ?? null, lastFavAt: Date.now() }).catch(() => { });
+  const siblings = await chrome.tabs.query({ windowId: tab.windowId }).catch(() => []);
+  flash('BM+', 'moved to the top of the bookmarks bar ↑');
+  if (siblings.length > 1) await chrome.tabs.remove(tab.id).catch(() => { });
+  return 1;
+}
+
+async function pinTab(windowId) {
+  const wid = await targetWindowId(windowId);
+  const [tab] = await chrome.tabs.query(wid != null ? { active: true, windowId: wid } : { active: true, currentWindow: true });
+  if (!tab) return 0;
+  const willPin = !tab.pinned;
+  await chrome.tabs.update(tab.id, { pinned: willPin });
+  if (willPin) await chrome.storage.session.set({ lastPinId: tab.id, lastPinAt: Date.now() }).catch(() => { });
+  flash(willPin ? 'PIN' : 'UN', willPin
+    ? 'pinned ↑\nmoved to the pinned squares on top of the sidebar'
+    : 'unpinned — back in the tab list');
+  return willPin ? 1 : -1;
+}
+
+async function bookmarkTab(windowId) {
+  const wid = await targetWindowId(windowId);
+  const [tab] = await chrome.tabs.query(wid != null ? { active: true, windowId: wid } : { active: true, currentWindow: true });
+  if (!tab?.url) return 0;
+  const existing = await chrome.bookmarks.search({ url: tab.url }).catch(() => []);
+  if (existing.length) {
+    for (const b of existing) await chrome.bookmarks.remove(b.id).catch(() => { });
+    flash('BM−', 'bookmark removed');
+    return -1;
+  }
+  await chrome.bookmarks.create({ parentId: BAR, title: tab.title || tab.url, url: tab.url });
+  flash('BM+', 'bookmarked ✓ — bookmarks section of the sidebar');
+  return 1;
+}
+
+async function togglePanel(windowId) {
+  const wid = await targetWindowId(windowId);
+  if (wid == null) return 0;
+  try {
+    await chrome.sidePanel.open({ windowId: wid });
+    return 1;
+  } catch {
+    flash('◧', 'panel opens with the native ⌃⇧S or the popup button', false);
+    return 0;
+  }
+}
+
+// открыть адрес: в обычном окне, под текущей вкладкой, при желании сразу в блок или в пин
+async function openUrl({ url, windowId, groupName, pinned } = {}) {
+  if (!url) return 0;
+  const wid = await targetWindowId(windowId);
+  if (wid == null) return 0;
+  const active = (await chrome.tabs.query({ active: true, windowId: wid }).catch(() => []))[0];
+  const tab = await chrome.tabs.create({
+    url, windowId: wid, active: true,
+    index: active ? active.index + 1 : undefined,
+    pinned: !!pinned
+  }).catch(() => null);
+  if (!tab) return 0;
+  await chrome.windows.update(wid, { focused: true }).catch(() => { });
+
+  if (groupName && !pinned) {
+    const groups = await chrome.tabGroups.query({ windowId: wid, title: groupName }).catch(() => []);
+    if (groups.length) {
+      await chrome.tabs.group({ tabIds: [tab.id], groupId: groups[0].id }).catch(() => { });
+    } else {
+      const gid = await chrome.tabs.group({ tabIds: [tab.id] }).catch(() => null);
+      if (gid != null) await chrome.tabGroups.update(gid, { title: groupName, collapsed: false }).catch(() => { });
+    }
+  }
+  return 1;
+}
+
 async function getStats() {
   const all = await chrome.tabs.query({});
   const seen = new Set(); let dups = 0, pinned = 0;

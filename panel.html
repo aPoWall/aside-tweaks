@@ -84,24 +84,29 @@
   </header>
 
   <main>
-    <div class="sec-hdr"><span class="n">01</span> bookmarks · top of the bar <span id="nFav">0</span></div>
+    <div class="sec-hdr"><span class="n">01</span> ★ bookmarks · top of the bar <span id="nFav">0</span></div>
     <div id="favs"></div>
 
-    <div class="sec-hdr"><span class="n">02</span> pinned <span id="nPins">0</span></div>
+    <div class="sec-hdr"><span class="n">02</span> ◆ pinned · squares on top <span id="nPins">0</span></div>
     <div id="pins"></div>
 
-    <div class="sec-hdr"><span class="n">03</span> tabs <span id="nTabs">0</span></div>
+    <div class="sec-hdr"><span class="n">03</span> ▤ tabs · grouped by blocks <span id="nTabs">0</span></div>
     <div id="tabs"></div>
 
-    <div class="sec-hdr"><span class="n">04</span> commands</div>
+    <div class="sec-hdr"><span class="n">04</span> ⚡ commands · act on this window</div>
     <div class="cmds">
-      <button class="tile" data-action="tidyUp"><span class="tile-main">tidy up ⌥⌘T</span></button>
-      <button class="tile" data-action="groupByRules"><span class="tile-main">by blocks</span></button>
-      <button class="tile" data-action="groupByDomain"><span class="tile-main">by site</span></button>
-      <button class="tile" data-action="ungroupAll"><span class="tile-main">ungroup</span></button>
-      <button class="tile" data-action="sortByDomain"><span class="tile-main">by site</span></button>
-      <button class="tile" data-action="sortByOpened"><span class="tile-main">by opened</span></button>
-      <button class="tile" data-action="openPalette"><span class="tile-main">palette ⌘K</span></button>
+      <button class="tile" data-action="tidyUp" title="clean duplicates and empty tabs, flatten groups, order, rebuild blocks">
+        <span class="tile-main">✦ tidy up <span class="k">⌥⌘T</span></span><span class="tile-sub">one sweep</span></button>
+      <button class="tile" data-action="groupByRules" title="group tabs by the blocks from settings">
+        <span class="tile-main">▤ by blocks</span><span class="tile-sub">your rules</span></button>
+      <button class="tile" data-action="groupByDomain" title="group tabs by root domain">
+        <span class="tile-main">◈ by site</span><span class="tile-sub">root domain</span></button>
+      <button class="tile" data-action="ungroupAll" title="flatten every group in this window">
+        <span class="tile-main">⊟ ungroup</span><span class="tile-sub">flatten</span></button>
+      <button class="tile" data-action="sortByDomain" title="order tabs alphabetically by host">
+        <span class="tile-main">↕ order by site</span><span class="tile-sub">a → z</span></button>
+      <button class="tile" data-action="sortByOpened" title="order tabs by the moment they were opened">
+        <span class="tile-main">↻ by opened</span><span class="tile-sub">oldest first</span></button>
     </div>
   </main>
 

@@ -93,6 +93,17 @@ favorites, pin, close — and drag reorders the window.
 **Blocks.** A block is a name plus substrings. Blocks drive tab grouping, the palette's
 «open in block» and the panel's sections. Groups are created expanded.
 
+## Tests
+
+```bash
+node tests/sw-smoke.mjs
+```
+
+The service worker is loaded into a stubbed `chrome` and driven the way the popup drives it:
+placement of a fresh tab under the active one, the tidy sweep, pin, bookmark-up, ordering. It
+exists because a silent `ReferenceError` at load makes every feature look broken at once —
+the worker dies, nothing registers, and the UI just stops answering.
+
 ## Limits worth knowing
 
 **`⌘T ⌘W ⌘N ⌘Q ⌘M ⇧⌘W` cannot be taken over by any extension** — the browser consumes them before
