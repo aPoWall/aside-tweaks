@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Aside Tweaks",
-  "version": "4.11.0",
+  "version": "4.12.0",
   "description": "Palette (⇧⌘K) over tabs, history and bookmarks · own keymap over browser shortcuts · ⌘D moves a page into the bookmarks bar and back · dedupe · new tabs under the current one.",
   "permissions": [
     "tabs",
@@ -66,14 +66,14 @@
     "favorite-tab": {
       "suggested_key": {
         "default": "Ctrl+Shift+B",
-        "mac": "MacCtrl+Shift+B"
+        "mac": "Command+D"
       },
       "description": "Закладка ⇄ вкладка: в конец панели закладок и обратно наверх"
     },
     "pin-tab": {
       "suggested_key": {
         "default": "Ctrl+Shift+P",
-        "mac": "MacCtrl+D"
+        "mac": "Command+Shift+D"
       },
       "description": "Закрепить / открепить вкладку"
     },
@@ -86,5 +86,15 @@
     "bookmark-tab": {
       "description": "В закладки без диалога (тогл)"
     }
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "palette.html"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
 }

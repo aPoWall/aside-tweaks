@@ -12,6 +12,9 @@ const LABELS = {
   openPalette: () => 'palette opened'
 };
 
+// версия берётся из манифеста: подписанная руками разъезжается с установленной
+document.getElementById('ver').textContent = 'v' + chrome.runtime.getManifest().version;
+
 const status = document.getElementById('status');
 const say = t => { status.textContent = t; };
 

@@ -51,7 +51,12 @@ Chromium 114+ (Aside is built on 151), Manifest V3.
 
 ## What it does
 
-**Palette — ⇧⌘K.** A window centred on the browser window. `⇥` switches scope:
+**Palette — ⇧⌘K.** A layer over the page, not a second window: the page behind it darkens and
+blurs, the palette casts a large shadow, and there is no title bar and no traffic lights to
+mistake it for something you have to manage. It is an extension document inside a shadow-root
+frame, so it keeps full access to tabs, history and bookmarks while it sits on the page. Where no
+page exists — `chrome://`, a new tab, Aside's own interface — or where the site's security policy
+refuses foreign frames, it falls back to a centred window automatically. `⇥` switches scope:
 `all · tabs · history · bookmarks · commands`.
 
 - history collapses by normalised url (utm stripped), so one site stops eating the whole list
@@ -59,6 +64,10 @@ Chromium 114+ (Aside is built on 151), Manifest V3.
 - paste a url and you get `Open`, `Open in block · <name>`, `Open pinned`
 - `⇧↵` is the row's second action: pin the tab, or open the address already pinned
 - arithmetic in the input (`2+2`, `(19*3)/2`), `↵` copies the result
+
+**One list of commands.** `commands.js` holds every command with its title, glyph, key and
+one-line explanation; the palette and the panel render from it. Adding a command in one place
+adds it everywhere, and the names cannot drift apart between surfaces.
 
 **Own keymap.** Every action is bindable inside the extension, and the binding wins over the
 browser's: keydown reaches the page in the capture phase *before* the browser applies its
@@ -101,6 +110,23 @@ favorites, pin, close — and drag reorders the window.
 **Blocks.** A block is a name plus substrings. Blocks drive tab grouping, the palette's
 «open in block» and the panel's sections. Groups are created expanded.
 
+## The behaviour contract
+
+Written down because these were asked for one by one and each is easy to break by accident.
+
+| Gesture | What must happen |
+|---|---|
+| `⌘D` on a fresh page | bookmark appended as the **last** row of the bar; the tab stays open, loaded and **selected**; it slides to the end of the list |
+| `⌘D` again on the same page | bookmark removed; the tab returns to the **very top** of the tabs, right under the pinned squares, still selected |
+| `⇧⌘D` on an ordinary tab | pinned into the squares on top of the sidebar |
+| `⇧⌘D` on a pinned tab | unpinned **and** moved to the first row of the tabs, and it stays the selected tab |
+| any of the above | nothing is ever closed, so no sleeping neighbour wakes up and reloads |
+| a tab inside a group | never pulled out of its block by these gestures |
+| the same key from two levels | a repeat within 450 ms is swallowed, so a page-level and a browser-level binding on one combo cannot toggle twice |
+| opening a duplicate | a note on the page, nothing closed — cleaning is a command you run |
+| ordering / grouping | always acts on the last **normal** window, even when the palette window was focused last |
+| every command | present in both the palette and the panel with the same name |
+
 ## Tests
 
 ```bash
@@ -108,11 +134,21 @@ node tests/sw-smoke.mjs
 ```
 
 The service worker is loaded into a stubbed `chrome` and driven the way the popup drives it:
-placement of a fresh tab under the active one, the tidy sweep, pin, bookmark-up, ordering. It
+placement of a fresh tab under the active one, the tidy sweep, pin and unpin, the bookmark toggle
+in both directions, the repeat guard, and ordering while a popup window was the last focused one. It
 exists because a silent `ReferenceError` at load makes every feature look broken at once —
 the worker dies, nothing registers, and the UI just stops answering.
 
 ## Limits worth knowing
+
+**Aside's own `✦ Tidy` cannot be triggered from here.** It is a button in the browser's native
+sidebar: no menu command, no URL scheme (`Info.plist` registers only http, https and file), and
+the window reports **zero elements** to macOS Accessibility, so there is nothing to click by
+script either. `⌥⌘T` is our own sweep — deterministic, four steps, one report.
+
+**The layer covers the page, not the browser.** A page-level overlay cannot darken the sidebar or
+the toolbar; no extension can draw over browser chrome. What it can do is own the page area
+completely, which is what makes it read as a field rather than a window.
 
 **`⌘T ⌘W ⌘N ⌘Q ⌘M ⇧⌘W` cannot be taken over by any extension** — the browser consumes them before
 the page exists. On `chrome://` pages, the new tab and inside Aside's own interface there is no page
@@ -168,7 +204,8 @@ Everything this extension draws is themable instead: palette, popup, settings, p
 |------|------|
 | `background.js` | service worker: placement, dedupe, pins, groups, palette window, omnibox `tw` |
 | `keys.js` | content script: the keymap over the browser's shortcuts, plus on-page toasts |
-| `palette.js` / `.html` | the ⇧⌘K palette |
+| `palette.js` / `.html` | the ⇧⌘K palette, as a layer or as a window |
+| `commands.js` | the single list of commands every surface renders |
 | `panel.js` / `.html` | the side panel |
 | `options.js` / `.html` | settings: keys, pins, tabs, cleanup, blocks, appearance |
 | `popup.js` / `.html` | toolbar popup |

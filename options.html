@@ -192,8 +192,11 @@
           <button data-v="auto">auto</button><button data-v="light">light</button><button data-v="dark">dark</button>
         </div>
       </div>
+      <label class="opt" style="margin:0 0 11px"><input type="checkbox" id="paletteOverlay">
+        <span>palette as a layer on the page<small>no window title, no traffic lights: the page darkens and blurs behind it, the palette casts a real shadow. where no page exists — <code>chrome://</code>, a new tab, Aside's own interface — it opens as a window instead</small></span>
+      </label>
       <label class="opt" style="margin:0 0 11px"><input type="checkbox" id="dimBehindPalette">
-        <span>dim the page behind the palette<small>the page under ⇧⌘K fades and blurs slightly while the palette is open</small></span>
+        <span>dim the page behind the window palette<small>only matters when the palette falls back to a separate window</small></span>
       </label>
       <div class="row2">
         <span style="width:70px">density</span>

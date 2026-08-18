@@ -35,6 +35,7 @@ const DEFAULTS = {
   placementGuardMs: 2500,           // сколько держим вкладку на месте, если Aside её двигает
   keepPins: true,
   favoriteMovesTab: true,   // ⌘D двигает и вкладку: вниз при закладке, наверх при возврате
+  paletteOverlay: true,     // палитра слоем поверх страницы; выключено — отдельным окном
   keymapEnabled: true,
   dimBehindPalette: true,
   keymap: DEFAULT_KEYMAP,
@@ -348,13 +349,37 @@ function rootDomain(u) {
 
 // «текущее окно» из палитры — это окно палитры, а не браузера; поэтому окно
 // всегда разрешаем явно и popup-окна отсекаем
+// Последнее ОБЫЧНОЕ окно помним сами. windowTypes у getLastFocused помечен устаревшим и
+// местами игнорируется: пока открыта палитра, «последнее окно» указывает на неё, и любой
+// перенос падает с «Tabs can only be moved to and from normal windows».
+let lastNormalWin = null;
+
+chrome.windows.onFocusChanged.addListener(async id => {
+  if (id === chrome.windows.WINDOW_ID_NONE) return;
+  const w = await chrome.windows.get(id).catch(() => null);
+  if (w?.type === 'normal') lastNormalWin = w.id;
+});
+chrome.tabs.onActivated.addListener(async ({ windowId }) => {
+  const w = await chrome.windows.get(windowId).catch(() => null);
+  if (w?.type === 'normal') lastNormalWin = w.id;
+});
+
 async function targetWindowId(explicit) {
   if (explicit != null) {
     const w = await chrome.windows.get(explicit).catch(() => null);
     if (w && w.type === 'normal') return w.id;
   }
-  const w = await chrome.windows.getLastFocused({ windowTypes: ['normal'] }).catch(() => null);
-  return w?.id ?? null;
+  const last = await chrome.windows.getLastFocused().catch(() => null);
+  if (last?.type === 'normal') return last.id;
+
+  if (lastNormalWin != null) {
+    const w = await chrome.windows.get(lastNormalWin).catch(() => null);
+    if (w?.type === 'normal') return w.id;
+    lastNormalWin = null;
+  }
+  const all = await chrome.windows.getAll().catch(() => []);
+  const normal = all.filter(w => w.type === 'normal');
+  return (normal.find(w => w.focused) || normal[0])?.id ?? null;
 }
 
 async function makeGroups(keyFn, windowId) {
@@ -484,6 +509,12 @@ async function listFavorites() {
   return { items: kids.filter(k => k.url).map(k => ({ id: k.id, title: k.title, url: k.url })) };
 }
 
+// после переноса боковая панель теряет подсветку строки — возвращаем её на ту же страницу
+async function keepSelected(tabId, windowId) {
+  await chrome.tabs.update(tabId, { active: true }).catch(() => { });
+  if (windowId != null) await chrome.windows.update(windowId, { focused: true }).catch(() => { });
+}
+
 // вкладку из группы не выдёргиваем: она уедет из своего блока, а это не то, о чём просили
 async function moveTabTo(tab, where) {
   if (!settings.favoriteMovesTab || tab.pinned) return false;
@@ -507,6 +538,7 @@ async function favoriteTab(windowId) {
   if (twin) {
     await chrome.bookmarks.remove(twin.id).catch(() => { });
     const moved = await moveTabTo(tab, 'top');
+    await keepSelected(tab.id, tab.windowId);
     flash('BM−', moved
       ? 'back in the tabs — at the very top ↑'
       : 'removed from the bookmarks bar ↑');
@@ -517,22 +549,35 @@ async function favoriteTab(windowId) {
   const made = await chrome.bookmarks.create({ parentId: BAR, index: kids.length, title: tab.title || tab.url, url: tab.url });
   await chrome.storage.session.set({ lastFavId: made?.id ?? null, lastFavAt: Date.now() }).catch(() => { });
   const moved = await moveTabTo(tab, 'bottom');
+  await keepSelected(tab.id, tab.windowId);
   flash('BM+', (moved
     ? 'last row of the bookmarks bar ↓\ntab moved down, still open and loaded'
     : 'last row of the bookmarks bar ↓') + '\n⌘D again brings it back to the top');
   return 1;
 }
 
-async function pinTab(windowId) {
+async function pinTab(windowId, tabId) {
   const wid = await targetWindowId(windowId);
-  const [tab] = await chrome.tabs.query(wid != null ? { active: true, windowId: wid } : { active: true, currentWindow: true });
+  const tab = tabId != null
+    ? await chrome.tabs.get(tabId).catch(() => null)
+    : (await chrome.tabs.query(wid != null ? { active: true, windowId: wid } : { active: true, currentWindow: true }))[0];
   if (!tab) return 0;
+
   const willPin = !tab.pinned;
   await chrome.tabs.update(tab.id, { pinned: willPin });
-  if (willPin) await chrome.storage.session.set({ lastPinId: tab.id, lastPinAt: Date.now() }).catch(() => { });
+
+  if (willPin) {
+    await chrome.storage.session.set({ lastPinId: tab.id, lastPinAt: Date.now() }).catch(() => { });
+  } else {
+    // открепили — страница возвращается первой строкой вкладок, а не в хвост списка
+    const rest = await chrome.tabs.query({ windowId: tab.windowId }).catch(() => []);
+    const firstFree = rest.filter(t => t.pinned && t.id !== tab.id).length;
+    await chrome.tabs.move(tab.id, { index: firstFree }).catch(() => { });
+  }
+  await keepSelected(tab.id, tab.windowId);
   flash(willPin ? 'PIN' : 'UN', willPin
     ? 'pinned ↑\nmoved to the pinned squares on top of the sidebar'
-    : 'unpinned — back in the tab list');
+    : 'unpinned — first row of the tabs, still selected ↑');
   return willPin ? 1 : -1;
 }
 
@@ -684,21 +729,42 @@ async function dimPage(on) {
 let paletteWinId = null;
 let paletteOpening = false;   // ⇧⌘K приходит и от страницы, и от команды браузера — окно должно остаться одно
 
-async function openPalette() {
+// Палитра живёт прямо на странице: слой поверх сайта, без заголовка окна и светофора,
+// с затемнением и тенью — так она читается полем, а не вторым окном. Там, где страницы
+// нет (chrome://, новая вкладка, интерфейс самого Aside), падаем в отдельное окно.
+async function openPalette(windowId) {
   if (paletteOpening) return;
   if (paletteWinId != null) {
     const w = await chrome.windows.get(paletteWinId).catch(() => null);
     if (w) { await chrome.windows.update(paletteWinId, { focused: true }); return; }
     paletteWinId = null;
   }
-  const src = await chrome.windows.getLastFocused({ windowTypes: ['normal'] }).catch(() => null);
+
+  const wid = await targetWindowId(windowId);
+  const [tab] = wid != null ? await chrome.tabs.query({ active: true, windowId: wid }).catch(() => []) : [];
+
+  if (settings.paletteOverlay !== false && tab && /^https?:\/\//.test(tab.url || '')) {
+    // только верхний документ: во фреймах страницы слой не нужен, а их ответы
+    // пришли бы первыми и увели нас в запасное окно
+    const shown = await chrome.tabs.sendMessage(tab.id, {
+      type: 'palette', on: true, win: wid, tab: tab.id
+    }, { frameId: 0 }).catch(() => null);
+    if (shown?.shown) return;
+  }
+  await openPaletteWindow(wid);
+}
+
+async function openPaletteWindow(windowId) {
+  if (paletteWinId != null || paletteOpening) return;
+  const wid = await targetWindowId(windowId);
+  const src = wid != null ? await chrome.windows.get(wid).catch(() => null) : null;
   let activeTab = null;
   if (src) {
     const arr = await chrome.tabs.query({ active: true, windowId: src.id }).catch(() => []);
     activeTab = arr[0] || null;
   }
   paletteOpening = true;
-  const W = 560, H = 400;
+  const W = 640, H = 480;
   const left = src ? Math.round(src.left + (src.width - W) / 2) : undefined;
   const top = src ? Math.round(src.top + (src.height - H) / 3) : undefined;
   const page = 'palette.html?win=' + (src?.id ?? '') + '&tab=' + (activeTab?.id ?? '');
@@ -723,6 +789,19 @@ const ACTIONS = {
   pinTab, favoriteTab, listFavorites, bookmarkTab, tidyUp, sortByOpened, getStats, openPalette, togglePanel
 };
 
+// Одно и то же сочетание приходит с двух уровней — от страницы и от команды браузера.
+// Для тоглов это означало бы «поставил и тут же снял», поэтому повтор в пределах кадра глушим.
+const TOGGLES = new Set(['favoriteTab', 'pinTab', 'bookmarkTab', 'tidyUp', 'tidyDuplicates']);
+const lastRun = new Map();
+
+function tooSoon(action) {
+  if (!TOGGLES.has(action)) return false;
+  const now = Date.now();
+  if (now - (lastRun.get(action) || 0) < 450) return true;
+  lastRun.set(action, now);
+  return false;
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.action === 'blockOf') { sendResponse({ ok: true, data: blockOf(msg.tab || {}) }); return; }
   if (msg?.action === 'openUrl') {
@@ -731,8 +810,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .catch(e => sendResponse({ ok: false, error: String(e) }));
     return true;
   }
+  if (msg?.action === 'openPaletteWindow') { openPaletteWindow(msg.windowId); sendResponse({ ok: true }); return; }
+
   const fn = ACTIONS[msg?.action];
   if (!fn) return;
+  if (tooSoon(msg.action)) { sendResponse({ ok: true, count: 0, skipped: true }); return; }
   // окно передаёт вызывающая сторона: палитра живёт в popup-окне, «текущее окно»
   // для service worker'а там указывает не на браузер
   const wid = msg.windowId ?? sender?.tab?.windowId;
@@ -742,11 +824,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 chrome.commands.onCommand.addListener((cmd, tab) => {
-  if (cmd === 'favorite-tab') favoriteTab(tab?.windowId);
-  if (cmd === 'tidy-up') tidyUp(tab?.windowId);
-  if (cmd === 'tidy-duplicates') tidyDuplicates();
-  if (cmd === 'pin-tab') pinTab();
-  if (cmd === 'bookmark-tab') bookmarkTab();
-  if (cmd === 'open-palette') openPalette();
-  if (cmd === 'open-panel') togglePanel(tab?.windowId);
+  const map = {
+    'favorite-tab': 'favoriteTab', 'tidy-up': 'tidyUp', 'tidy-duplicates': 'tidyDuplicates',
+    'pin-tab': 'pinTab', 'bookmark-tab': 'bookmarkTab', 'open-palette': 'openPalette', 'open-panel': 'togglePanel'
+  };
+  const action = map[cmd];
+  if (!action || tooSoon(action)) return;
+  ACTIONS[action]?.(tab?.windowId);
 });

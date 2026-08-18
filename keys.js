@@ -113,7 +113,100 @@ function setDim(on) {
   }
 }
 
-chrome.runtime.onMessage.addListener((msg) => {
+// ---------- палитра слоем поверх страницы ----------
+// Отдельное окно нельзя лишить заголовка и светофора, и тень оно кладёт системную.
+// Слой на странице читается полем: затемнение, размытие, крупная тень, своя анимация.
+// Страница может запретить чужие рамки своей политикой — тогда молча уходим в окно.
+
+let palette = null;
+let paletteReady = false;
+
+function closePalette() {
+  if (!palette) return;
+  const el = palette;
+  palette = null;
+  paletteReady = false;
+  el.classList.add('out');
+  setTimeout(() => el.remove(), 160);
+}
+
+function openPaletteLayer({ win, tab }) {
+  if (palette) return true;
+  if (!document.body) return false;
+
+  const host = document.createElement('div');
+  host.style.cssText = 'all:initial;position:fixed;inset:0;z-index:2147483647';
+  const root = host.attachShadow({ mode: 'open' });
+
+  const style = document.createElement('style');
+  style.textContent = `
+    .back {
+      position: fixed; inset: 0;
+      background: rgba(10, 9, 8, .5);
+      backdrop-filter: blur(3px) saturate(.9);
+      -webkit-backdrop-filter: blur(3px) saturate(.9);
+      opacity: 0; transition: opacity .18s ease;
+    }
+    .wrap {
+      position: fixed; inset: 0;
+      display: flex; align-items: flex-start; justify-content: center;
+      padding: 12vh 16px 16px;
+      pointer-events: none;
+    }
+    iframe {
+      pointer-events: auto;
+      width: min(660px, 92vw); height: min(500px, 72vh);
+      border: 1px solid rgba(0, 0, 0, .22); border-radius: 13px;
+      background: #f2ede3;
+      box-shadow: 0 42px 120px rgba(0, 0, 0, .55), 0 12px 34px rgba(0, 0, 0, .32);
+      opacity: 0; transform: translateY(-8px) scale(.985);
+      transition: opacity .18s ease, transform .18s cubic-bezier(.2, .8, .3, 1);
+    }
+    :host(.in) .back { opacity: 1; }
+    :host(.in) iframe { opacity: 1; transform: none; }
+    :host(.out) .back { opacity: 0; }
+    :host(.out) iframe { opacity: 0; transform: translateY(-6px) scale(.99); }
+  `;
+
+  const back = document.createElement('div');
+  back.className = 'back';
+  back.addEventListener('mousedown', closePalette);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'wrap';
+  const frame = document.createElement('iframe');
+  frame.setAttribute('title', 'aside tweaks palette');
+  frame.src = chrome.runtime.getURL('palette.html') + '?embed=1&win=' + (win ?? '') + '&tab=' + (tab ?? '');
+  wrap.append(frame);
+
+  root.append(style, back, wrap);
+  // не в body: сайт мог повесить на него transform, и тогда fixed внутри перестаёт быть fixed
+  document.documentElement.append(host);
+  palette = host;
+  requestAnimationFrame(() => host.classList.add('in'));
+  setTimeout(() => frame.focus(), 40);
+
+  // рамку могла срезать политика безопасности страницы — тогда пусть открывается окном
+  setTimeout(() => {
+    if (palette === host && !paletteReady) {
+      closePalette();
+      try { chrome.runtime.sendMessage({ action: 'openPaletteWindow' }, () => void chrome.runtime.lastError); } catch { }
+    }
+  }, 900);
+  return true;
+}
+
+window.addEventListener('message', (e) => {
+  if (e.data?.tw === 'palette-ready') paletteReady = true;
+  if (e.data?.tw === 'palette-close') closePalette();
+});
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === 'toast' && typeof msg.text === 'string') toast(msg.text);
   if (msg?.type === 'dim') setDim(!!msg.on);
+  if (msg?.type === 'palette') {
+    if (window.top !== window) return;          // слой строит только верхний документ
+    if (!msg.on) { closePalette(); sendResponse({ shown: false }); return; }
+    sendResponse({ shown: openPaletteLayer(msg) });
+  }
 });

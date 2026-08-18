@@ -5,6 +5,13 @@
 
 const params = new URLSearchParams(location.search);
 const srcWin = Number(params.get('win')) || null;
+// встроенный режим: палитра живёт слоем на странице, закрывать окно нечего
+const embed = params.get('embed') === '1';
+
+function closeSelf() {
+  if (embed) { parent.postMessage({ tw: 'palette-close' }, '*'); return; }
+  window.close();
+}
 
 const qEl = document.getElementById('q');
 const listEl = document.getElementById('list');
@@ -13,18 +20,13 @@ const scopesEl = document.getElementById('scopes');
 const SCOPES = ['all', 'tabs', 'history', 'bookmarks', 'commands'];
 let scope = 'all';
 
-const CMDS = [
-  { keys: 'tidy sweep clean order all', title: 'Tidy up — clean, group, sort', action: 'tidyUp' },
-  { keys: 'dd dedup duplicates clean empty', title: 'Clean duplicates and empty tabs', action: 'tidyDuplicates' },
-  { keys: 'blocks group rules', title: 'Group tabs by my blocks', action: 'groupByRules' },
-  { keys: 'group site domain', title: 'Group tabs by site', action: 'groupByDomain' },
-  { keys: 'ungroup flat', title: 'Ungroup everything', action: 'ungroupAll' },
-  { keys: 'sort order site', title: 'Sort tabs by site', action: 'sortByDomain' },
-  { keys: 'opened order time recent', title: 'Order tabs by when they were opened', action: 'sortByOpened' },
-  { keys: 'pin unpin', title: 'Pin / unpin current tab', action: 'pinTab' },
-  { keys: 'bookmark bm save', title: 'Bookmark current tab (no dialog)', action: 'bookmarkTab' },
-  { keys: 'panel sidebar', title: 'Open the tweaks panel', action: 'togglePanel' }
-];
+const CMDS = commandsFor('palette').map(c => ({
+  keys: c.words + ' ' + c.title,
+  title: c.title + (c.sub ? ' — ' + c.sub : ''),
+  action: c.action,
+  key: c.key
+}));
+
 
 let items = [];
 let sel = 0;
@@ -97,7 +99,7 @@ async function send(action, extra = {}) {
 async function openUrl(url, { pinned = false, group = null } = {}) {
   bump(normUrl(url));
   await send('openUrl', { url, pinned, groupName: group });
-  window.close();
+  closeSelf();
 }
 
 // ---------- сбор результатов ----------
@@ -111,7 +113,7 @@ async function build(raw) {
   if (value !== null) {
     out.push({
       kind: 'calc', glyph: '=', title: value, sub: qRaw, badge: 'copy',
-      run: async () => { await navigator.clipboard.writeText(value).catch(() => { }); window.close(); }
+      run: async () => { await navigator.clipboard.writeText(value).catch(() => { }); closeSelf(); }
     });
   }
 
@@ -130,17 +132,18 @@ async function build(raw) {
     tabs.sort((a, b) => score(normUrl(b.url)) - score(normUrl(a.url)));
     for (const t of tabs.slice(0, scope === 'tabs' ? 40 : (q ? 6 : 4))) {
       out.push({
-        kind: 'tab', icon: favicon(t.url), title: t.title || t.url, sub: hostOf(t.url),
+        kind: 'tab', icon: (t.favIconUrl && /^https?:|^data:/.test(t.favIconUrl)) ? t.favIconUrl : favicon(t.url),
+        title: t.title || t.url, sub: hostOf(t.url),
         badge: t.pinned ? 'pinned' : 'tab',
         alt: async () => {
           await chrome.tabs.update(t.id, { pinned: !t.pinned });
-          window.close();
+          closeSelf();
         },
         run: async () => {
           bump(normUrl(t.url));
           await chrome.tabs.update(t.id, { active: true });
           await chrome.windows.update(t.windowId, { focused: true });
-          window.close();
+          closeSelf();
         }
       });
     }
@@ -152,8 +155,8 @@ async function build(raw) {
       if (q && !norm(c.keys + ' ' + c.title).includes(q)) continue;
       if (!q && scope === 'all' && out.length > 7) break;
       out.push({
-        kind: 'cmd', glyph: '▸', title: c.title, sub: '', badge: 'command',
-        run: async () => { await send(c.action); window.close(); }
+        kind: 'cmd', glyph: '▸', title: c.title, sub: c.key || '', badge: 'command',
+        run: async () => { await send(c.action); closeSelf(); }
       });
     }
   }
@@ -295,7 +298,7 @@ function render() {
 function renderScopes() {
   for (const b of scopesEl.querySelectorAll('button')) {
     b.classList.toggle('on', b.dataset.scope === scope);
-    b.onclick = () => { scope = b.dataset.scope; renderScopes(); refresh(); qEl.focus(); };
+    b.onclick = () => { scope = b.dataset.scope; renderScopes(); softRefresh(); qEl.focus(); };
   }
 }
 
@@ -312,14 +315,20 @@ async function refresh() {
 
 qEl.addEventListener('input', refresh);
 
+// смена охвата перерисовывает список целиком; без этого он моргает рывком
+function softRefresh() {
+  listEl.classList.add('fading');
+  return refresh().finally(() => requestAnimationFrame(() => listEl.classList.remove('fading')));
+}
+
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { window.close(); return; }
+  if (e.key === 'Escape') { closeSelf(); return; }
   if (e.key === 'Tab') {
     e.preventDefault();
     const i = SCOPES.indexOf(scope);
     scope = SCOPES[(i + (e.shiftKey ? -1 : 1) + SCOPES.length) % SCOPES.length];
     renderScopes();
-    refresh();
+    softRefresh();
     return;
   }
   if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(sel + 1, items.length - 1); render(); }
@@ -334,7 +343,15 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-window.addEventListener('blur', () => setTimeout(() => window.close(), 150));
+// в окне уход фокуса закрывает палитру; слой на странице закрывается щелчком по фону
+if (!embed) window.addEventListener('blur', () => setTimeout(() => closeSelf(), 150));
+if (embed) {
+  document.documentElement.classList.add('embed');
+  parent.postMessage({ tw: 'palette-ready' }, '*');
+  // рамке фокус отдают снаружи, уже после загрузки — забираем его обратно в поле ввода
+  setTimeout(() => qEl.focus(), 80);
+  window.addEventListener('focus', () => qEl.focus());
+}
 
 renderScopes();
 qEl.focus();

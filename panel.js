@@ -48,9 +48,11 @@ function say(text) {
   say._t = setTimeout(() => { el.textContent = el.dataset.base; }, 2600);
 }
 
-function iconFor(url) {
+// у живой вкладки иконка уже загружена; кэш /_favicon/ знает только то, что видел раньше,
+// и на всё остальное отдаёт серый глобус
+function iconFor(url, live) {
   const img = document.createElement('img');
-  img.src = favicon(url || '');
+  img.src = live && /^https?:|^data:/.test(live) ? live : favicon(url || '');
   img.addEventListener('error', () => {
     const g = document.createElement('span');
     g.className = 'glyph';
@@ -101,7 +103,7 @@ function tabRow(tab) {
   const t = document.createElement('span');
   t.className = 't';
   t.textContent = tab.title || tab.url || 'untitled';
-  d.append(iconFor(tab.url), t);
+  d.append(iconFor(tab.url, tab.favIconUrl), t);
 
   d.append(act('★', 'bookmark ⇄ tab · last row of the bar, the tab stays open', false, async () => {
     await chrome.tabs.update(tab.id, { active: true });
@@ -230,13 +232,36 @@ for (const ev of ['onCreated', 'onRemoved', 'onChanged', 'onMoved']) {
 
 document.getElementById('gear').addEventListener('click', () => chrome.runtime.openOptionsPage());
 
-document.querySelectorAll('.cmds .tile[data-action]').forEach(btn => {
-  btn.addEventListener('click', async () => {
-    const res = await chrome.runtime.sendMessage({ action: btn.dataset.action, windowId: winId });
-    say(res?.ok ? `${btn.textContent.trim()}: ${res.count ?? 'done'}` : 'error');
-    rerender();
-  });
-});
+// плитки собираются из общего списка команд — одна правка меняет и панель, и палитру
+function renderCmds() {
+  const box = document.getElementById('cmds');
+  box.replaceChildren();
+  for (const c of commandsFor('panel')) {
+    const b = document.createElement('button');
+    b.className = 'tile';
+    b.title = c.hint;
+    const main = document.createElement('span');
+    main.className = 'tile-main';
+    main.textContent = c.glyph + ' ' + c.title + ' ';
+    if (c.key) {
+      const k = document.createElement('span');
+      k.className = 'k';
+      k.textContent = c.key;
+      main.append(k);
+    }
+    const sub = document.createElement('span');
+    sub.className = 'tile-sub';
+    sub.textContent = c.sub;
+    b.append(main, sub);
+    b.addEventListener('click', async () => {
+      const res = await chrome.runtime.sendMessage({ action: c.action, windowId: winId });
+      say(res?.ok ? `${c.title}: ${res.count ?? 'done'}` : 'error');
+      rerender();
+    });
+    box.append(b);
+  }
+}
+renderCmds();
 
 chrome.storage.sync.get({ groupRules: [] }).then(s => { rules = s.groupRules || []; render(); });
 chrome.storage.onChanged.addListener((ch, area) => {

@@ -23,10 +23,13 @@ globalThis.chrome = {
   omnibox: { setDefaultSuggestion: () => {}, onInputChanged: mkEvent('omni1'), onInputEntered: mkEvent('omni2') },
   commands: { onCommand: mkEvent('cmd') },
   windows: {
-    onRemoved: mkEvent('winRemoved'),
-    get: id => Promise.resolve({ id, type: 'normal' }),
-    getLastFocused: () => Promise.resolve({ id: 1, type: 'normal' }),
-    getCurrent: () => Promise.resolve({ id: 1 }),
+    WINDOW_ID_NONE: -1,
+    onRemoved: mkEvent('winRemoved'), onFocusChanged: mkEvent('winFocus'),
+    getAll: () => Promise.resolve(Object.values(WINS)),
+    get: id => WINS[id] ? Promise.resolve(WINS[id]) : Promise.reject(new Error('no window')),
+    getLastFocused: () => Promise.resolve(WINS[lastFocused]),
+    getCurrent: () => Promise.resolve(WINS[lastFocused]),
+    create: () => Promise.resolve({ id: 99 }),
     update: () => Promise.resolve()
   },
   bookmarks: {
@@ -63,6 +66,10 @@ globalThis.chrome = {
     discard: () => Promise.resolve()
   }
 };
+
+// окна: обычное рабочее и popup-окно палитры — «последнее в фокусе» бывает вторым
+const WINS = { 1: { id: 1, type: 'normal', focused: true }, 9: { id: 9, type: 'popup' } };
+let lastFocused = 1;
 
 let MARKS = [];
 let markId = 0;
@@ -142,12 +149,37 @@ check('favoriteTab сделал закладку', fav?.ok && fav.count === 1 &&
 check('вкладка осталась жива — без закрытия и перезагрузки', TABS.some(t => t.id === 23), TABS.map(t => t.id).join(' '));
 check('вкладка уехала вниз списка', TABS[TABS.length - 1]?.id === 23, TABS.map(t => t.id).join(' '));
 
+await wait(500);   // защита от двойного срабатывания: повтор в пределах 450 мс глушится
 const unfav = await call('favoriteTab', { windowId: 1 });
 check('второе нажатие сняло закладку', unfav?.ok && unfav.count === -1 && MARKS.length === 0);
 check('вкладка вернулась в самый верх, под закреплённые', TABS[1]?.id === 23, TABS.map(t => t.id).join(' '));
 
+const twice = await call('favoriteTab', { windowId: 1 });
+const twiceAgain = await call('favoriteTab', { windowId: 1 });
+check('повтор в пределах кадра глушится', twiceAgain?.skipped === true, JSON.stringify(twiceAgain));
+await wait(500);
+await call('favoriteTab', { windowId: 1 });   // возвращаем сцену: закладки снова нет
+
 const opened = await call('sortByOpened', { windowId: 1 });
 check('sortByOpened отвечает', opened?.ok === true, 'переставлено ' + opened?.count);
+
+// сцена бага: последним в фокусе оказалось popup-окно палитры, окно не передали
+lastFocused = 9;
+const blind = await call('sortByOpened');
+check('порядок работает, когда последним было окно палитры', blind?.ok === true && blind.count > 0,
+  JSON.stringify(blind));
+lastFocused = 1;
+
+// открепление возвращает страницу первой строкой вкладок
+TABS = [
+  { id: 31, windowId: 1, index: 0, pinned: true, active: true, url: 'https://pinned.com/' },
+  { id: 32, windowId: 1, index: 1, pinned: false, url: 'https://a.com/' },
+  { id: 33, windowId: 1, index: 2, pinned: false, url: 'https://b.com/' }
+];
+const unpin = await call('pinTab', { windowId: 1 });
+check('pinTab открепил', unpin?.ok && unpin.count === -1);
+check('открепленная встала первой строкой вкладок', TABS[0]?.id === 31 && !TABS[0].pinned,
+  TABS.map(t => t.id + (t.pinned ? '·pin' : '')).join(' '));
 
 console.log(fails ? `\n${fails} провалов` : '\nвсе проверки зелёные');
 process.exit(fails ? 1 : 0);

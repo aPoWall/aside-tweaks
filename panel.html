@@ -94,22 +94,7 @@
     <div id="tabs"></div>
 
     <div class="sec-hdr"><span class="n">04</span> ⚡ commands · act on this window</div>
-    <div class="cmds">
-      <button class="tile" data-action="tidyUp" title="clean duplicates and empty tabs, flatten groups, order, rebuild blocks">
-        <span class="tile-main">✦ tidy up <span class="k">⌥⌘T</span></span><span class="tile-sub">one sweep</span></button>
-      <button class="tile" data-action="tidyDuplicates" title="close duplicates and empty tabs only, leave the order alone">
-        <span class="tile-main">⊗ duplicates</span><span class="tile-sub">clean only</span></button>
-      <button class="tile" data-action="groupByRules" title="group tabs by the blocks from settings">
-        <span class="tile-main">▤ by blocks</span><span class="tile-sub">your rules</span></button>
-      <button class="tile" data-action="groupByDomain" title="group tabs by root domain">
-        <span class="tile-main">◈ by site</span><span class="tile-sub">root domain</span></button>
-      <button class="tile" data-action="ungroupAll" title="flatten every group in this window">
-        <span class="tile-main">⊟ ungroup</span><span class="tile-sub">flatten</span></button>
-      <button class="tile" data-action="sortByDomain" title="order tabs alphabetically by host">
-        <span class="tile-main">↕ order by site</span><span class="tile-sub">a → z</span></button>
-      <button class="tile" data-action="sortByOpened" title="order tabs by the moment they were opened">
-        <span class="tile-main">↻ by opened</span><span class="tile-sub">oldest first</span></button>
-    </div>
+    <div class="cmds" id="cmds"></div>
   </main>
 
   <footer>
@@ -118,6 +103,7 @@
   </footer>
 
   <script src="theme.js"></script>
+  <script src="commands.js"></script>
   <script src="panel.js"></script>
 </body>
 </html>

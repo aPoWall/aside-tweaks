@@ -44,7 +44,10 @@
   }
   #q::placeholder { color: var(--muted); }
 
-  #list { flex: 1; overflow-y: auto; padding: 4px 0 6px; }
+  #list { flex: 1; overflow-y: auto; padding: 4px 0 6px; transition: opacity .12s ease; }
+  #list.fading { opacity: .25; }
+  /* слоем на странице: скруглённые углы принадлежат рамке, а не документу */
+  html.embed, html.embed body { border-radius: 13px; overflow: hidden; }
   .item {
     display: flex; align-items: center; gap: 9px;
     padding: 6px 14px; cursor: pointer; white-space: nowrap;
@@ -86,6 +89,7 @@
     <span style="margin-left:auto;opacity:.7">aside tweaks · apowall</span>
   </div>
   <script src="theme.js"></script>
+  <script src="commands.js"></script>
   <script src="palette.js"></script>
 </body>
 </html>
