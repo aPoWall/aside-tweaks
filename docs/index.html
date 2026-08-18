@@ -7,7 +7,7 @@
   <meta name="description" content="a command palette, a keymap that outranks the browser's own shortcuts, bookmarks that move instead of duplicating. an extension for the aside browser.">
   <meta name="theme-color" content="#ffffff">
   <meta property="og:title" content="aside tweaks – the keys your browser kept for itself">
-  <meta property="og:description" content="⌘K palette over tabs, history and bookmarks. ⌘D moves the page to the top of the bar. one sweep tidies fifty tabs.">
+  <meta property="og:description" content="⇧⌘K palette over tabs, history and bookmarks. ⌘D moves a page into the bookmarks bar and back. one sweep tidies fifty tabs.">
   <meta property="og:image" content="https://apps.aimindset.org/aside-tweaks/aside-tweaks-social.png?v=2">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -16,7 +16,7 @@
   <meta property="og:url" content="https://apps.aimindset.org/aside-tweaks/">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="aside tweaks – the keys your browser kept for itself">
-  <meta name="twitter:description" content="⌘K palette over tabs, history and bookmarks. ⌘D moves the page to the top of the bar.">
+  <meta name="twitter:description" content="⇧⌘K palette over tabs, history and bookmarks. ⌘D moves a page into the bookmarks bar and back.">
   <meta name="twitter:image" content="https://apps.aimindset.org/aside-tweaks/aside-tweaks-social.png?v=2">
   <link rel="canonical" href="https://apps.aimindset.org/aside-tweaks/">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -184,8 +184,8 @@
       </div>
 
       <div class="ledger" aria-label="instrument properties">
-        <div><small class="i18n" data-en="palette" data-ru="палитра">palette</small><strong>⌘K</strong></div>
-        <div><small class="i18n" data-en="keep a page" data-ru="оставить страницу">keep a page</small><strong class="i18n" data-en="⌘D · moves up" data-ru="⌘D · уезжает наверх">⌘D · moves up</strong></div>
+        <div><small class="i18n" data-en="palette" data-ru="палитра">palette</small><strong>⇧⌘K</strong></div>
+        <div><small class="i18n" data-en="keep a page" data-ru="оставить страницу">keep a page</small><strong class="i18n" data-en="⌘D · bookmark ⇄ tab" data-ru="⌘D · закладка ⇄ вкладка">⌘D · bookmark ⇄ tab</strong></div>
         <div><small class="i18n" data-en="one sweep" data-ru="один свод">one sweep</small><strong class="i18n" data-en="⌥⌘T · tidy" data-ru="⌥⌘T · уборка">⌥⌘T · tidy</strong></div>
         <div><small class="i18n" data-en="collection" data-ru="коллекция">collection</small><strong>ai mindset apps</strong></div>
       </div>
@@ -253,10 +253,10 @@
       <div class="block" style="margin-top:16px">
         <h3 class="i18n" data-en="what each gesture moves" data-ru="что двигает каждый жест">what each gesture moves</h3>
         <table class="keys">
-          <tr><td><kbd>⌘D</kbd></td><td><span class="i18n" data-en="bookmark up" data-ru="закладка наверх">bookmark up</span><em class="i18n" data-en="the page becomes the first row of the bookmarks bar and the tab closes — it moves rather than existing twice" data-ru="страница становится первой строкой панели закладок, а вкладка закрывается: она переезжает, а не двоится">the page becomes the first row of the bookmarks bar and the tab closes — it moves rather than existing twice</em></td></tr>
+          <tr><td><kbd>⌘D</kbd></td><td><span class="i18n" data-en="bookmark ⇄ tab" data-ru="закладка ⇄ вкладка">bookmark ⇄ tab</span><em class="i18n" data-en="the page lands as the last row of the bookmarks bar and the tab stays open and loaded — press it again and the bookmark goes, the tab returns to the very top" data-ru="страница ложится последней строкой панели закладок, вкладка остаётся открытой и загруженной — второе нажатие снимает закладку, а вкладка возвращается в самый верх">the page lands as the last row of the bookmarks bar and the tab stays open and loaded — press it again and the bookmark goes, the tab returns to the very top</em></td></tr>
           <tr><td><kbd>⇧⌘D</kbd></td><td><span class="i18n" data-en="pin" data-ru="пин">pin</span><em class="i18n" data-en="the squares on top of the sidebar — the browser's own pin, on a key of its own" data-ru="квадратики вверху боковой панели — родной пин браузера, на своей клавише">the squares on top of the sidebar — the browser's own pin, on a key of its own</em></td></tr>
           <tr><td><kbd>⌥⌘T</kbd></td><td><span class="i18n" data-en="tidy up" data-ru="уборка">tidy up</span><em class="i18n" data-en="clean, flatten, order, rebuild blocks — reported once, not four times" data-ru="чистка, расплести, порядок, блоки — с одним отчётом вместо четырёх">clean, flatten, order, rebuild blocks — reported once, not four times</em></td></tr>
-          <tr><td><kbd>⌘K</kbd></td><td><span class="i18n" data-en="palette" data-ru="палитра">palette</span><em class="i18n" data-en="centred on the window, dims the page behind it" data-ru="по центру окна, гасит страницу под собой">centred on the window, dims the page behind it</em></td></tr>
+          <tr><td><kbd>⇧⌘K</kbd></td><td><span class="i18n" data-en="palette" data-ru="палитра">palette</span><em class="i18n" data-en="centred on the window, dims the page behind it" data-ru="по центру окна, гасит страницу под собой">centred on the window, dims the page behind it</em></td></tr>
           <tr><td><kbd>⌃⇧S</kbd></td><td><span class="i18n" data-en="panel" data-ru="панель">panel</span><em class="i18n" data-en="top of the bookmarks bar, pinned tabs, the rest by blocks, commands" data-ru="верх панели закладок, пины, остальное по блокам, команды">top of the bookmarks bar, pinned tabs, the rest by blocks, commands</em></td></tr>
         </table>
       </div>
@@ -380,7 +380,7 @@ const DATA = [
   { k:'marks', t:'aside tweaks · readme', s:'github.com' },
   { k:'cmd', t:'Tidy up — clean, group, sort', s:'⌥⌘T' },
   { k:'cmd', t:'Pin / unpin current tab', s:'⇧⌘D' },
-  { k:'cmd', t:'Bookmark to the top of the bar', s:'⌘D' }
+  { k:'cmd', t:'Bookmark ⇄ tab — last row of the bar', s:'⌘D' }
 ];
 const BADGE = { tabs:'tab', history:'history', marks:'bookmark', cmd:'command', calc:'copy', open:'url' };
 const q = document.getElementById('demoq');

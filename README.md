@@ -20,9 +20,10 @@ Three things follow from that, and each one is a feature here.
 **A tab list is not a filing cabinet.** Arc taught a generation of users that the page you keep
 belongs *above* the churn — one keystroke moves it up and it stops competing with the twenty tabs
 you opened this hour. Chromium's pin does half of that; it keeps the tab alive in the strip but
-never lets it leave the tree. So `⌘D` here writes the page into a `Favorites` bookmark folder and
-closes the tab: the page moves, it does not duplicate. The panel shows that folder as the top
-section, so what you kept is the first thing you see.
+never lets it leave the tree. So `⌘D` here writes the page into the bookmarks bar as its last row
+and moves the tab down out of the way — without closing it. Closing would wake a sleeping neighbour,
+that neighbour reloads, and the whole gesture reads as «the browser took me somewhere». Press `⌘D`
+again on the same page: the bookmark goes and the tab comes back to the very top of the list.
 
 **Shortcuts should belong to the person, not to the vendor.** Chromium lets an extension declare
 four shortcuts and re-bind them only on its own settings page. This extension listens in the
@@ -50,7 +51,7 @@ Chromium 114+ (Aside is built on 151), Manifest V3.
 
 ## What it does
 
-**Palette — ⌘K.** A window centred on the browser window. `⇥` switches scope:
+**Palette — ⇧⌘K.** A window centred on the browser window. `⇥` switches scope:
 `all · tabs · history · bookmarks · commands`.
 
 - history collapses by normalised url (utm stripped), so one site stops eating the whole list
@@ -64,14 +65,21 @@ browser's: keydown reaches the page in the capture phase *before* the browser ap
 accelerator, so `preventDefault()` takes over `⌘D`, `⌘⇧D`, `⌘S`, `⌘P`. Combos are stored by
 `event.code`, not `event.key` — a non-Latin keyboard layout doesn't break them.
 
-Defaults: `⌘D` bookmark up · `⇧⌘D` pin · `⌥⌘D` clean up.
-Native fallbacks: `⌃D` pin, `⌃⇧D` clean, `⌃⇧S` panel, `⌘K` palette.
+Defaults: `⌘D` bookmark ⇄ tab · `⇧⌘D` pin · `⌥⌘D` clean up · `⌥⌘T` tidy up.
+Native fallbacks: `⌃D` pin, `⌃⇧D` clean, `⌃⇧S` panel, `⇧⌘K` palette.
 
-**Bookmark up — ⌘D.** The current page becomes the *first* row of the bookmarks bar and the tab
-closes: it moves rather than existing twice. Press it again on the same page to take it back out.
-No dedicated folder — the bar's own top is the destination, which is where the eye already goes.
-The panel's first section mirrors that top, and the freshly added row flashes so you see where it
-landed.
+Two levels hold keys, and only one of them is ours. The page-level keymap above is stored by the
+extension and can be rebound freely. The browser-level commands live in `chrome://extensions/shortcuts`;
+a manifest can *suggest* them but nothing in the extension can rebind or clear them — which is why a
+key that keeps firing an old action is set there, not here. Settings card 01 lists both, the browser's
+side read live from `chrome.commands.getAll()`.
+
+**Bookmark ⇄ tab — ⌘D.** The current page becomes the *last* row of the bookmarks bar; the tab
+stays open, loaded and active, and slides to the end of the list. Press it again on the same page
+and it reverses: the bookmark is removed and the tab returns to the very top, right under the pinned
+squares. Nothing is ever closed, so nothing reloads. No dedicated folder — the bar itself is the
+destination. A tab inside a group is never pulled out of its block; turn *the tab moves along with
+the bookmark* off in settings if you want the bookmark alone to change.
 
 **Pins, Arc-style.** A pin moves the tab into the squares on top of the sidebar. Closing a pinned
 tab brings the pin back asleep instead of dropping it; to remove it, unpin first. A pin is not a
@@ -160,7 +168,7 @@ Everything this extension draws is themable instead: palette, popup, settings, p
 |------|------|
 | `background.js` | service worker: placement, dedupe, pins, groups, palette window, omnibox `tw` |
 | `keys.js` | content script: the keymap over the browser's shortcuts, plus on-page toasts |
-| `palette.js` / `.html` | the ⌘K palette |
+| `palette.js` / `.html` | the ⇧⌘K palette |
 | `panel.js` / `.html` | the side panel |
 | `options.js` / `.html` | settings: keys, pins, tabs, cleanup, blocks, appearance |
 | `popup.js` / `.html` | toolbar popup |

@@ -13,7 +13,7 @@ const DEFAULT_KEYMAP = {
   tidyUp: { code: 'KeyT', meta: true, ctrl: false, alt: true, shift: false },
   togglePanel: null,   // панель просит жест пользователя — надёжно только нативным ⌃⇧S
   bookmarkTab: null,
-  openPalette: null,
+  openPalette: { code: 'KeyK', meta: true, ctrl: false, alt: false, shift: true },
   groupByRules: null,
   groupByDomain: null,
   ungroupAll: null,

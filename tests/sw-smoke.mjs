@@ -30,8 +30,11 @@ globalThis.chrome = {
     update: () => Promise.resolve()
   },
   bookmarks: {
-    getChildren: () => Promise.resolve([]), create: o => Promise.resolve({ id: 'b1', ...o }),
-    remove: () => Promise.resolve(), move: () => Promise.resolve(), search: () => Promise.resolve([]), getRecent: () => Promise.resolve([])
+    // панель закладок с настоящим состоянием: тогл ⌘D иначе не проверить
+    getChildren: id => Promise.resolve(id === '1' ? MARKS.slice() : []),
+    create: o => { const b = { id: 'b' + (++markId), ...o }; MARKS.splice(o.index ?? MARKS.length, 0, b); return Promise.resolve(b); },
+    remove: id => { MARKS = MARKS.filter(b => b.id !== id); return Promise.resolve(); },
+    move: () => Promise.resolve(), search: () => Promise.resolve([]), getRecent: () => Promise.resolve([])
   },
   tabGroups: { query: () => Promise.resolve([]), update: () => Promise.resolve() },
   tabs: {
@@ -60,6 +63,9 @@ globalThis.chrome = {
     discard: () => Promise.resolve()
   }
 };
+
+let MARKS = [];
+let markId = 0;
 
 let loadError = null;
 try {
@@ -123,8 +129,22 @@ check('порядок по сайту', TABS.map(t => t.url).join(' ') === 'http
 const pin = await call('pinTab', { windowId: 1 });
 check('pinTab закрепил', pin?.ok && pin.count === 1 && TABS.some(t => t.pinned));
 
+// ⌘D — тогл в обе стороны, вкладка при этом жива: закрытие будило бы соседа и он перезагружался
+MARKS = [];
+TABS = [
+  { id: 21, windowId: 1, index: 0, pinned: true, url: 'https://pinned.com/' },
+  { id: 22, windowId: 1, index: 1, pinned: false, url: 'https://a.com/' },
+  { id: 23, windowId: 1, index: 2, pinned: false, active: true, url: 'https://keep.me/page' },
+  { id: 24, windowId: 1, index: 3, pinned: false, url: 'https://c.com/' }
+];
 const fav = await call('favoriteTab', { windowId: 1 });
-check('favoriteTab положил закладку и закрыл вкладку', fav?.ok && fav.count === 1);
+check('favoriteTab сделал закладку', fav?.ok && fav.count === 1 && MARKS.length === 1, JSON.stringify(MARKS));
+check('вкладка осталась жива — без закрытия и перезагрузки', TABS.some(t => t.id === 23), TABS.map(t => t.id).join(' '));
+check('вкладка уехала вниз списка', TABS[TABS.length - 1]?.id === 23, TABS.map(t => t.id).join(' '));
+
+const unfav = await call('favoriteTab', { windowId: 1 });
+check('второе нажатие сняло закладку', unfav?.ok && unfav.count === -1 && MARKS.length === 0);
+check('вкладка вернулась в самый верх, под закреплённые', TABS[1]?.id === 23, TABS.map(t => t.id).join(' '));
 
 const opened = await call('sortByOpened', { windowId: 1 });
 check('sortByOpened отвечает', opened?.ok === true, 'переставлено ' + opened?.count);

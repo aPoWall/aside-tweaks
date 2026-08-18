@@ -83,6 +83,15 @@
         <span>own keymap on top of the browser's<small>the page sees keydown before the browser applies its accelerator, so ⌘D and friends can be taken over</small></span>
       </label>
       <table class="keys" id="keys"></table>
+      <div style="margin-top:13px;border-top:1px solid var(--line);padding-top:11px">
+        <div style="font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">held by the browser itself</div>
+        <table class="keys" id="cmds"></table>
+        <small style="margin-top:7px">
+          these live one level above the page: the browser fires them even where a page cannot listen — on <code>chrome://</code>,
+          on a new tab, inside Aside's own interface. an extension may <b>suggest</b> them but never rebind them, so a key that
+          still fires the old action is set here, not above. change or clear them on <code>chrome://extensions/shortcuts</code>.
+        </small>
+      </div>
       <small style="margin-top:11px">
         ⚠ <code>⌘T</code> <code>⌘W</code> <code>⌘N</code> <code>⌘Q</code> <code>⌘M</code> <code>⇧⌘W</code> stay with the system — the browser takes them before the page.
         on <code>chrome://</code> pages, the new tab and inside Aside's own interface there is no page at all: only native shortcuts work there.
@@ -103,9 +112,13 @@
     <div class="head"><span class="idx">02</span><span class="ttl">pin vs bookmark</span></div>
     <div class="body">
       <small style="margin-bottom:9px">
-        <b>pin</b> moves the tab into the squares on top of the sidebar and keeps it there — that is the Arc behaviour, bound to <code>⌘D</code> by default.<br>
-        <b>bookmark</b> puts the page into the bookmarks bar, no dialog, second call removes it. separate action, no key by default.
+        <b><code>⌘D</code> — bookmark ⇄ tab.</b> the page lands as the last row of the bookmarks bar and the tab stays open and loaded.
+        press it again on the same page: the bookmark goes away and the tab returns to the very top of the list.<br>
+        <b><code>⇧⌘D</code> — pin.</b> the squares on top of the sidebar, the browser's own pin on a key of its own.
       </small>
+      <label class="opt"><input type="checkbox" id="favoriteMovesTab">
+        <span>the tab moves along with the bookmark<small>down to the end of the list when bookmarked, up to the top when it comes back. off — only the bookmark changes, the tab never leaves its place. a grouped tab is never pulled out of its block</small></span>
+      </label>
       <label class="opt"><input type="checkbox" id="keepPins">
         <span>Arc-style pins<small>closing a pinned tab brings the pin back asleep instead of dropping it. to remove it for good: unpin, then close</small></span>
       </label>
@@ -163,7 +176,7 @@
     <div class="body">
       <small style="margin-bottom:11px">
         Aside's own sidebar is native browser chrome — an extension cannot repaint it.
-        these colours drive our surfaces: palette <code>⌘K</code>, popup, settings, tweaks panel.
+        these colours drive our surfaces: palette <code>⇧⌘K</code>, popup, settings, tweaks panel.
       </small>
       <div class="swatches" id="swatches"></div>
       <div class="row2" style="margin-bottom:11px">
@@ -180,7 +193,7 @@
         </div>
       </div>
       <label class="opt" style="margin:0 0 11px"><input type="checkbox" id="dimBehindPalette">
-        <span>dim the page behind the palette<small>the page under ⌘K fades and blurs slightly while the palette is open</small></span>
+        <span>dim the page behind the palette<small>the page under ⇧⌘K fades and blurs slightly while the palette is open</small></span>
       </label>
       <div class="row2">
         <span style="width:70px">density</span>

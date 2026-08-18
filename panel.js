@@ -1,7 +1,7 @@
 // Aside Tweaks — панель (chrome.sidePanel)
 // Три яруса сверху вниз: favorites (страницы, перенесённые наверх), pinned
 // (нативные пины Chromium), tabs (всё остальное, разбитое по блокам).
-// Поиска здесь нет намеренно — он живёт в палитре ⌘K.
+// Поиска здесь нет намеренно — он живёт в палитре ⇧⌘K.
 
 const SECOND_LEVEL = new Set(['co.uk', 'org.uk', 'com.br', 'com.au', 'co.jp', 'com.tr']);
 const BAR = '1';           // Bookmarks Bar — закладки лежат в корне, без папки
@@ -103,10 +103,10 @@ function tabRow(tab) {
   t.textContent = tab.title || tab.url || 'untitled';
   d.append(iconFor(tab.url), t);
 
-  d.append(act('↑', 'bookmark to the top of the bar and close the tab', false, async () => {
+  d.append(act('★', 'bookmark ⇄ tab · last row of the bar, the tab stays open', false, async () => {
     await chrome.tabs.update(tab.id, { active: true });
-    await chrome.runtime.sendMessage({ action: 'favoriteTab', windowId: tab.windowId });
-    say('bookmarked ↑');
+    const r = await chrome.runtime.sendMessage({ action: 'favoriteTab', windowId: tab.windowId });
+    say(r?.count === -1 ? 'back in the tabs, at the top' : 'bookmarked ↓ last row');
   }));
   d.append(act(tab.pinned ? '◆' : '◇', tab.pinned ? 'unpin' : 'pin to the sidebar squares', tab.pinned, async () => {
     await chrome.tabs.update(tab.id, { pinned: !tab.pinned });

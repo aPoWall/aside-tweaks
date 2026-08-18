@@ -7,7 +7,7 @@ const DEFAULT_KEYMAP = {
   tidyUp: { code: 'KeyT', meta: true, ctrl: false, alt: true, shift: false },
   togglePanel: null,   // панель просит жест пользователя — надёжно только нативным ⌃⇧S
   bookmarkTab: null,
-  openPalette: null,
+  openPalette: { code: 'KeyK', meta: true, ctrl: false, alt: false, shift: true },
   groupByRules: null,
   groupByDomain: null,
   ungroupAll: null,
@@ -17,7 +17,7 @@ const DEFAULT_KEYMAP = {
 
 const DEFAULTS = {
   dedupAuto: false, dedupNotice: true, dedupIgnoreHash: true, dedupIgnoreUtm: true,
-  keepPins: true, keymapEnabled: true, dimBehindPalette: true,
+  keepPins: true, favoriteMovesTab: true, keymapEnabled: true, dimBehindPalette: true,
   tabPlacement: 'underCurrent', placementGuardMs: 2500,
   keymap: DEFAULT_KEYMAP,
   theme: { mode: 'light', accent: '#111111', tint: 8, density: 'normal' },
@@ -25,13 +25,13 @@ const DEFAULTS = {
 };
 
 const ACTIONS = [
-  ['favoriteTab', 'bookmark to the top', 'first row of the bar · closes the tab'],
+  ['favoriteTab', 'bookmark ⇄ tab', 'last row of the bar · press again and the tab returns to the top'],
   ['pinTab', 'pin / unpin tab', 'the squares on top of the sidebar · native ⌃D'],
   ['tidyUp', 'tidy up — one sweep', 'clean, group by blocks, sort'],
   ['tidyDuplicates', 'clean duplicates + empty tabs', 'native ⌃⇧D'],
   ['togglePanel', 'open tweaks panel', 'native ⌃⇧S is more reliable'],
   ['bookmarkTab', 'bookmark, no dialog', ''],
-  ['openPalette', 'palette', 'native ⌘K'],
+  ['openPalette', 'palette', 'the browser also holds ⇧⌘K — see the table below'],
   ['groupByRules', 'group by my blocks', ''],
   ['groupByDomain', 'group by site', ''],
   ['ungroupAll', 'ungroup everything', ''],
@@ -46,6 +46,23 @@ const RESERVED = [
   { code: 'KeyM', meta: true }, { code: 'KeyH', meta: true },
   { code: 'Tab', ctrl: true }
 ];
+
+// сочетания, которые браузер занимает своими командами. Перехватить их можно —
+// страница видит keydown раньше, — но родное действие при этом теряется, поэтому предупреждаем.
+const BROWSER_KEYS = {
+  '⌘D': 'bookmark this tab…', '⇧⌘D': 'bookmark all tabs…', '⌘L': 'address bar',
+  '⌘F': 'find on page', '⌘G': 'find next', '⇧⌘G': 'find previous',
+  '⌘R': 'reload', '⇧⌘R': 'hard reload', '⌘P': 'print', '⌘S': 'save page',
+  '⌘O': 'open file', '⌘Y': 'history', '⇧⌘T': 'reopen closed tab',
+  '⇧⌘B': 'show bookmarks bar', '⌥⌘B': 'bookmark manager', '⌥⌘L': 'downloads',
+  '⌘,': 'settings', '⌘[': 'back', '⌘]': 'forward', '⌘0': 'actual size',
+  '⌥⌘I': 'devtools', '⌥⌘J': 'javascript console', '⌥⌘U': 'view source', '⌥⌘C': 'inspect element',
+  '⌥⌘F': 'search with the default engine', '⌃⌘F': 'full screen', '⇧⌘A': 'search tabs'
+};
+
+function browserOwner(combo) {
+  return combo ? BROWSER_KEYS[comboLabel(combo)] || null : null;
+}
 
 const saved = document.getElementById('saved');
 let state = { ...DEFAULTS };
@@ -115,11 +132,21 @@ function renderKeys() {
     const tdB = document.createElement('td');
     const b = document.createElement('button');
     const combo = state.keymap?.[action] || null;
+    const owner = browserOwner(combo);
     b.className = 'combo' + (isReserved(combo) ? ' warn' : '');
     b.textContent = comboLabel(combo);
-    b.title = 'click to record · ⌫ clears · esc cancels';
+    b.title = owner
+      ? `the browser uses this for «${owner}» — we take it first, its own action is lost`
+      : 'click to record · ⌫ clears · esc cancels';
     b.addEventListener('click', () => record(b, action));
     tdB.append(b);
+    if (owner) {
+      const t = document.createElement('div');
+      t.className = 'note';
+      t.style.marginTop = '4px';
+      t.textContent = 'taken from the browser · ' + owner;
+      tdB.append(t);
+    }
 
     const tdC = document.createElement('td');
     tdC.style.width = '22px';
@@ -136,6 +163,52 @@ function renderKeys() {
     }
 
     tr.append(tdL, tdB, tdC);
+    table.append(tr);
+  }
+}
+
+// то, что держит сам браузер: живой список, а не наши догадки
+const CMD_LABEL = {
+  'open-palette': 'palette', 'open-panel': 'tweaks panel',
+  'favorite-tab': 'bookmark ⇄ tab', 'pin-tab': 'pin / unpin',
+  'tidy-duplicates': 'clean duplicates', 'tidy-up': 'tidy up', 'bookmark-tab': 'bookmark, no dialog',
+  '_execute_action': 'open the popup'
+};
+
+async function renderCmds() {
+  const table = document.getElementById('cmds');
+  if (!table) return;
+  const list = await chrome.commands.getAll().catch(() => []);
+  table.replaceChildren();
+  for (const c of list) {
+    const tr = document.createElement('tr');
+    const tdL = document.createElement('td');
+    tdL.textContent = CMD_LABEL[c.name] || c.name;
+    const n = document.createElement('div');
+    n.className = 'note';
+    n.textContent = c.name;
+    tdL.append(n);
+
+    const tdB = document.createElement('td');
+    const b = document.createElement('span');
+    b.className = 'combo';
+    b.style.cursor = 'default';
+    b.textContent = c.shortcut || '—';
+    b.title = c.shortcut ? 'set at chrome://extensions/shortcuts' : 'not set';
+    tdB.append(b);
+
+    const tdC = document.createElement('td');
+    tdC.style.width = '22px';
+    tr.append(tdL, tdB, tdC);
+    table.append(tr);
+  }
+  if (!list.length) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 3;
+    td.className = 'note';
+    td.textContent = 'the browser reports no commands for this extension';
+    tr.append(td);
     table.append(tr);
   }
 }
@@ -189,7 +262,9 @@ async function onRecordKey(e) {
   stopRecord();
   await patch({ keymap: map });
   renderKeys();
+  const owner = browserOwner(combo);
   if (isReserved(combo)) flash('⚠ the browser takes this one before the page — it will not fire');
+  else if (owner) flash(`⚠ the browser uses ${comboLabel(combo)} for «${owner}» — we take it first, that action is lost`);
 }
 
 // ---------- блоки ----------
@@ -269,7 +344,7 @@ function seg(id, value, onPick) {
 
 // ---------- сборка ----------
 
-const TOGGLES = ['dedupAuto', 'dedupNotice', 'dedupIgnoreHash', 'dedupIgnoreUtm', 'keepPins', 'keymapEnabled', 'dimBehindPalette'];
+const TOGGLES = ['dedupAuto', 'dedupNotice', 'dedupIgnoreHash', 'dedupIgnoreUtm', 'keepPins', 'favoriteMovesTab', 'keymapEnabled', 'dimBehindPalette'];
 
 function renderAll() {
   for (const k of TOGGLES) document.getElementById(k).checked = !!state[k];
@@ -288,6 +363,7 @@ function renderAll() {
 
   renderSwatches();
   renderKeys();
+  renderCmds();
   renderRules();
 }
 
@@ -331,9 +407,12 @@ probe?.addEventListener('keydown', (e) => {
   if (!e.metaKey && !e.ctrlKey && !e.altKey) { probeout.textContent = shown + ' — no modifier, not intercepted'; return; }
   const hitAction = Object.entries(state.keymap || {}).find(([, v]) => v && comboLabel(v) === shown)?.[0];
   const label = hitAction ? (ACTIONS.find(a => a[0] === hitAction)?.[1] || hitAction) : null;
+  const owner = browserOwner(combo);
   probeout.textContent = isReserved(combo)
     ? shown + ' — the system takes it before the page'
-    : label ? shown + ' → ' + label : shown + ' — nothing bound';
+    : label
+      ? shown + ' → ' + label + (owner ? ' · was the browser\'s «' + owner + '»' : '')
+      : owner ? shown + ' — the browser\'s «' + owner + '», not ours' : shown + ' — nothing bound';
 });
 probe?.addEventListener('focus', () => { probeout.textContent = 'listening…'; });
 
@@ -350,7 +429,7 @@ document.getElementById('copyDefaults')?.addEventListener('click', async () => {
 document.getElementById('resetKeys').addEventListener('click', async () => {
   await patch({ keymap: { ...DEFAULT_KEYMAP } });
   renderKeys();
-  flash('keys reset · ⌘D pins, ⌘⇧D cleans duplicates');
+  flash('keys reset · ⌘D bookmark ⇄ tab · ⇧⌘D pin · ⌥⌘T tidy · ⇧⌘K palette');
 });
 
 document.getElementById('native').addEventListener('click', async () => {

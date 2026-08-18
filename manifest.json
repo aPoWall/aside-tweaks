@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Aside Tweaks",
-  "version": "4.10.0",
-  "description": "Palette (⌘K) with tabs, history, bookmarks and blocks · own keymap over browser shortcuts · pin on ⌘D · dedupe · new tabs under the current one.",
+  "version": "4.11.0",
+  "description": "Palette (⇧⌘K) over tabs, history and bookmarks · own keymap over browser shortcuts · ⌘D moves a page into the bookmarks bar and back · dedupe · new tabs under the current one.",
   "permissions": [
     "tabs",
     "storage",
@@ -58,17 +58,17 @@
     },
     "open-palette": {
       "suggested_key": {
-        "default": "Ctrl+K",
-        "mac": "Command+K"
+        "default": "Ctrl+Shift+K",
+        "mac": "Command+Shift+K"
       },
-      "description": "Открыть палитру"
+      "description": "Палитра"
     },
     "favorite-tab": {
       "suggested_key": {
         "default": "Ctrl+Shift+B",
         "mac": "MacCtrl+Shift+B"
       },
-      "description": "В закладки наверх (вкладка закрывается)"
+      "description": "Закладка ⇄ вкладка: в конец панели закладок и обратно наверх"
     },
     "pin-tab": {
       "suggested_key": {

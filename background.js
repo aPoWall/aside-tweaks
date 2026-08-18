@@ -10,7 +10,7 @@ const DEFAULT_KEYMAP = {
   tidyUp: { code: 'KeyT', meta: true, ctrl: false, alt: true, shift: false },
   togglePanel: null,   // панель просит жест пользователя — надёжно только нативным ⌃⇧S
   bookmarkTab: null,
-  openPalette: null,
+  openPalette: { code: 'KeyK', meta: true, ctrl: false, alt: false, shift: true },
   groupByRules: null,
   groupByDomain: null,
   ungroupAll: null,
@@ -34,6 +34,7 @@ const DEFAULTS = {
   tabPlacement: 'underCurrent',     // underCurrent | end | browser
   placementGuardMs: 2500,           // сколько держим вкладку на месте, если Aside её двигает
   keepPins: true,
+  favoriteMovesTab: true,   // ⌘D двигает и вкладку: вниз при закладке, наверх при возврате
   keymapEnabled: true,
   dimBehindPalette: true,
   keymap: DEFAULT_KEYMAP,
@@ -45,10 +46,36 @@ const DEFAULTS = {
 
 let settings = { ...DEFAULTS };
 
-chrome.storage.sync.get(DEFAULTS).then(s => {
+// Поднимаем, когда в раскладке появляется действие с новой дефолтной клавишей.
+// Сохранённая карта пишется целиком, вместе с null'ами, и такой null навсегда
+// перекрывает новый дефолт — отсюда «поставил клавишу, а работает старая».
+const KEYMAP_REV = 2;
+const comboKey = c => c ? [c.code, !!c.meta, !!c.ctrl, !!c.alt, !!c.shift].join('/') : '';
+
+function upgradeKeymap(stored) {
+  const map = { ...DEFAULT_KEYMAP, ...(stored || {}) };
+  const taken = new Set(Object.values(map).map(comboKey).filter(Boolean));
+  let changed = false;
+  for (const [action, def] of Object.entries(DEFAULT_KEYMAP)) {
+    if (!def || map[action]) continue;
+    if (taken.has(comboKey(def))) continue;   // сочетание человек отдал другому действию — не отбираем
+    map[action] = def;
+    taken.add(comboKey(def));
+    changed = true;
+  }
+  return changed ? map : null;
+}
+
+chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0 }).then(s => {
   // раскладку накладываем поверх дефолтной: иначе действия, добавленные позже,
   // остаются вообще без привязки — в хранилище лежит карта старой версии
   settings = { ...DEFAULTS, ...s, keymap: { ...DEFAULT_KEYMAP, ...(s.keymap || {}) } };
+
+  if (s.keymapRev !== KEYMAP_REV) {
+    const fixed = upgradeKeymap(s.keymap);
+    if (fixed) settings.keymap = fixed;
+    chrome.storage.sync.set({ keymapRev: KEYMAP_REV, ...(fixed ? { keymap: fixed } : {}) }).catch(() => { });
+  }
   // миграция со старого булева тумблера: выключен → браузер решает сам
   if (s.tabPlacement == null && s.nextToCurrent === false) {
     settings.tabPlacement = 'browser';
@@ -57,7 +84,10 @@ chrome.storage.sync.get(DEFAULTS).then(s => {
 });
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'sync') return;
-  for (const [k, v] of Object.entries(changes)) settings[k] = v.newValue;
+  for (const [k, v] of Object.entries(changes)) {
+    // раскладку всегда кладём поверх дефолтной, иначе новые действия остаются без клавиш
+    settings[k] = k === 'keymap' ? { ...DEFAULT_KEYMAP, ...(v.newValue || {}) } : v.newValue;
+  }
   if (changes.keymap) settings.keymap = { ...DEFAULT_KEYMAP, ...(changes.keymap.newValue || {}) };
 });
 
@@ -429,9 +459,11 @@ async function tidyUp(windowId) {
   return closed + groups;
 }
 
-// ---------- закладка наверх: пин по смыслу, закладка по технике ----------
-// Никакой отдельной папки: страница ложится ПЕРВОЙ строкой панели закладок,
-// вкладка при этом закрывается — страница переезжает, а не двоится.
+// ---------- закладка ⇄ вкладка: одна клавиша в обе стороны ----------
+// Страница ложится ПОСЛЕДНЕЙ строкой панели закладок. Вкладку при этом не закрываем:
+// закрытие будит соседнюю спящую вкладку и та перезагружается — ощущается как «увело
+// куда-то и перезагрузило». Живая вкладка просто уезжает вниз списка, второе нажатие
+// снимает закладку и поднимает её в самый верх вкладок.
 
 const BAR = '1'; // Bookmarks Bar в Chromium
 
@@ -452,6 +484,18 @@ async function listFavorites() {
   return { items: kids.filter(k => k.url).map(k => ({ id: k.id, title: k.title, url: k.url })) };
 }
 
+// вкладку из группы не выдёргиваем: она уедет из своего блока, а это не то, о чём просили
+async function moveTabTo(tab, where) {
+  if (!settings.favoriteMovesTab || tab.pinned) return false;
+  if (tab.groupId != null && tab.groupId > -1) return false;
+  let index = -1;
+  if (where === 'top') {
+    const all = await chrome.tabs.query({ windowId: tab.windowId }).catch(() => []);
+    index = all.filter(t => t.pinned).length;   // сразу под закреплёнными квадратиками
+  }
+  try { await chrome.tabs.move(tab.id, { index }); return true; } catch { return false; }
+}
+
 async function favoriteTab(windowId) {
   const wid = await targetWindowId(windowId);
   const [tab] = await chrome.tabs.query(wid != null ? { active: true, windowId: wid } : { active: true, currentWindow: true });
@@ -459,18 +503,23 @@ async function favoriteTab(windowId) {
 
   const kids = await chrome.bookmarks.getChildren(BAR).catch(() => []);
   const twin = kids.find(k => k.url && normalizeUrl(k.url) === normalizeUrl(tab.url));
+
   if (twin) {
     await chrome.bookmarks.remove(twin.id).catch(() => { });
-    flash('BM−', 'removed from the bookmarks bar');
+    const moved = await moveTabTo(tab, 'top');
+    flash('BM−', moved
+      ? 'back in the tabs — at the very top ↑'
+      : 'removed from the bookmarks bar ↑');
     return -1;
   }
 
-  // в конец панели закладок: последняя строка — там, куда смотришь после нажатия
+  // последняя строка панели закладок — там, куда смотришь после нажатия
   const made = await chrome.bookmarks.create({ parentId: BAR, index: kids.length, title: tab.title || tab.url, url: tab.url });
   await chrome.storage.session.set({ lastFavId: made?.id ?? null, lastFavAt: Date.now() }).catch(() => { });
-  const siblings = await chrome.tabs.query({ windowId: tab.windowId }).catch(() => []);
-  flash('BM+', 'moved to the end of the bookmarks bar ↓');
-  if (siblings.length > 1) await chrome.tabs.remove(tab.id).catch(() => { });
+  const moved = await moveTabTo(tab, 'bottom');
+  flash('BM+', (moved
+    ? 'last row of the bookmarks bar ↓\ntab moved down, still open and loaded'
+    : 'last row of the bookmarks bar ↓') + '\n⌘D again brings it back to the top');
   return 1;
 }
 
@@ -633,8 +682,10 @@ async function dimPage(on) {
 }
 
 let paletteWinId = null;
+let paletteOpening = false;   // ⇧⌘K приходит и от страницы, и от команды браузера — окно должно остаться одно
 
 async function openPalette() {
+  if (paletteOpening) return;
   if (paletteWinId != null) {
     const w = await chrome.windows.get(paletteWinId).catch(() => null);
     if (w) { await chrome.windows.update(paletteWinId, { focused: true }); return; }
@@ -646,16 +697,21 @@ async function openPalette() {
     const arr = await chrome.tabs.query({ active: true, windowId: src.id }).catch(() => []);
     activeTab = arr[0] || null;
   }
+  paletteOpening = true;
   const W = 560, H = 400;
   const left = src ? Math.round(src.left + (src.width - W) / 2) : undefined;
   const top = src ? Math.round(src.top + (src.height - H) / 3) : undefined;
   const page = 'palette.html?win=' + (src?.id ?? '') + '&tab=' + (activeTab?.id ?? '');
-  const w = await chrome.windows.create({
-    url: chrome.runtime.getURL(page),
-    type: 'popup', width: W, height: H, left, top, focused: true
-  });
-  paletteWinId = w.id;
-  dimPage(true);
+  try {
+    const w = await chrome.windows.create({
+      url: chrome.runtime.getURL(page),
+      type: 'popup', width: W, height: H, left, top, focused: true
+    });
+    paletteWinId = w.id;
+    dimPage(true);
+  } finally {
+    paletteOpening = false;
+  }
 }
 
 chrome.windows.onRemoved.addListener(id => { if (id === paletteWinId) { paletteWinId = null; dimPage(false); } });
