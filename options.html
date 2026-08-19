@@ -208,7 +208,7 @@
   </div>
 
   <div class="card">
-    <div class="head"><span class="idx">07</span><span class="ttl">native shortcuts</span></div>
+    <div class="head"><span class="idx">08</span><span class="ttl">native shortcuts</span></div>
     <div class="body">
       <small style="margin-bottom:10px">
         keys the browser owns before any page exists — <code>⌘T</code>, <code>⌘W</code>, the bookmark dialog —
@@ -231,6 +231,35 @@
         the repo ships <code>scripts/native-shortcuts.sh</code> — run it to apply the table, <code>--reset</code> to undo.
       </small>
       <button id="copyDefaults">copy the terminal commands</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="head"><span class="idx">07</span><span class="ttl">blocks by meaning</span></div>
+    <div class="body">
+      <small style="margin-bottom:11px">
+        a site is a weak signal: fifteen tabs on one <code>github.com</code> say nothing about what you are doing.
+        this hands the <b>titles and hosts</b> of the open tabs to a model through OpenRouter and asks it for working
+        blocks. page contents, cookies and full addresses are never sent. the answer arrives as a proposal in a small
+        window — <b>nothing is regrouped until you press apply</b>.
+      </small>
+      <small style="margin-bottom:11px">
+        ⚠ titles are private text: a tab called «offer for &lt;client&gt;» leaves your machine as that sentence.
+        the key lives in local storage only and never syncs to other machines. off until you put a key in.
+      </small>
+      <div class="row2" style="margin-bottom:8px">
+        <span style="width:52px">key</span>
+        <input type="password" id="aiKey" placeholder="sk-or-v1-…" autocomplete="off" spellcheck="false" style="flex:1">
+      </div>
+      <div class="row2" style="margin-bottom:9px">
+        <span style="width:52px">model</span>
+        <input type="text" id="aiModel" placeholder="anthropic/claude-haiku-4.5" autocomplete="off" spellcheck="false" style="flex:1">
+      </div>
+      <div class="row2">
+        <button id="aiSave">connect openrouter</button>
+        <button id="aiForget">forget the key</button>
+        <span id="aiState" style="font-size:9px;color:var(--muted)"></span>
+      </div>
     </div>
   </div>
 

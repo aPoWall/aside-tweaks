@@ -4,8 +4,13 @@
 <meta charset="utf-8">
 <link rel="stylesheet" href="instrument.css">
 <style>
+  /* ширину задаём и документу: без неё браузер иногда не измеряет попап и выдаёт
+     ему максимальный размер — окно разъезжается на 800×600 после действия */
+  html { width: 300px; overflow-x: hidden; }
   body { width: 300px; }
   :root[data-density="compact"] { --pad: 13px; }
+  /* строка ответа держит высоту заранее: текст не должен переверстывать попап */
+  #status { display: block; width: 100%; min-height: 11px; }
 </style>
 </head>
 <body>
@@ -60,6 +65,10 @@
   <div class="sec">
     <div class="sec-label"><span class="n">03</span> order <span class="hint">· groups open expanded</span></div>
     <div class="tiles">
+      <button class="tile" data-action="groupBySense">
+        <span class="tile-main">✳ blocks by meaning</span>
+        <span class="tile-sub">a model reads the titles</span>
+      </button>
       <button class="tile" data-action="groupByRules">
         <span class="tile-main">by my blocks</span>
         <span class="tile-sub">rules from settings</span>

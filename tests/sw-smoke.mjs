@@ -11,7 +11,8 @@ let nextId = 100;
 const store = { sync: {}, session: {}, local: {} };
 const area = (bag) => ({
   get: (d) => Promise.resolve(typeof d === 'string' ? { [d]: bag[d] } : Object.fromEntries(Object.entries(d || {}).map(([k, v]) => [k, k in bag ? bag[k] : v]))),
-  set: (o) => (Object.assign(bag, o), Promise.resolve())
+  set: (o) => (Object.assign(bag, o), Promise.resolve()),
+  remove: (k) => ([].concat(k).forEach(x => delete bag[x]), Promise.resolve())
 });
 
 const log = [];
@@ -147,7 +148,7 @@ TABS = [
 const fav = await call('favoriteTab', { windowId: 1 });
 check('favoriteTab сделал закладку', fav?.ok && fav.count === 1 && MARKS.length === 1, JSON.stringify(MARKS));
 check('вкладка осталась жива — без закрытия и перезагрузки', TABS.some(t => t.id === 23), TABS.map(t => t.id).join(' '));
-check('вкладка уехала вниз списка', TABS[TABS.length - 1]?.id === 23, TABS.map(t => t.id).join(' '));
+check('вкладка встала первой строкой вкладок, под закреплённой', TABS[1]?.id === 23, TABS.map(t => t.id).join(' '));
 
 await wait(500);   // защита от двойного срабатывания: повтор в пределах 450 мс глушится
 const unfav = await call('favoriteTab', { windowId: 1 });
@@ -159,6 +160,43 @@ const twiceAgain = await call('favoriteTab', { windowId: 1 });
 check('повтор в пределах кадра глушится', twiceAgain?.skipped === true, JSON.stringify(twiceAgain));
 await wait(500);
 await call('favoriteTab', { windowId: 1 });   // возвращаем сцену: закладки снова нет
+
+// ---------- группировка по смыслу ----------
+TABS = [
+  { id: 41, windowId: 1, index: 0, pinned: false, active: true, url: 'https://a.com/one', title: 'смета проекта' },
+  { id: 42, windowId: 1, index: 1, pinned: false, url: 'https://b.com/two', title: 'договор подряда' },
+  { id: 43, windowId: 1, index: 2, pinned: false, url: 'https://c.com/three', title: 'обои для стола' },
+  { id: 44, windowId: 1, index: 3, pinned: false, url: 'https://d.com/four', title: 'подбор кресла' }
+];
+store.local.aiKey = '';
+const noKey = await call('groupBySense', { windowId: 1 });
+check('без ключа группировка по смыслу не ходит в сеть', noKey?.ok && noKey.count === 0 && !store.session.sensePlan);
+
+store.local.aiKey = 'sk-or-test';
+store.local.aiModel = 'anthropic/claude-haiku-4.5';
+let sentBody = null;
+globalThis.fetch = async (url, opt) => {
+  sentBody = JSON.parse(opt.body);
+  return {
+    ok: true,
+    json: async () => ({ choices: [{ message: { content: JSON.stringify({
+      groups: [{ name: 'работа', tabs: [0, 1] }, { name: 'дом', tabs: [2, 3] }]
+    }) } }] })
+  };
+};
+const plan = await call('groupBySense', { windowId: 1 });
+check('предложение собрано', plan?.ok && plan.count === 2, JSON.stringify(plan));
+check('план лежит в session, а не применён молча',
+  store.session.sensePlan?.groups?.length === 2 && !log.some(l => l.startsWith('group')),
+  JSON.stringify(store.session.sensePlan?.groups?.map(g => g.name)));
+const promptText = JSON.stringify(sentBody?.messages || []);
+check('наружу уходят только заголовки и хосты',
+  promptText.includes('смета проекта') && promptText.includes('a.com') && !promptText.includes('/one'),
+  promptText.slice(0, 90));
+
+const applied = await call('senseApply');
+check('применение делает группы', applied?.ok && applied.count === 2, 'групп: ' + applied?.count);
+check('план после применения стёрт', !store.session.sensePlan);
 
 const opened = await call('sortByOpened', { windowId: 1 });
 check('sortByOpened отвечает', opened?.ok === true, 'переставлено ' + opened?.count);

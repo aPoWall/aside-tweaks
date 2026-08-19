@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>aside tweaks · blocks by meaning</title>
+<link rel="stylesheet" href="instrument.css">
+<style>
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; overflow: hidden; font-size: 11px; }
+  /* без min-width:0 длинный заголовок вкладки распирает колонку и выдавливает
+     кнопки за край окна — классика flex-раскладки */
+  main, .grp, .grp ul { min-width: 0; }
+
+  header { padding: 12px var(--pad) 9px; border-bottom: 1px solid var(--line); }
+  header .t { font-size: 13px; letter-spacing: -.01em; }
+  header .s { font-size: 9px; color: var(--muted); margin-top: 2px; }
+
+  main { flex: 1; overflow-y: auto; padding: 4px 0 8px; }
+
+  .grp { padding: 9px var(--pad) 7px; border-bottom: 1px solid var(--line); }
+  .grp .name {
+    display: flex; align-items: baseline; gap: 7px; min-width: 0;
+    font-size: 11px; letter-spacing: .02em;
+  }
+  .grp .name .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .grp .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; }
+  .grp .n { margin-left: auto; font-size: 9px; color: var(--muted); flex: none; }
+  .grp ul { list-style: none; margin: 5px 0 0; padding: 0 0 0 14px; }
+  .grp li {
+    font-size: 10px; color: var(--muted); line-height: 1.5;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  footer {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px var(--pad); border-top: 1px solid var(--line);
+    font-size: 9px; color: var(--muted);
+  }
+  footer .left { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  footer button { font: inherit; font-size: 10px; padding: 5px 11px; flex: none; }
+  footer button.go { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .empty { padding: 18px var(--pad); color: var(--muted); }
+</style>
+</head>
+<body>
+  <header>
+    <div class="t">blocks by meaning</div>
+    <div class="s" id="sub">reading the proposal…</div>
+  </header>
+
+  <main id="list"></main>
+
+  <footer>
+    <span class="left" id="left"></span>
+    <button id="cancel">cancel</button>
+    <button id="apply" class="go">apply</button>
+  </footer>
+
+  <script src="theme.js"></script>
+  <script src="sense.js"></script>
+</body>
+</html>

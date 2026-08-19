@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Aside Tweaks",
-  "version": "4.12.0",
+  "version": "4.13.0",
   "description": "Palette (⇧⌘K) over tabs, history and bookmarks · own keymap over browser shortcuts · ⌘D moves a page into the bookmarks bar and back · dedupe · new tabs under the current one.",
   "permissions": [
     "tabs",
@@ -96,5 +96,8 @@
         "<all_urls>"
       ]
     }
+  ],
+  "optional_host_permissions": [
+    "https://openrouter.ai/*"
   ]
 }

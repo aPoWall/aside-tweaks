@@ -65,6 +65,14 @@ refuses foreign frames, it falls back to a centred window automatically. `⇥` s
 - `⇧↵` is the row's second action: pin the tab, or open the address already pinned
 - arithmetic in the input (`2+2`, `(19*3)/2`), `↵` copies the result
 
+**Blocks by meaning — opt-in.** A site is a weak signal: fifteen tabs on one `github.com` say nothing
+about what you are doing. This hands the **titles and hosts** of the open tabs to a model through
+OpenRouter and asks for working blocks. Page contents, cookies and full addresses never leave the
+machine, the key lives in local storage and never syncs, and the answer arrives as a **proposal in a
+small window** — nothing is regrouped until you press apply. Off until you paste a key in settings
+card 07; network access to `openrouter.ai` is an optional permission requested at that moment, not
+held in advance.
+
 **One list of commands.** `commands.js` holds every command with its title, glyph, key and
 one-line explanation; the palette and the panel render from it. Adding a command in one place
 adds it everywhere, and the names cannot drift apart between surfaces.
@@ -116,8 +124,9 @@ Written down because these were asked for one by one and each is easy to break b
 
 | Gesture | What must happen |
 |---|---|
-| `⌘D` on a fresh page | bookmark appended as the **last** row of the bar; the tab stays open, loaded and **selected**; it slides to the end of the list |
-| `⌘D` again on the same page | bookmark removed; the tab returns to the **very top** of the tabs, right under the pinned squares, still selected |
+| `⌘D` on a fresh page | bookmark appended as the **last** row of the bar; the tab stays open, loaded, **selected**, and moves to the **first row of the tabs** |
+| `⌘D` again on the same page | bookmark removed; the tab stays at the first row, still selected |
+| either direction | the page always ends up **at the top**, never at the bottom — the sidebar scrolls up to it, the way pinning already behaves |
 | `⇧⌘D` on an ordinary tab | pinned into the squares on top of the sidebar |
 | `⇧⌘D` on a pinned tab | unpinned **and** moved to the first row of the tabs, and it stays the selected tab |
 | any of the above | nothing is ever closed, so no sleeping neighbour wakes up and reloads |
@@ -126,6 +135,7 @@ Written down because these were asked for one by one and each is easy to break b
 | opening a duplicate | a note on the page, nothing closed — cleaning is a command you run |
 | ordering / grouping | always acts on the last **normal** window, even when the palette window was focused last |
 | every command | present in both the palette and the panel with the same name |
+| the model | proposes, never applies — and only sees titles and hosts |
 
 ## Tests
 
@@ -206,6 +216,7 @@ Everything this extension draws is themable instead: palette, popup, settings, p
 | `keys.js` | content script: the keymap over the browser's shortcuts, plus on-page toasts |
 | `palette.js` / `.html` | the ⇧⌘K palette, as a layer or as a window |
 | `commands.js` | the single list of commands every surface renders |
+| `sense.js` / `.html` | the proposal window for blocks by meaning |
 | `panel.js` / `.html` | the side panel |
 | `options.js` / `.html` | settings: keys, pins, tabs, cleanup, blocks, appearance |
 | `popup.js` / `.html` | toolbar popup |

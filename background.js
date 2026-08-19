@@ -484,6 +484,127 @@ async function tidyUp(windowId) {
   return closed + groups;
 }
 
+// ---------- группировка по смыслу: модель через OpenRouter ----------
+//
+// Домен — плохой признак: полтора десятка вкладок на одном github ничего не
+// говорят о том, чем человек занят. Модель видит только заголовки и хосты,
+// содержимое страниц никуда не уходит. Ключ хранится локально и не синкается.
+// Ничего не применяется молча: сначала окно с предложением, применяет человек.
+
+const AI_DEFAULTS = { aiKey: '', aiModel: 'anthropic/claude-haiku-4.5' };
+
+const SENSE_PROMPT = [
+  'You sort open browser tabs into working blocks — by what the person is doing, not by website.',
+  'Answer with JSON only: {"groups":[{"name":"...","tabs":[0,2,5]}]}.',
+  'Rules: 3 to 7 groups; name is one or two lowercase words, no emoji, no punctuation;',
+  'every group holds at least two tabs; a tab belongs to at most one group;',
+  'leave a tab out of every group if it fits nothing.'
+].join(' ');
+
+const GROUP_COLORS = ['blue', 'cyan', 'green', 'yellow', 'orange', 'pink', 'purple', 'grey'];
+
+const clip = (t, n) => (t || '').replace(/\s+/g, ' ').trim().slice(0, n);
+
+async function senseProposal(windowId) {
+  const wid = await targetWindowId(windowId);
+  if (wid == null) return 0;
+
+  const { aiKey, aiModel } = await chrome.storage.local.get(AI_DEFAULTS);
+  if (!aiKey) { flash('KEY', 'grouping by meaning needs an OpenRouter key\nsettings → card 07', false); return 0; }
+
+  const tabs = (await chrome.tabs.query({ windowId: wid, pinned: false })).filter(t => /^https?:/.test(t.url || ''));
+  if (tabs.length < 4) { flash('—', 'too few tabs to read a pattern in', false); return 0; }
+
+  const list = tabs.map((t, i) => `${i}. ${clip(t.title, 90)} — ${hostOfTab(t)}`).join('\n');
+  flash('AI', 'reading ' + tabs.length + ' titles…');
+
+  let parsed;
+  try {
+    const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: 'Bearer ' + aiKey,
+        'HTTP-Referer': 'https://apps.aimindset.org/aside-tweaks/',
+        'X-Title': 'Aside Tweaks'
+      },
+      body: JSON.stringify({
+        model: aiModel, temperature: 0,
+        response_format: { type: 'json_object' },
+        messages: [{ role: 'system', content: SENSE_PROMPT }, { role: 'user', content: list }]
+      })
+    });
+    if (!r.ok) throw new Error(r.status + ' ' + clip(await r.text(), 100));
+    const j = await r.json();
+    parsed = JSON.parse(j.choices?.[0]?.message?.content || '{}');
+  } catch (e) {
+    flash('AI', 'openrouter refused\n' + clip(String(e), 90), false);
+    return 0;
+  }
+
+  const seen = new Set();
+  const groups = [];
+  for (const g of parsed.groups || []) {
+    const ids = [], titles = [];
+    for (const i of g.tabs || []) {
+      const t = tabs[Number(i)];
+      if (!t || seen.has(t.id)) continue;
+      seen.add(t.id);
+      ids.push(t.id);
+      titles.push(clip(t.title || t.url, 60));
+    }
+    if (ids.length > 1) groups.push({ name: clip(String(g.name || 'block'), 24).toLowerCase(), ids, titles });
+  }
+  if (!groups.length) { flash('—', 'the model found no blocks here', false); return 0; }
+
+  await chrome.storage.session.set({
+    sensePlan: { windowId: wid, groups, left: tabs.length - seen.size, model: aiModel, at: Date.now() }
+  });
+  await openSenseWindow(wid);
+  return groups.length;
+}
+
+let senseWinId = null;
+
+async function openSenseWindow(wid) {
+  if (senseWinId != null) {
+    const w = await chrome.windows.get(senseWinId).catch(() => null);
+    if (w) { await chrome.windows.update(senseWinId, { focused: true }); return; }
+    senseWinId = null;
+  }
+  const src = wid != null ? await chrome.windows.get(wid).catch(() => null) : null;
+  const W = 430, H = 460;
+  const w = await chrome.windows.create({
+    url: chrome.runtime.getURL('sense.html'),
+    type: 'popup', width: W, height: H, focused: true,
+    left: src ? Math.round(src.left + (src.width - W) / 2) : undefined,
+    top: src ? Math.round(src.top + (src.height - H) / 3) : undefined
+  });
+  senseWinId = w.id;
+}
+
+chrome.windows.onRemoved.addListener(id => { if (id === senseWinId) senseWinId = null; });
+
+async function senseApply() {
+  const { sensePlan } = await chrome.storage.session.get({ sensePlan: null });
+  if (!sensePlan?.groups?.length) return 0;
+  let made = 0;
+  for (const g of sensePlan.groups) {
+    const alive = [];
+    for (const id of g.ids) if (await chrome.tabs.get(id).catch(() => null)) alive.push(id);
+    if (alive.length < 2) continue;
+    const groupId = await chrome.tabs.group({ tabIds: alive }).catch(() => null);
+    if (groupId == null) continue;
+    await chrome.tabGroups.update(groupId, {
+      title: g.name, collapsed: false, color: GROUP_COLORS[made % GROUP_COLORS.length]
+    }).catch(() => { });
+    made++;
+  }
+  await chrome.storage.session.remove('sensePlan').catch(() => { });
+  flash(String(made), made ? `${made} blocks made by meaning` : 'nothing left to group');
+  return made;
+}
+
 // ---------- закладка ⇄ вкладка: одна клавиша в обе стороны ----------
 // Страница ложится ПОСЛЕДНЕЙ строкой панели закладок. Вкладку при этом не закрываем:
 // закрытие будит соседнюю спящую вкладку и та перезагружается — ощущается как «увело
@@ -515,15 +636,14 @@ async function keepSelected(tabId, windowId) {
   if (windowId != null) await chrome.windows.update(windowId, { focused: true }).catch(() => { });
 }
 
-// вкладку из группы не выдёргиваем: она уедет из своего блока, а это не то, о чём просили
-async function moveTabTo(tab, where) {
+// Всегда наверх, в обе стороны. Низ списка означает прокрутку боковой панели вниз —
+// у полусотни вкладок это выглядит как «меня куда-то унесло». Пин работает именно так,
+// и закладка должна ощущаться так же. Вкладку из группы не выдёргиваем: блок целее.
+async function moveTabTo(tab) {
   if (!settings.favoriteMovesTab || tab.pinned) return false;
   if (tab.groupId != null && tab.groupId > -1) return false;
-  let index = -1;
-  if (where === 'top') {
-    const all = await chrome.tabs.query({ windowId: tab.windowId }).catch(() => []);
-    index = all.filter(t => t.pinned).length;   // сразу под закреплёнными квадратиками
-  }
+  const all = await chrome.tabs.query({ windowId: tab.windowId }).catch(() => []);
+  const index = all.filter(t => t.pinned).length;   // сразу под закреплёнными квадратиками
   try { await chrome.tabs.move(tab.id, { index }); return true; } catch { return false; }
 }
 
@@ -537,10 +657,10 @@ async function favoriteTab(windowId) {
 
   if (twin) {
     await chrome.bookmarks.remove(twin.id).catch(() => { });
-    const moved = await moveTabTo(tab, 'top');
+    const moved = await moveTabTo(tab);
     await keepSelected(tab.id, tab.windowId);
     flash('BM−', moved
-      ? 'back in the tabs — at the very top ↑'
+      ? 'back in the tabs — first row, selected ↑'
       : 'removed from the bookmarks bar ↑');
     return -1;
   }
@@ -548,11 +668,11 @@ async function favoriteTab(windowId) {
   // последняя строка панели закладок — там, куда смотришь после нажатия
   const made = await chrome.bookmarks.create({ parentId: BAR, index: kids.length, title: tab.title || tab.url, url: tab.url });
   await chrome.storage.session.set({ lastFavId: made?.id ?? null, lastFavAt: Date.now() }).catch(() => { });
-  const moved = await moveTabTo(tab, 'bottom');
+  const moved = await moveTabTo(tab);
   await keepSelected(tab.id, tab.windowId);
   flash('BM+', (moved
-    ? 'last row of the bookmarks bar ↓\ntab moved down, still open and loaded'
-    : 'last row of the bookmarks bar ↓') + '\n⌘D again brings it back to the top');
+    ? 'in the bookmarks bar ★\ntab stays open, first row, selected ↑'
+    : 'in the bookmarks bar ★') + '\n⌘D again takes it out');
   return 1;
 }
 
@@ -786,7 +906,8 @@ chrome.windows.onRemoved.addListener(id => { if (id === paletteWinId) { paletteW
 
 const ACTIONS = {
   tidyDuplicates, groupByDomain, groupByRules, ungroupAll, sortByDomain,
-  pinTab, favoriteTab, listFavorites, bookmarkTab, tidyUp, sortByOpened, getStats, openPalette, togglePanel
+  pinTab, favoriteTab, listFavorites, bookmarkTab, tidyUp, sortByOpened, getStats, openPalette, togglePanel,
+  groupBySense: senseProposal, senseApply
 };
 
 // Одно и то же сочетание приходит с двух уровней — от страницы и от команды браузера.

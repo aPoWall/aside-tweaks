@@ -17,6 +17,11 @@ const TWEAK_COMMANDS = [
     words: 'dd dedup duplicates empty clean', on: ['panel', 'palette', 'popup']
   },
   {
+    action: 'groupBySense', glyph: '✳', title: 'blocks by meaning', sub: 'a model reads the titles', key: '',
+    hint: 'sends titles and hosts of the open tabs to OpenRouter and proposes blocks — you apply them yourself',
+    words: 'ai smart sense meaning model openrouter blocks', on: ['panel', 'palette', 'popup']
+  },
+  {
     action: 'groupByRules', glyph: '▤', title: 'group by my blocks', sub: 'rules from settings', key: '',
     hint: 'a block is a name plus substrings, set in settings',
     words: 'blocks group rules', on: ['panel', 'palette']

@@ -432,6 +432,53 @@ document.getElementById('resetKeys').addEventListener('click', async () => {
   flash('keys reset · ⌘D bookmark ⇄ tab · ⇧⌘D pin · ⌥⌘T tidy · ⇧⌘K palette');
 });
 
+// ---------- ключ OpenRouter ----------
+// Ключ и модель живут в local: sync унёс бы ключ на другие машины профиля.
+// Доступ к сети запрашиваем по кнопке — расширение не должно держать право
+// ходить на чужой хост, пока человек этой возможностью не пользуется.
+
+const AI_ORIGIN = { origins: ['https://openrouter.ai/*'] };
+const aiKeyEl = document.getElementById('aiKey');
+const aiModelEl = document.getElementById('aiModel');
+const aiStateEl = document.getElementById('aiState');
+
+async function renderAi() {
+  const { aiKey, aiModel } = await chrome.storage.local.get({ aiKey: '', aiModel: '' });
+  aiKeyEl.value = aiKey || '';
+  aiModelEl.value = aiModel || '';
+  aiModelEl.placeholder = 'anthropic/claude-haiku-4.5';
+  const granted = await chrome.permissions.contains(AI_ORIGIN).catch(() => false);
+  aiStateEl.textContent = !aiKey ? 'off — no key'
+    : granted ? 'connected ✓'
+      : 'key saved, network access still missing — press connect';
+}
+renderAi();
+
+document.getElementById('aiSave').addEventListener('click', async () => {
+  const key = aiKeyEl.value.trim();
+  if (!key) { aiStateEl.textContent = 'paste a key first'; return; }
+  // запрос права обязан идти из жеста человека, поэтому он живёт на кнопке
+  const granted = await chrome.permissions.request(AI_ORIGIN).catch(() => false);
+  if (!granted) { aiStateEl.textContent = 'network access refused — nothing saved'; return; }
+  await chrome.storage.local.set({ aiKey: key, aiModel: aiModelEl.value.trim() || 'anthropic/claude-haiku-4.5' });
+  await renderAi();
+  flash('openrouter connected · ✳ blocks by meaning is live');
+});
+
+document.getElementById('aiForget').addEventListener('click', async () => {
+  await chrome.storage.local.remove(['aiKey', 'aiModel']).catch(() => { });
+  await chrome.permissions.remove(AI_ORIGIN).catch(() => { });
+  await renderAi();
+  flash('key forgotten, network access revoked');
+});
+
+aiModelEl.addEventListener('change', async () => {
+  const { aiKey } = await chrome.storage.local.get({ aiKey: '' });
+  if (!aiKey) return;
+  await chrome.storage.local.set({ aiModel: aiModelEl.value.trim() || 'anthropic/claude-haiku-4.5' });
+  flash('model set');
+});
+
 document.getElementById('native').addEventListener('click', async () => {
   const url = 'chrome://extensions/shortcuts';
   try {
