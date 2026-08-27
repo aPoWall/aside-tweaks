@@ -218,6 +218,19 @@ def run_agent(prompt, path, name=""):
     return bool(data), err
 
 
+# ---------- сигнальная страница: палитра с глобальной клавиши ----------
+# До расширения снаружи не достучаться: chrome-extension:// из системы не открывается,
+# service worker спит. Зато `open -a Aside http://127.0.0.1:<port>/aside-tweaks/palette`
+# открывает обычную вкладку — на ней есть content script расширения, он и просит палитру.
+SIGNAL_PATH = "/aside-tweaks/palette"
+SIGNAL_HTML = """<!doctype html><html><head><meta charset="utf-8"><title>aside tweaks</title>
+<meta name="color-scheme" content="light dark">
+<style>html,body{height:100%;margin:0;background:#ececec;color:#6f6f6f;font:12.5px -apple-system,BlinkMacSystemFont,system-ui,sans-serif}
+.c{position:fixed;left:16px;bottom:12px;opacity:.8}
+@media (prefers-color-scheme:dark){html,body{background:#1e1e20;color:#8e8e93}}</style></head>
+<body><div class="c">aside tweaks · palette</div></body></html>""".encode("utf-8")
+
+
 # ---------- http ----------
 
 def origin_ok(origin):
@@ -270,9 +283,22 @@ class Handler(BaseHTTPRequestHandler):
         self._send(204, {})
 
     def do_GET(self):
+        u = urllib.parse.urlsplit(self.path)
+        # без ворот: страница для браузера, а не для расширения — и пустая иконка, чтобы не шуметь 403
+        if u.path == SIGNAL_PATH:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(SIGNAL_HTML)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(SIGNAL_HTML)
+            return
+        if u.path == "/favicon.ico":
+            self.send_response(204)
+            self.end_headers()
+            return
         if not self._gate():
             return
-        u = urllib.parse.urlsplit(self.path)
         qs = urllib.parse.parse_qs(u.query)
         one = lambda k, d="": (qs.get(k) or [d])[0]
         if u.path == "/health":

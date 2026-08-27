@@ -304,11 +304,28 @@
       <div class="row2" style="margin-bottom:9px">
         <span style="width:52px">port</span>
         <input type="number" id="deskPort" min="1024" max="65535" placeholder="49321" style="width:110px">
-      </div>
-      <div class="row2">
-        <button id="deskConnect">save port and probe</button>
+        <button id="deskConnect" style="white-space:nowrap">save port and probe</button>
         <span id="deskState" style="font-size:9px;color:var(--muted)"></span>
       </div>
+      <div class="row2" style="margin-bottom:9px">
+        <span style="width:52px">notes</span>
+        <div class="seg" id="notesLimit" style="flex:1">
+          <button data-v="0">none</button><button data-v="3">3 recent</button><button data-v="5">5 recent</button><button data-v="8">8 recent</button>
+        </div>
+      </div>
+      <small style="margin-bottom:9px">how many recent notes an empty query shows; a typed query always searches the vault by file name.</small>
+      <label class="opt"><input type="checkbox" id="notesClean">
+        <span>clean titles<small>vault names like <code>{AIM} {guide} Internal Mini-Deck Standard – 2026-08-27</code> read as <b>Internal Mini-Deck Standard</b> with <code>AIM</code> <code>guide</code> badges and the date on the right; off = the raw file name</small></span>
+      </label>
+      <label class="opt"><input type="checkbox" id="notesDate">
+        <span>show the date from the name</span>
+      </label>
+      <small style="margin-top:9px">
+        <b>from anywhere.</b> a global key cannot reach an extension, but it can open a page: the bridge serves
+        <code>/aside-tweaks/palette</code>, and the extension turns that tab into the palette on the page you came from
+        (or on a grey field where no page exists). bind <code>bridge/raycast/aside-palette.sh</code> in Raycast — with an
+        argument the palette opens with the query typed — or paste <code>bridge/hammerspoon.lua</code> for ⌥⌘K.
+      </small>
     </div>
   </div>
 

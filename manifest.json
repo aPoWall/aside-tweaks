@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Aside Tweaks",
-  "version": "4.15.0",
+  "version": "4.16.0",
   "description": "Palette (⇧⌘K) in the sidebar's own look — recent tabs, notes from Obsidian, agents in Orca, actions on ⌘K · own keymap over browser shortcuts · ⌘D folds a page into the bookmarks bar and back · duplicates by address or by title · tidy up.",
   "permissions": [
     "tabs",

@@ -123,6 +123,21 @@ bridge refuses. Config: `~/.config/aside-tweaks/desk.json` — vaults, folders a
 the agent command. Nothing runs until you install it; without it the palette simply has no `notes`
 and `>` answers with a pointer to the settings card.
 
+Notes are drawn from their vault names: `{AIM} {guide} Internal Mini-Deck Standard – 2026-08-27`
+reads as **Internal Mini-Deck Standard** with `aim` `guide` badges and the date on the right;
+settings card 09 sets how many recent notes an empty query shows (none · 3 · 5 · 8), whether titles
+are cleaned, and whether the date is shown.
+
+**From anywhere.** A global key cannot reach an extension — `chrome-extension://` pages do not open
+from outside the browser and the service worker sleeps — but it can open a page. The bridge serves
+`/aside-tweaks/palette`; `open -a Aside http://127.0.0.1:49321/aside-tweaks/palette` lands as a
+tab that carries the extension's content script, and that script asks for the palette. If the page
+you came from can host the layer, the signal tab closes and the palette opens there; otherwise the
+palette opens on the signal page itself — a grey field, no title bar, no traffic lights — and when
+it closes that tab goes and the previous one comes back. `?q=` types a query in advance.
+`bridge/raycast/aside-palette.sh` is a Raycast script command (give it a hotkey; its argument is
+the query), `bridge/hammerspoon.lua` binds ⌥⌘K.
+
 **One list of commands.** `commands.js` holds every command with its title, short name, glyph,
 key, section and one-line explanation; the palette, the panel and the popup render from it. Adding
 a command in one place adds it everywhere, and the names cannot drift apart between surfaces.
@@ -213,6 +228,7 @@ Written down because these were asked for one by one and each is easy to break b
 | the palette | opens on recent tabs, current one last; typing never re-animates the list; `⌘K` lists the row's actions, `esc` clears before it closes |
 | duplicates | by normalised address **or** by host + title; the copy used last survives; the count in the popup, the palette's `×N` and the cleanup agree because one function computes all three |
 | the desk bridge | listens on `127.0.0.1` only, answers only to the extension's header, opens only files inside a configured vault, starts an agent only in a configured folder |
+| the signal page | never stays: closed at once when the previous page hosts the layer, closed on palette exit otherwise; a switch made from the palette wins over the return to the previous tab |
 | the same key from two levels | a repeat within 450 ms is swallowed, so a page-level and a browser-level binding on one combo cannot toggle twice |
 | opening a duplicate | a note on the page, nothing closed — cleaning is a command you run |
 | ordering / grouping | always acts on the last **normal** window, even when the palette window was focused last |

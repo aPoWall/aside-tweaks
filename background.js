@@ -1023,7 +1023,7 @@ async function openPalette(windowId) {
   await openPaletteWindow(wid);
 }
 
-async function openPaletteWindow(windowId) {
+async function openPaletteWindow(windowId, q = '') {
   if (paletteWinId != null || paletteOpening) return;
   const wid = await targetWindowId(windowId);
   const src = wid != null ? await chrome.windows.get(wid).catch(() => null) : null;
@@ -1036,7 +1036,7 @@ async function openPaletteWindow(windowId) {
   const W = 640, H = 480;
   const left = src ? Math.round(src.left + (src.width - W) / 2) : undefined;
   const top = src ? Math.round(src.top + (src.height - H) / 3) : undefined;
-  const page = 'palette.html?win=' + (src?.id ?? '') + '&tab=' + (activeTab?.id ?? '');
+  const page = 'palette.html?win=' + (src?.id ?? '') + '&tab=' + (activeTab?.id ?? '') + (q ? '&q=' + encodeURIComponent(q) : '');
   try {
     const w = await chrome.windows.create({
       url: chrome.runtime.getURL(page),
@@ -1050,6 +1050,66 @@ async function openPaletteWindow(windowId) {
 }
 
 chrome.windows.onRemoved.addListener(id => { if (id === paletteWinId) { paletteWinId = null; dimPage(false); } });
+
+// ---------- глобальная клавиша: сигнальная страница моста ----------
+// Снаружи до расширения не достучаться: chrome-extension:// из системы не открывается, а
+// service worker спит. Зато `open -a Aside http://127.0.0.1:<port>/aside-tweaks/palette`
+// открывает обычную вкладку с нашим content script — он присылает paletteSignal. Если
+// страница, с которой ушли, умеет слой — сигнальная вкладка закрывается и палитра встаёт
+// там; иначе палитра встаёт слоем на самой сигнальной странице (серое поле, без
+// светофора), а когда закрывается — та вкладка уходит и возвращается прежняя.
+const signalPrev = new Map();   // сигнальная вкладка → вкладка, где были до неё
+
+const SIGNAL_URL = /^http:\/\/127\.0\.0\.1(:\d+)?\/aside-tweaks\/palette/;
+
+async function paletteSignal({ q = '' } = {}, sender) {
+  const sig = sender?.tab;
+  if (!sig) return 0;
+  const wid = sig.windowId;
+  if (paletteWinId != null) {
+    const w = await chrome.windows.get(paletteWinId).catch(() => null);
+    if (w) { await chrome.tabs.remove(sig.id).catch(() => { }); await chrome.windows.update(paletteWinId, { focused: true }); return 0; }
+    paletteWinId = null;
+  }
+  const others = (await chrome.tabs.query({ windowId: wid }).catch(() => []))
+    .filter(t => t.id !== sig.id && !SIGNAL_URL.test(t.url || ''));
+  const prev = others.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0] || null;
+
+  // прежняя страница умеет слой — уходим туда, сигнальная вкладка больше не нужна
+  if (prev && settings.paletteOverlay !== false && /^https?:\/\//.test(prev.url || '')) {
+    const alive = await chrome.tabs.sendMessage(prev.id, { type: 'ping' }, { frameId: 0 }).catch(() => null);
+    if (alive?.pong) {
+      await chrome.tabs.update(prev.id, { active: true }).catch(() => { });
+      await chrome.tabs.remove(sig.id).catch(() => { });
+      const shown = await chrome.tabs.sendMessage(prev.id, { type: 'palette', on: true, win: wid, tab: prev.id, q }, { frameId: 0 }).catch(() => null);
+      if (!shown?.shown) await openPaletteWindow(wid, q);
+      await chrome.windows.update(wid, { focused: true }).catch(() => { });
+      return 1;
+    }
+  }
+  // иначе палитра живёт на сигнальной странице; «здесь» для неё — прежняя вкладка
+  signalPrev.set(sig.id, prev?.id ?? null);
+  const shown = await chrome.tabs.sendMessage(sig.id, { type: 'palette', on: true, win: wid, tab: prev?.id ?? sig.id, q, signal: true }, { frameId: 0 }).catch(() => null);
+  if (!shown?.shown) { signalPrev.delete(sig.id); await openPaletteWindow(wid, q); }
+  await chrome.windows.update(wid, { focused: true }).catch(() => { });
+  return 2;
+}
+
+// палитра на сигнальной странице закрылась: если выбор ничего не активировал — вернуться на
+// прежнюю вкладку; сигнальную убрать в любом случае
+async function signalDone(_, sender) {
+  const sig = sender?.tab;
+  if (!sig) return 0;
+  const prevId = signalPrev.get(sig.id);
+  signalPrev.delete(sig.id);
+  const still = await chrome.tabs.get(sig.id).catch(() => null);
+  if (!still) return 0;
+  if (still.active && prevId != null) await chrome.tabs.update(prevId, { active: true }).catch(() => { });
+  await chrome.tabs.remove(sig.id).catch(() => { });
+  return 1;
+}
+
+const SIGNAL = { paletteSignal, signalDone };
 
 // ---------- desk bridge: заметки Obsidian и агенты Orca через локальный мост ----------
 // Мост — bridge/desk.py на 127.0.0.1 (manifest: host_permissions на 127.0.0.1, без диалога —
@@ -1124,6 +1184,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg?.action === 'openPaletteWindow') { openPaletteWindow(msg.windowId); sendResponse({ ok: true }); return; }
+  if (SIGNAL[msg?.action]) {
+    SIGNAL[msg.action](msg, sender).then(r => sendResponse({ ok: true, count: r })).catch(e => sendResponse({ ok: false, error: String(e) }));
+    return true;
+  }
   if (DESK[msg?.action]) {
     DESK[msg.action](msg).then(data => sendResponse({ ok: !!data, data })).catch(e => sendResponse({ ok: false, error: String(e) }));
     return true;

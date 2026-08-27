@@ -2,7 +2,7 @@
 <html lang="en" data-look="aside">
 <head>
 <meta charset="utf-8">
-<title>palette</title>
+<title>aside tweaks</title>
 <link rel="stylesheet" href="instrument.css">
 <style>
   /* токены приходят из instrument.css — палитра, попап, панель и настройки красятся одним файлом */
@@ -54,7 +54,9 @@
   .item .glyph { width: 18px; text-align: center; flex: none; color: var(--dim); font-size: 13px; }
   .item .t { overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 0; font-size: 13px; }
   .item .s { color: var(--muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; flex: 1 1 auto; min-width: 0; }
-  .item .twin { flex: none; font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; line-height: 15px; }
+  .item .twin, .item .tag { flex: none; font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; line-height: 15px; }
+  .item .tag { text-transform: lowercase; }
+  .item .date { flex: none; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .item .k { flex: none; font-size: 11px; color: var(--muted); }
   .item .kind { flex: none; font-size: 11px; color: var(--muted); min-width: 52px; text-align: right; }
   .item.sel .kind { color: var(--dim); }

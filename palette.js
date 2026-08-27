@@ -12,6 +12,8 @@
 const params = new URLSearchParams(location.search);
 const srcWin = Number(params.get('win')) || null;
 const srcTab = Number(params.get('tab')) || null;
+// запрос, с которым палитру позвали снаружи (Raycast: «aside palette <текст>»)
+const q0 = params.get('q') || '';
 // встроенный режим: палитра живёт слоем на странице, закрывать окно нечего
 const embed = params.get('embed') === '1';
 
@@ -45,6 +47,9 @@ let sel = 0;
 let blocks = [];
 let mouseLive = false;   // наведение выбирает строку только после реального движения мыши
 let desk = null;         // мост к машине: { ok, vaults, worktrees } либо null — тогда заметок и агентов нет
+// как показывать заметки — карточка 09 настроек
+let notesPrefs = { notesLimit: 3, notesClean: true, notesDate: true };
+chrome.storage.sync.get(notesPrefs).then(s => { notesPrefs = { ...notesPrefs, ...s }; });
 let actsOpen = false, actSel = 0, acts = [];
 
 chrome.storage.sync.get({ groupRules: [] }).then(s => {
@@ -103,6 +108,26 @@ const toUrl = s => s.startsWith('http') ? s : 'https://' + s;
 
 // Aside помечает спящую вкладку эмодзи 💤 прямо в заголовке — для поиска его снимаем
 const plainTitle = s => (s || '').replace(/^\s*💤\s*/, '');
+
+// имя заметки в волте: `{project} {type} Описание – YYYY-MM-DD[ HHMM].md` —
+// фигурные скобки становятся бейджами, дата уходит вправо, остаётся чистый заголовок
+function parseNote(name) {
+  let t = (name || '').trim();
+  const tags = [];
+  // недавние в Obsidian бывают и картинками, и pdf: расширение уходит в бейдж, дата остаётся читаемой
+  const ext = /\.(png|jpe?g|gif|webp|svg|pdf|csv|json|txt|mp4|mov|excalidraw|canvas|base)$/i.exec(t);
+  if (ext) { t = t.slice(0, ext.index); if (!/^(excalidraw|canvas|base)$/i.test(ext[1])) tags.push(ext[1].toLowerCase()); }
+  // фигурные скобки бывают и в середине: `S26 {draw} Слайды – дата`
+  t = t.replace(/\{([^}]{1,24})\}\s*/g, (_, tag) => { tags.push(tag); return ''; });
+  let date = '';
+  const d = /\s[–—-]\s(\d{4}-\d{2}-\d{2})(?:\s+\d{4})?\s*$/.exec(t);
+  if (d) { date = d[1]; t = t.slice(0, d.index); }
+  t = t.replace(/\s{2,}/g, ' ').trim();
+  return { title: t || name, tags, date };
+}
+
+// сигнальная страница моста — техническая, в списке вкладок ей не место
+const SIGNAL_URL = /^http:\/\/127\.0\.0\.1(:\d+)?\/aside-tweaks\/palette/;
 
 // насколько строка отвечает запросу: начало заголовка > начало слова > где-то в заголовке > адрес
 function matchScore(q, title, url) {
@@ -209,7 +234,7 @@ async function build(raw) {
   // пустые новые вкладки в список не идут — переключаться на них незачем, чистка их и так уберёт
   const EMPTY = /^(about:blank|chrome:\/\/newtab\/?|chrome:\/\/new-tab-page\/?|aside:\/\/newtab\/?)$/;
   const allTabs = (await chrome.tabs.query({}).catch(() => []))
-    .filter(t => t.url && !EMPTY.test(t.url) && !t.url.startsWith('chrome-extension://' + chrome.runtime.id));
+    .filter(t => t.url && !EMPTY.test(t.url) && !SIGNAL_URL.test(t.url) && !t.url.startsWith('chrome-extension://' + chrome.runtime.id));
   const open = new Set(allTabs.map(t => normUrl(t.url)));
   // близнецы считает фон — тем же правилом, что и чистка: точный адрес либо тот же хост и заголовок
   const stats = (await send('getStats'))?.data || null;
@@ -259,12 +284,16 @@ async function build(raw) {
   }
 
   // заметки Obsidian — недавние из workspace.json обоих волтов, по запросу — поиск по именам
-  if (wantNotes && (q || scope !== 'commands')) {
-    const res = (await send('deskNotes', { q: qRaw, limit: scope === 'notes' ? 40 : (q ? 6 : 3) }))?.data;
+  const notesLimit = scope === 'notes' ? 40 : (q ? 6 : Number(notesPrefs.notesLimit) || 0);
+  if (wantNotes && notesLimit > 0 && (q || scope !== 'commands')) {
+    const res = (await send('deskNotes', { q: qRaw, limit: notesLimit }))?.data;
     for (const n of res?.notes || []) {
       const key = 'note:' + n.vault + '/' + n.file;
+      const parsed = notesPrefs.notesClean === false ? { title: n.title, tags: [], date: '' } : parseNote(n.title);
+      const folder = (n.folder || '').split('/').filter(Boolean).slice(-1)[0] || '';
       out.push({
-        kind: 'note', section: 'notes', glyph: '◇', title: n.title, sub: n.vault + (n.folder ? ' · ' + n.folder : ''),
+        kind: 'note', section: 'notes', glyph: '◇', title: parsed.title, sub: n.vault + (folder ? ' · ' + folder : ''),
+        tags: parsed.tags, date: notesPrefs.notesDate === false ? '' : parsed.date,
         kindLabel: 'note', primary: 'open', frec: score(key),
         run: async () => { bump(key); await send('deskOpen', { vault: n.vault, file: n.file }); closeSelf(); },
         actions: [
@@ -400,6 +429,18 @@ function rowFor(it, i) {
     w.textContent = it.twin;
     w.title = 'this page is open more than once · clean duplicates keeps the copy you used last';
     d.append(w);
+  }
+  for (const tag of it.tags || []) {
+    const b = document.createElement('span');
+    b.className = 'tag';
+    b.textContent = tag;
+    d.append(b);
+  }
+  if (it.date) {
+    const dt = document.createElement('span');
+    dt.className = 'date';
+    dt.textContent = it.date;
+    d.append(dt);
   }
   if (it.k) {
     const k = document.createElement('span');
@@ -596,5 +637,6 @@ if (embed) {
 }
 
 renderScopes();
+if (q0) qEl.value = q0;
 qEl.focus();
 deskProbe().then(refresh);

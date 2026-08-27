@@ -64,9 +64,22 @@ globalThis.chrome = {
     update: (id, p) => { Object.assign(TABS.find(t => t.id === id) || {}, p); return Promise.resolve(); },
     group: ({ tabIds }) => { log.push('group ' + tabIds.join(',')); return Promise.resolve(1); },
     ungroup: ids => { log.push('ungroup ' + [].concat(ids).length); return Promise.resolve(); },
-    discard: () => Promise.resolve()
+    discard: () => Promise.resolve(),
+    // content script есть только на страницах из LAYER_OK: ping → pong, палитра → shown
+    sendMessage: (id, msg, opts, cb) => {
+      const callback = typeof opts === 'function' ? opts : cb;
+      if (callback) { callback(); return; }          // тосты и dim идут колбэком — ответ не нужен
+      const t = TABS.find(x => x.id === id);
+      if (!t || !LAYER_OK.has(id)) return Promise.reject(new Error('no receiver'));
+      sent.push({ id, ...msg });
+      if (msg?.type === 'ping') return Promise.resolve({ pong: true, top: true });
+      if (msg?.type === 'palette') return Promise.resolve({ shown: true });
+      return Promise.resolve();
+    }
   }
 };
+const LAYER_OK = new Set();
+const sent = [];
 
 // окна: обычное рабочее и popup-окно палитры — «последнее в фокусе» бывает вторым
 const WINS = { 1: { id: 1, type: 'normal', focused: true }, 9: { id: 9, type: 'popup' } };
@@ -116,6 +129,10 @@ const call = (action, extra = {}) => new Promise(res => {
 
 let fails = 0;
 const check = (name, ok, detail = '') => { console.log((ok ? 'PASS ' : 'FAIL ') + name + (detail ? ' · ' + detail : '')); if (!ok) fails++; };
+const callFrom = (action, tabId, extra = {}) => new Promise(res => {
+  const handler = (L['msg'] || [])[0];
+  handler({ action, ...extra }, { tab: TABS.find(t => t.id === tabId) }, res);
+});
 
 // сцена для уборки: дубль, пустая, разные сайты; lastAccessed — где были последней
 TABS = [
@@ -294,6 +311,44 @@ const strict = await call('getStats');
 check('dedupByTitle выключен — только точный адрес', strict?.data?.dups === 0, JSON.stringify(strict?.data));
 store.sync.dedupByTitle = true;
 await fire('storeChanged', { dedupByTitle: { newValue: true } }, 'sync');
+
+// сигнальная страница моста, путь 1: прежняя вкладка умеет слой — сигнальная закрывается, палитра там
+TABS = [
+  { id: 71, windowId: 1, index: 0, pinned: false, url: 'https://docs.example/page', title: 'Docs', lastAccessed: 500 },
+  { id: 72, windowId: 1, index: 1, pinned: false, url: 'https://old.example/', title: 'Old', lastAccessed: 100 },
+  { id: 73, windowId: 1, index: 2, pinned: false, active: true, url: 'http://127.0.0.1:49321/aside-tweaks/palette?q=mini', title: 'aside tweaks' }
+];
+LAYER_OK.add(71); sent.length = 0;
+const sig1 = await callFrom('paletteSignal', 73, { q: 'mini' });
+const pal1 = sent.find(m => m.type === 'palette');
+check('сигнал: прежняя вкладка по свежести, не по индексу', pal1?.id === 71 && pal1?.tab === 71, JSON.stringify(pal1));
+check('сигнал: запрос доехал до палитры', pal1?.q === 'mini' && !pal1?.signal);
+check('сигнал: сигнальная вкладка закрыта, прежняя активна', sig1?.count === 1 && !TABS.some(t => t.id === 73) && TABS.find(t => t.id === 71)?.active === true, TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
+
+// путь 2: прежняя без content script — палитра на сигнальной странице, после закрытия та уходит
+TABS = [
+  { id: 81, windowId: 1, index: 0, pinned: false, url: 'about:blank', title: '', lastAccessed: 500 },
+  { id: 82, windowId: 1, index: 1, pinned: false, active: true, url: 'http://127.0.0.1:49321/aside-tweaks/palette', title: 'aside tweaks' }
+];
+LAYER_OK.clear(); LAYER_OK.add(82); sent.length = 0;
+const sig2 = await callFrom('paletteSignal', 82);
+const pal2 = sent.find(m => m.type === 'palette');
+check('сигнал без слоя рядом: палитра на самой сигнальной странице', sig2?.count === 2 && pal2?.id === 82 && pal2?.signal === true && pal2?.tab === 81, JSON.stringify(pal2));
+check('сигнальная вкладка пока жива', TABS.some(t => t.id === 82));
+const done2 = await callFrom('signalDone', 82);
+check('после закрытия: сигнальная ушла, прежняя вернулась', done2?.count === 1 && !TABS.some(t => t.id === 82) && TABS.find(t => t.id === 81)?.active === true, TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
+
+// выбор из палитры уже активировал другую вкладку — назад на прежнюю не возвращаемся
+TABS = [
+  { id: 91, windowId: 1, index: 0, pinned: false, url: 'about:blank', lastAccessed: 500 },
+  { id: 92, windowId: 1, index: 1, pinned: false, url: 'https://target.example/', title: 'Target', lastAccessed: 50 },
+  { id: 93, windowId: 1, index: 2, pinned: false, active: true, url: 'http://127.0.0.1:49321/aside-tweaks/palette' }
+];
+LAYER_OK.clear(); LAYER_OK.add(93);
+await callFrom('paletteSignal', 93);
+TABS.forEach(t => t.active = t.id === 92);   // палитра переключила на цель
+await callFrom('signalDone', 93);
+check('переключение из палитры сильнее возврата', TABS.find(t => t.id === 92)?.active === true && !TABS.some(t => t.id === 93), TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
 
 console.log(fails ? `\n${fails} провалов` : '\nвсе проверки зелёные');
 process.exit(fails ? 1 : 0);

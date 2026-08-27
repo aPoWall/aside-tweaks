@@ -132,6 +132,7 @@ function setDim(on) {
 
 let palette = null;
 let paletteReady = false;
+let signalHost = false;   // палитра стоит на сигнальной странице моста — после закрытия та уходит
 
 function closePalette() {
   if (!palette) return;
@@ -140,11 +141,16 @@ function closePalette() {
   paletteReady = false;
   el.classList.add('out');
   setTimeout(() => el.remove(), 160);
+  if (signalHost) {
+    signalHost = false;
+    try { chrome.runtime.sendMessage({ action: 'signalDone' }, () => void chrome.runtime.lastError); } catch { }
+  }
 }
 
-function openPaletteLayer({ win, tab }) {
+function openPaletteLayer({ win, tab, q, signal }) {
   if (palette) return true;
   if (!document.body) return false;
+  signalHost = !!signal;
 
   const host = document.createElement('div');
   host.style.cssText = 'all:initial;position:fixed;inset:0;z-index:2147483647';
@@ -191,7 +197,7 @@ function openPaletteLayer({ win, tab }) {
   wrap.className = 'wrap';
   const frame = document.createElement('iframe');
   frame.setAttribute('title', 'aside tweaks palette');
-  frame.src = chrome.runtime.getURL('palette.html') + '?embed=1&win=' + (win ?? '') + '&tab=' + (tab ?? '');
+  frame.src = chrome.runtime.getURL('palette.html') + '?embed=1&win=' + (win ?? '') + '&tab=' + (tab ?? '') + (q ? '&q=' + encodeURIComponent(q) : '');
   wrap.append(frame);
 
   root.append(style, back, wrap);
@@ -216,7 +222,20 @@ window.addEventListener('message', (e) => {
   if (e.data?.tw === 'palette-close') closePalette();
 });
 
+// сигнальная страница моста: сюда приводит `open -a Aside http://127.0.0.1:<port>/aside-tweaks/palette`
+// с глобальной клавиши (Raycast, Hammerspoon) — просим палитру, дальше решает фон
+const SIGNAL_PAGE = /^127\.0\.0\.1(:\d+)?$/.test(location.host) && location.pathname === '/aside-tweaks/palette';
+if (SIGNAL_PAGE && window.top === window) {
+  const fire = () => {
+    const q = new URLSearchParams(location.search).get('q') || '';
+    try { chrome.runtime.sendMessage({ action: 'paletteSignal', q }, () => void chrome.runtime.lastError); } catch { }
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fire, { once: true });
+  else fire();
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.type === 'ping') { sendResponse({ pong: true, top: window.top === window }); return; }
   if (msg?.type === 'toast' && typeof msg.text === 'string') toast(msg.text);
   if (msg?.type === 'dim') setDim(!!msg.on);
   if (msg?.type === 'palette') {
