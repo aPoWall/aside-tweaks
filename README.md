@@ -2,9 +2,10 @@
 
 ![aside tweaks — instrument 01, tab surgery](docs/banner.png)
 
-A small extension for the [Aside](https://aside.com) browser: a command palette, a keymap that
-sits **above** the browser's own shortcuts, Arc-style pins, duplicate cleanup and tab placement
-that actually holds.
+A small extension for the [Aside](https://aside.com) browser: a command palette built like
+Raycast over tabs, history, bookmarks, Obsidian notes and agents, a keymap that sits **above** the
+browser's own shortcuts, Arc-style pins, duplicate cleanup that also sees twins by title, and tab
+placement that actually holds.
 
 Built by [Alex Povaliaev](https://github.com/aPoWall) for daily use, kept in the open.
 
@@ -35,7 +36,9 @@ physical key code, so switching to a non-Latin layout doesn't silently break the
 **Search beats navigation.** With fifty tabs open, hunting the sidebar is slower than typing.
 The palette opens on the tabs you were in last, ranks a query by what you actually pick — frequency
 with a two-week decay — collapses history by normalised url so one site can't flood the list, and
-switches to a page that is already open instead of opening it twice.
+switches to a page that is already open instead of opening it twice. Since v4.15 it also reaches
+past the browser: the notes you had open in Obsidian and the agents running in Orca, through a
+small local bridge (below).
 
 Everything else is repair work: a placement guard that holds a new tab under the current one while
 the browser re-orders it, cleanup that also collects the empty new tabs, groups that open expanded
@@ -50,6 +53,13 @@ git clone https://github.com/aPoWall/aside-tweaks.git
 `chrome://extensions` → enable Developer mode → **Load unpacked** → pick the folder.
 Chromium 114+ (Aside is built on 151), Manifest V3.
 
+Optional, for notes and agents in the palette — the desk bridge, a LaunchAgent on macOS:
+
+```bash
+bridge/install.sh        # writes ~/.config/aside-tweaks/desk.json on first run — edit it, run again
+bridge/install.sh --remove
+```
+
 ## What it does
 
 **Palette — ⇧⌘K.** A layer over the page, not a second window: the page behind it darkens and
@@ -58,7 +68,14 @@ mistake it for something you have to manage. It is an extension document inside 
 frame, so it keeps full access to tabs, history and bookmarks while it sits on the page. Where no
 page exists — `chrome://`, a new tab, Aside's own interface — or where the site's security policy
 refuses foreign frames, it falls back to a centred window automatically. `⇥` switches scope:
-`all · tabs · history · bookmarks · commands`.
+`all · tabs · history · bookmarks · notes · commands`.
+
+The shape is Raycast's: a row is icon · title · subtitle · **type** on the right (`tab`, `asleep`,
+`history`, `bookmark`, `note`, `command`, `terminal`), the footer names the primary action for the
+selected row (`switch ↵`, `open ↵`, `run ↵`), and **`⌘K` opens the actions panel** for that row —
+switch, pin, `bookmark ⇄ tab`, close tab, copy url for a tab; open, open pinned, open in a block,
+copy url for a bookmark or a history row. The keys printed in the panel work without opening it:
+`⇧↵` `⌘⌫` `⌘B` `⌘C`. `esc` clears the query first and closes only when it is empty.
 
 - an empty query shows **recent** — the open tabs in the order you were in them, the way `⌃⇥`
   cycles in Arc; the page you are on sits last, since that is the one you are switching *from*
@@ -68,8 +85,11 @@ refuses foreign frames, it falls back to a centred window automatically. `⇥` s
   pages that are already open are left to the tabs section
 - a bookmark or a history row whose page is open says `switch ↵` and goes to that tab; a pasted
   address that is open becomes `Switch to …` — nothing opens twice
-- a tab that is open more than once carries `×2`; *clean duplicates* shows what it would close
+- a tab that is open more than once carries `×2` — counted by the background with the same rule
+  as the cleanup, so twins by title show it too; *clean duplicates* shows what it would close
   right now, counted live
+- `> prompt` is agent mode: the live Orca terminals to switch to, and `run in <folder>` rows that
+  start a new agent with that prompt — needs the desk bridge
 - paste a url and you get `Open`, `Open in block · <name>`, `Open pinned`
 - `⇧↵` is the row's second action: pin the tab, or open the address already pinned
 - arithmetic in the input (`2+2`, `(19*3)/2`), `↵` copies the result
@@ -91,9 +111,21 @@ small window** — nothing is regrouped until you press apply. Off until you pas
 card 07; network access to `openrouter.ai` is an optional permission requested at that moment, not
 held in advance.
 
-**One list of commands.** `commands.js` holds every command with its title, glyph, key and
-one-line explanation; the palette and the panel render from it. Adding a command in one place
-adds it everywhere, and the names cannot drift apart between surfaces.
+**Notes and agents — the desk bridge.** A browser extension cannot read a file or start a
+process, so `bridge/desk.py` does it on its behalf: a standard-library Python server on
+`127.0.0.1:49321` that reads each vault's `.obsidian/workspace.json` — Obsidian's own *recent
+files* list — keeps a filename index for search, opens a note through `obsidian://` (Advanced URI
+when the vault id is configured, plain `open` otherwise), lists Orca terminals with
+`orca terminal list`, switches to one, or creates one with `claude '<prompt>'` in a folder from
+the config. The gate is a header only this extension sends: Chromium sends no `Origin` for an
+extension's own requests, and a web page cannot add a custom header without a CORS preflight the
+bridge refuses. Config: `~/.config/aside-tweaks/desk.json` — vaults, folders an agent may start in,
+the agent command. Nothing runs until you install it; without it the palette simply has no `notes`
+and `>` answers with a pointer to the settings card.
+
+**One list of commands.** `commands.js` holds every command with its title, short name, glyph,
+key, section and one-line explanation; the palette, the panel and the popup render from it. Adding
+a command in one place adds it everywhere, and the names cannot drift apart between surfaces.
 
 **Own keymap.** Every action is bindable inside the extension, and the binding wins over the
 browser's: keydown reaches the page in the capture phase *before* the browser applies its
@@ -129,7 +161,12 @@ toggles off on a second call.
 
 **Cleanup.** Two copies are the same page when they differ only by `http`/`https`, `www.`, a
 default port, `index.html`, a trailing slash, tracking params or the `#anchor` — the key is shared
-by dedupe, the palette's `×2` and the bookmark match. Of two copies the one you used last is kept
+by dedupe, the palette's `×2` and the bookmark match. They are also the same page when they share
+the **host and the title**: four `AIM VISUAL` tabs on one app with four different query strings
+read as one page to the eye, and `0 duplicates` on them was a lie. Titles that say nothing —
+`New Tab`, the address itself, anything under four characters — never match; the sidebar's `💤`
+marker is stripped before comparing; settings card 04 turns the title rule off. Clusters are built
+with union-find, so a tab can join through either key. Of the copies the one you used last is kept
 (the active one first, then the most recently accessed, then whichever is awake), the rest close.
 The manual command clears every empty new tab as well, leaving a window its last tab so it never
 closes itself. Auto-dedupe stays off by default; opening a duplicate shows a note instead.
@@ -173,11 +210,13 @@ Written down because these were asked for one by one and each is easy to break b
 | a tab inside a group | `⌘D` takes it out (so the sidebar can fold it in); `⇧⌘D` and the panel leave blocks alone |
 | opening an address that is already open | the palette, a bookmark row, a pasted url — all **switch** to the open tab; no second copy |
 | `⌥⌘T` | closes duplicates and empties, keeps the copy used last, puts loose tabs on top by recency, gathers blocks only from ≥3 tabs, never groups a page that lives in the bookmarks bar |
-| the palette | opens on recent tabs, current one last; typing never re-animates the list |
+| the palette | opens on recent tabs, current one last; typing never re-animates the list; `⌘K` lists the row's actions, `esc` clears before it closes |
+| duplicates | by normalised address **or** by host + title; the copy used last survives; the count in the popup, the palette's `×N` and the cleanup agree because one function computes all three |
+| the desk bridge | listens on `127.0.0.1` only, answers only to the extension's header, opens only files inside a configured vault, starts an agent only in a configured folder |
 | the same key from two levels | a repeat within 450 ms is swallowed, so a page-level and a browser-level binding on one combo cannot toggle twice |
 | opening a duplicate | a note on the page, nothing closed — cleaning is a command you run |
 | ordering / grouping | always acts on the last **normal** window, even when the palette window was focused last |
-| every command | present in both the palette and the panel with the same name |
+| every command | present in the palette, the panel and the popup with the same name, from one list |
 | the model | proposes, never applies — and only sees titles and hosts |
 
 ## Tests
@@ -189,13 +228,20 @@ node tests/sw-smoke.mjs
 The service worker is loaded into a stubbed `chrome` and driven the way the popup drives it:
 placement of a fresh tab under the active one, the tidy sweep (recency order, a block only from
 three tabs, a bookmarked page kept loose), duplicate detection through `www.` and a trailing slash
-with the freshest copy kept, pin and unpin, the bookmark toggle in both directions including the
-exit from a block, switching to an open copy instead of opening it twice, the repeat guard, and
+with the freshest copy kept, twins by title (four `AIM VISUAL` tabs with different queries → three
+closed, the active one kept; `New Tab` and different titles on one host never match; the rule off
+→ exact address only), pin and unpin, the bookmark toggle in both directions including the exit
+from a block, switching to an open copy instead of opening it twice, the repeat guard, and
 ordering while a popup window was the last focused one. It exists because a silent `ReferenceError`
 at load makes every feature look broken at once — the worker dies, nothing registers, and the UI
 just stops answering.
 
-`node tests/surfaces.mjs` checks that every command exists on every surface it claims.
+`node tests/surfaces.mjs` checks that every command exists on every surface it claims, and that
+the popup, the panel and the palette all render from `commands.js`.
+
+Reloading after a change without touching `chrome://extensions`: open any page of the extension
+(`chrome-extension://<id>/popup.html`) and run `chrome.runtime.reload()` from its console — the
+service worker and the manifest come back fresh.
 
 ## Limits worth knowing
 

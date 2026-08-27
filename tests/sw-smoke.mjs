@@ -264,5 +264,36 @@ check('pinTab открепил', unpin?.ok && unpin.count === -1);
 check('открепленная встала первой строкой вкладок', TABS[0]?.id === 31 && !TABS[0].pinned,
   TABS.map(t => t.id + (t.pinned ? '·pin' : '')).join(' '));
 
+// близнецы по заголовку: четыре «AIM VISUAL» с разными query-строками — одна страница
+TABS = [
+  { id: 41, windowId: 1, index: 0, pinned: false, active: true, url: 'https://visual-team.aimindset.org/?lab=s26&section=youtube', title: 'AIM VISUAL', lastAccessed: 400 },
+  { id: 42, windowId: 1, index: 1, pinned: false, url: 'https://visual-team.aimindset.org/?lab=refpack&section=library', title: '💤 AIM VISUAL', lastAccessed: 300, discarded: true },
+  { id: 43, windowId: 1, index: 2, pinned: false, url: 'https://visual-team.aimindset.org/', title: '💤 AIM VISUAL', lastAccessed: 200, discarded: true },
+  { id: 44, windowId: 1, index: 3, pinned: false, url: 'https://visual-team.aimindset.org/?lab=s26&section=wide&copy=abc', title: 'AIM VISUAL', lastAccessed: 100 },
+  { id: 45, windowId: 1, index: 4, pinned: false, url: 'https://github.com/aPoWall/aside-tweaks', title: 'aPoWall/aside-tweaks', lastAccessed: 50 },
+  { id: 46, windowId: 1, index: 5, pinned: false, url: 'https://github.com/aPoWall/language-relay', title: 'aPoWall/language-relay', lastAccessed: 40 },
+  { id: 47, windowId: 1, index: 6, pinned: false, url: 'https://example.com/a', title: 'New Tab', lastAccessed: 30 },
+  { id: 48, windowId: 1, index: 7, pinned: false, url: 'https://example.com/b', title: 'New Tab', lastAccessed: 20 }
+];
+const near = await call('getStats');
+check('близнецы по заголовку считаются: 4 AIM VISUAL → 3 лишних', near?.data?.dups === 3, JSON.stringify(near?.data));
+check('twinOf отдаёт размер кластера на каждую вкладку', near?.data?.twinOf?.[41] === 4 && near?.data?.twinOf?.[44] === 4 && !near?.data?.twinOf?.[45], JSON.stringify(near?.data?.twinOf));
+check('разные заголовки на одном хосте и «New Tab» близнецами не считаются', !near?.data?.twinOf?.[46] && !near?.data?.twinOf?.[47], JSON.stringify(near?.data?.twinOf));
+const nearClean = await call('tidyDuplicates');
+check('чистка закрыла трёх близнецов и оставила активную', nearClean?.count === 3 && TABS.some(t => t.id === 41) && ![42, 43, 44].some(id => TABS.some(t => t.id === id)), TABS.map(t => t.id).join(' '));
+
+// тумблер выключен — те же вкладки чистка не трогает
+await fire('storeChanged', { dedupByTitle: { newValue: false } }, 'sync');
+store.sync.dedupByTitle = false;
+await wait(30);
+TABS = [
+  { id: 41, windowId: 1, index: 0, pinned: false, active: true, url: 'https://visual-team.aimindset.org/?lab=s26', title: 'AIM VISUAL', lastAccessed: 400 },
+  { id: 42, windowId: 1, index: 1, pinned: false, url: 'https://visual-team.aimindset.org/?lab=refpack', title: 'AIM VISUAL', lastAccessed: 300 }
+];
+const strict = await call('getStats');
+check('dedupByTitle выключен — только точный адрес', strict?.data?.dups === 0, JSON.stringify(strict?.data));
+store.sync.dedupByTitle = true;
+await fire('storeChanged', { dedupByTitle: { newValue: true } }, 'sync');
+
 console.log(fails ? `\n${fails} провалов` : '\nвсе проверки зелёные');
 process.exit(fails ? 1 : 0);

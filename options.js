@@ -16,7 +16,7 @@ const DEFAULT_KEYMAP = {
 };
 
 const DEFAULTS = {
-  dedupAuto: false, dedupNotice: true, dedupIgnoreHash: true, dedupIgnoreUtm: true,
+  dedupAuto: false, dedupNotice: true, dedupIgnoreHash: true, dedupIgnoreUtm: true, dedupByTitle: true,
   keepPins: true, favoriteMovesTab: true, favoriteLeavesGroup: true, paletteOverlay: true, keymapEnabled: true, dimBehindPalette: true,
   tabPlacement: 'underCurrent', placementGuardMs: 2500, tidyMinGroup: 3,
   keymap: DEFAULT_KEYMAP,
@@ -344,7 +344,7 @@ function seg(id, value, onPick) {
 
 // ---------- сборка ----------
 
-const TOGGLES = ['dedupAuto', 'dedupNotice', 'dedupIgnoreHash', 'dedupIgnoreUtm', 'keepPins', 'favoriteMovesTab', 'favoriteLeavesGroup', 'paletteOverlay', 'keymapEnabled', 'dimBehindPalette'];
+const TOGGLES = ['dedupAuto', 'dedupNotice', 'dedupIgnoreHash', 'dedupIgnoreUtm', 'dedupByTitle', 'keepPins', 'favoriteMovesTab', 'favoriteLeavesGroup', 'paletteOverlay', 'keymapEnabled', 'dimBehindPalette'];
 
 function renderAll() {
   for (const k of TOGGLES) document.getElementById(k).checked = !!state[k];
@@ -498,3 +498,30 @@ document.getElementById('native').addEventListener('click', async () => {
     flash('address copied: ' + url);
   }
 });
+
+
+// ---------- 09 · desk bridge: заметки Obsidian и агенты Orca ----------
+// адрес локальный и стоит в манифесте, диалога разрешений нет — здесь только порт и проба
+
+const deskPortEl = document.getElementById('deskPort');
+const deskStateEl = document.getElementById('deskState');
+
+async function renderDesk() {
+  const { deskPort } = await chrome.storage.sync.get({ deskPort: 49321 });
+  deskPortEl.value = deskPort;
+  deskStateEl.textContent = 'probing…';
+  const res = await chrome.runtime.sendMessage({ action: 'deskHealth' }).catch(() => null);
+  const h = res?.data;
+  deskStateEl.textContent = h?.ok
+    ? `live · vaults: ${(h.vaults || []).join(', ') || 'none'} · folders: ${(h.worktrees || []).map(w => w.name).join(', ') || 'none'} · agent: ${h.agent || 'claude'}`
+    : `nothing answers on :${deskPort} — run bridge/install.sh`;
+}
+
+document.getElementById('deskConnect').addEventListener('click', async () => {
+  const port = Math.max(1024, Math.min(65535, Number(deskPortEl.value) || 49321));
+  await chrome.storage.sync.set({ deskPort: port });
+  flash('port saved');
+  renderDesk();
+});
+
+renderDesk();

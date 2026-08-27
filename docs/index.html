@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>aside tweaks – the keys your browser kept for itself</title>
-  <meta name="description" content="a command palette, a keymap that outranks the browser's own shortcuts, bookmarks that move instead of duplicating. an extension for the aside browser.">
+  <meta name="description" content="a command palette in the sidebar's own look over tabs, history, bookmarks, obsidian notes and agents; a keymap that outranks the browser's shortcuts; duplicates by address or by title; one sweep. an extension for the aside browser.">
   <meta name="theme-color" content="#ffffff">
   <meta property="og:title" content="aside tweaks – the keys your browser kept for itself">
-  <meta property="og:description" content="⇧⌘K palette over tabs, history and bookmarks. ⌘D moves a page into the bookmarks bar and back. one sweep tidies fifty tabs.">
-  <meta property="og:image" content="https://apps.aimindset.org/aside-tweaks/aside-tweaks-social.png?v=2">
+  <meta property="og:description" content="⇧⌘K palette over tabs, history, bookmarks, notes and agents · ⌘K actions · ⌘D folds a page into the bookmarks bar · duplicates by address or by title · one sweep tidies a hundred tabs.">
+  <meta property="og:image" content="https://apps.aimindset.org/aside-tweaks/aside-tweaks-social.png?v=3">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:type" content="image/png">
@@ -16,14 +16,18 @@
   <meta property="og:url" content="https://apps.aimindset.org/aside-tweaks/">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="aside tweaks – the keys your browser kept for itself">
-  <meta name="twitter:description" content="⇧⌘K palette over tabs, history and bookmarks. ⌘D moves a page into the bookmarks bar and back.">
-  <meta name="twitter:image" content="https://apps.aimindset.org/aside-tweaks/aside-tweaks-social.png?v=2">
+  <meta name="twitter:description" content="⇧⌘K palette over tabs, history, bookmarks, notes and agents. ⌘D folds a page into the bookmarks bar and back.">
+  <meta name="twitter:image" content="https://apps.aimindset.org/aside-tweaks/aside-tweaks-social.png?v=3">
   <link rel="canonical" href="https://apps.aimindset.org/aside-tweaks/">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <style>
-    :root { --paper:#fff; --ink:#000; --soft:#d9d9d9; --hair:#ececec; --muted:#747474; --signal:#caff18; --mono:"JetBrains Mono","SFMono-Regular",ui-monospace,Menlo,monospace; }
+    :root { --paper:#fff; --ink:#000; --soft:#d9d9d9; --hair:#ececec; --muted:#747474; --signal:#caff18; --mono:"JetBrains Mono","SFMono-Regular",ui-monospace,Menlo,monospace;
+            /* облик aside – те же значения, что в расширении: серое поле, белая пилюля, системный шрифт */
+            --a-bg:#ececec; --a-soft:#f6f6f6; --a-line:#dddddd; --a-fg:#1c1c1e; --a-muted:#6f6f6f; --a-dim:#48484a; --a-sel:#fff; --a-sleep:#8f7fc9;
+            --a-shadow:0 1px 2px rgba(0,0,0,.10), 0 0 0 1px rgba(0,0,0,.03);
+            --sys:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif; }
     * { box-sizing:border-box; }
     html { background:var(--paper); color:var(--ink); font-family:var(--mono); scroll-behavior:smooth; }
     body { margin:0; overflow-x:hidden; }
@@ -77,47 +81,87 @@
     .tags { display:flex; flex-wrap:wrap; gap:6px; margin:20px 0 0; }
     .tags span { border:1px solid var(--soft); padding:7px 9px; font-size:9px; font-weight:700; }
 
-    /* ---------- живые панели ---------- */
-    .instrument { background:var(--ink); color:var(--paper); padding:24px; display:flex; flex-direction:column; min-height:470px; }
-    .instrument-head { display:flex; justify-content:space-between; gap:16px; color:#999; font-size:10px; padding-bottom:14px; border-bottom:1px solid #444; }
-    .instrument-head b { color:var(--signal); font-weight:800; }
-    .scopes { display:flex; gap:4px; margin:14px 0 10px; font-size:9px; letter-spacing:.14em; text-transform:uppercase; }
-    .scopes button { border:0; background:none; color:#8a8a8a; padding:4px 8px; }
-    .scopes button[aria-pressed="true"] { background:var(--signal); color:var(--ink); font-weight:800; }
-    #demoq { width:100%; padding:12px 13px; background:#111; border:1px solid #555; color:var(--paper); font-size:17px; letter-spacing:-.03em; outline:0; }
-    #demoq:focus { border-color:var(--signal); }
-    #demolist { margin-top:11px; flex:1; overflow:hidden; }
-    .drow { display:flex; align-items:center; gap:11px; padding:7px 9px; font-size:13px; border-left:2px solid transparent; }
-    .drow[data-sel="1"] { background:#1c1c1c; border-left-color:var(--signal); }
-    .drow .dt { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .drow .ds { color:#7d7d7d; font-size:11px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .drow .db { color:#8a8a8a; font-size:9px; letter-spacing:.12em; text-transform:uppercase; flex:none; }
-    .drow .dg { width:14px; color:var(--signal); flex:none; }
-    .receipt { margin-top:auto; padding-top:18px; display:flex; justify-content:space-between; gap:14px; color:#888; font-size:10px; }
-    .receipt strong { color:var(--signal); }
+    /* ---------- живые панели в облике aside: поверхности расширения как они есть ---------- */
+    .instrument { background:var(--a-bg); color:var(--a-fg); font-family:var(--sys); padding:0; display:flex; flex-direction:column; min-height:470px; border-left:1px solid var(--ink); }
+    .instrument-head { display:flex; justify-content:space-between; gap:16px; color:var(--muted); font-family:var(--mono); font-size:10px; padding:12px 16px; border-bottom:1px solid var(--ink); background:var(--paper); }
+    .instrument-head b { color:var(--ink); font-weight:800; }
+    .instrument-head b::before { content:'■ '; color:var(--signal); -webkit-text-stroke:.5px var(--ink); }
+    .pal-top { display:flex; align-items:center; gap:10px; padding:14px 16px 10px; }
+    .pal-top svg { flex:none; color:var(--a-muted); }
+    .pal-top input { flex:1; min-width:0; padding:0; font:17px/1.3 var(--sys); border:0; outline:0; background:transparent; color:var(--a-fg); }
+    .pal-top input::placeholder { color:var(--a-muted); }
+    .scopes { display:flex; align-items:center; gap:2px; padding:0 12px 8px; border-bottom:1px solid var(--a-line); }
+    .scopes button { border:0; background:none; color:var(--a-muted); padding:5px 8px; border-radius:6px; font:11px/1 var(--sys); }
+    .scopes button[aria-pressed="true"] { color:var(--a-fg); background:var(--a-sel); box-shadow:var(--a-shadow); }
+    .scopes .desk { margin-left:auto; font-size:10.5px; color:var(--a-muted); padding-right:4px; }
+    .scopes .desk::before { content:'●'; font-size:7px; vertical-align:2px; margin-right:5px; color:var(--a-sleep); }
+    .pal-list { flex:1; overflow:hidden; padding:4px 8px 8px; }
+    .hdr { padding:10px 8px 4px; font-size:11px; color:var(--a-muted); }
+    .hdr::first-letter { text-transform:uppercase; }
+    .drow { display:flex; align-items:center; gap:10px; height:34px; padding:0 10px; border-radius:8px; font-size:13px; white-space:nowrap; }
+    .drow[data-sel="1"] { background:var(--a-sel); box-shadow:var(--a-shadow); }
+    .drow .dg { width:18px; text-align:center; flex:none; color:var(--a-dim); font-size:13px; }
+    .drow .dt { flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+    .drow .ds { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; color:var(--a-muted); font-size:11.5px; }
+    .drow .tw { flex:none; font-size:10px; color:var(--a-muted); border:1px solid var(--a-line); border-radius:4px; padding:0 4px; line-height:15px; }
+    .drow .dk { flex:none; font-size:11px; color:var(--a-muted); }
+    .drow .db { flex:none; font-size:11px; color:var(--a-muted); min-width:52px; text-align:right; }
+    .drow[data-sel="1"] .db { color:var(--a-dim); }
+    .pal-foot { position:relative; display:flex; align-items:center; gap:14px; padding:7px 14px; border-top:1px solid var(--a-line); font-size:11px; color:var(--a-muted); }
+    .pal-foot b { font-weight:500; color:var(--a-dim); }
+    .pal-foot .brand { display:flex; align-items:center; gap:7px; }
+    .pal-foot .brand i { width:14px; height:14px; border-radius:4px; background:var(--a-fg); display:inline-block; }
+    .pal-foot .right { margin-left:auto; display:flex; gap:14px; }
+    .pal-foot .primary { color:var(--a-fg); }
+    .pal-foot button { border:0; background:none; padding:0; color:inherit; font:inherit; }
+    .pal-foot button:hover { color:var(--a-fg); }
+    .acts { position:absolute; right:12px; bottom:34px; min-width:230px; background:var(--a-sel); border:1px solid var(--a-line); border-radius:10px; box-shadow:0 12px 40px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.08); padding:6px; display:none; flex-direction:column; z-index:2; }
+    .acts.on { display:flex; }
+    .acts .ah { font-size:10.5px; color:var(--a-muted); padding:4px 8px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:300px; }
+    .acts .a { display:flex; align-items:center; gap:10px; height:28px; padding:0 8px; border-radius:6px; font-size:12.5px; }
+    .acts .a.sel { background:var(--a-bg); }
+    .acts .a .k { margin-left:auto; font-size:11px; color:var(--a-muted); }
 
-    /* перепривязка клавиш прямо на странице */
-    .keyrows { margin-top:14px; display:flex; flex-direction:column; gap:7px; }
-    .keyrow { display:flex; align-items:center; gap:12px; padding:11px 13px; border:1px solid #555; }
-    .keyrow .kn { flex:1; min-width:0; font-size:13px; }
-    .keyrow .kn small { display:block; color:#7d7d7d; font-size:10px; margin-top:2px; }
-    .keycap { min-width:104px; padding:8px 10px; text-align:center; background:#111; border:1px solid #666; color:var(--paper); font-size:13px; letter-spacing:.06em; }
-    .keycap.rec { border-color:var(--signal); color:var(--signal); }
+    /* перепривязка клавиш прямо на странице – плитки попапа */
+    .keyrows { display:flex; flex-direction:column; gap:5px; padding:14px 12px; }
+    .keyrow { display:flex; align-items:center; gap:12px; padding:9px 12px; border-radius:8px; background:var(--a-sel); box-shadow:var(--a-shadow); }
+    .keyrow .kn { flex:1; min-width:0; font-size:12.5px; }
+    .keyrow .kn small { display:block; color:var(--a-muted); font-size:10.5px; margin-top:2px; }
+    .keycap { min-width:96px; padding:6px 10px; text-align:center; background:var(--a-bg); border:1px solid var(--a-line); border-radius:6px; color:var(--a-fg); font:12.5px var(--sys); letter-spacing:.04em; }
+    .keycap.rec { border-color:var(--a-fg); color:var(--a-fg); }
     .keycap.done { animation:capflash .9s ease; }
-    @keyframes capflash { 0%,45% { background:var(--signal); color:#000; border-color:var(--signal); } 100% { background:#111; } }
+    @keyframes capflash { 0%,45% { background:var(--signal); border-color:var(--signal); } 100% { background:var(--a-bg); } }
+    .receipt { margin-top:auto; padding:10px 14px; display:flex; justify-content:space-between; gap:14px; color:var(--a-muted); font-size:11px; border-top:1px solid var(--a-line); }
+    .receipt strong { color:var(--a-fg); font-weight:500; }
 
-    /* уборка вкладок: карточка, где видно движение */
-    .tabsim { margin-top:14px; flex:1; overflow:hidden; }
-    .trow { display:flex; align-items:center; gap:10px; padding:6px 9px; font-size:12.5px; transition:opacity .35s ease, transform .35s ease; }
+    /* уборка вкладок: список как в сайдбаре */
+    .tabsim { flex:1; overflow:hidden; padding:6px 8px; }
+    .trow { display:flex; align-items:center; gap:10px; height:30px; padding:0 10px; border-radius:8px; font-size:12.5px; transition:opacity .35s ease, transform .35s ease; }
     .trow .tn { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .trow .tm { color:#7d7d7d; font-size:10px; flex:none; }
-    .trow.dup { color:#8a8a8a; }
+    .trow .tm { color:var(--a-muted); font-size:10.5px; flex:none; }
+    .trow .tw { flex:none; font-size:10px; color:var(--a-muted); border:1px solid var(--a-line); border-radius:4px; padding:0 4px; line-height:15px; }
+    .trow.dup { color:var(--a-sleep); }
     .trow.gone { opacity:0; transform:translateX(-14px); }
-    .thead { margin:9px 0 3px; padding:0 9px; color:var(--signal); font-size:9px; letter-spacing:.14em; text-transform:uppercase; }
-    .simbar { display:flex; gap:7px; margin-top:12px; }
-    .simbar button { flex:1; padding:9px 8px; background:#111; border:1px solid #555; color:var(--paper); font-size:11px; }
-    .simbar button:hover { border-color:var(--signal); }
-    .simbar button.go { background:var(--signal); color:var(--ink); border-color:var(--signal); font-weight:800; }
+    .thead { margin:8px 0 2px; padding:0 10px; color:var(--a-muted); font-size:11px; }
+    .simbar { display:flex; gap:6px; padding:8px 12px 12px; }
+    .simbar button { flex:1; padding:8px; background:var(--a-sel); border:0; border-radius:8px; box-shadow:var(--a-shadow); color:var(--a-fg); font:12px var(--sys); }
+    .simbar button:hover { background:#fafafa; }
+    .simbar button.go { background:var(--a-fg); color:var(--a-sel); }
+
+    /* ⌘D: закладка плюс вкладка – сайдбар складывает их в одну строку */
+    .fold { flex:1; padding:10px 8px; display:flex; flex-direction:column; gap:2px; }
+    .fold .fh { padding:8px 10px 3px; font-size:11px; color:var(--a-muted); }
+    .frow { display:flex; align-items:center; gap:10px; height:30px; padding:0 10px; border-radius:8px; font-size:12.5px; transition:opacity .4s ease, transform .4s ease, background .3s; }
+    .frow .fi { width:16px; height:16px; border-radius:4px; background:var(--a-dim); flex:none; }
+    .frow .fi.aim { background:#111; }
+    .frow .fi.gh { background:#333; }
+    .frow .ft { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .frow .fz { color:var(--a-sleep); font-size:11px; flex:none; }
+    .frow .fl { color:var(--a-muted); font-size:10.5px; flex:none; }
+    .frow.sel { background:var(--a-sel); box-shadow:var(--a-shadow); }
+    .frow.gone { opacity:0; transform:translateY(-8px); }
+    .frow.new { animation:rowin .4s ease both; }
+    @keyframes rowin { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
 
     .keys { width:100%; border-collapse:collapse; margin:8px 0 0; }
     .keys td { padding:13px 16px; border-top:1px solid var(--hair); font-size:14px; vertical-align:top; }
@@ -136,7 +180,7 @@
     footer strong { display:block; color:var(--ink); font-size:16px; margin-bottom:4px; }
     footer a { color:var(--ink); border-bottom:1px solid var(--ink); }
 
-    @media (max-width:860px) { .split { grid-template-columns:1fr; } .ledger { grid-template-columns:repeat(2,1fr); } .instrument { min-height:420px; } }
+    @media (max-width:860px) { .split { grid-template-columns:1fr; } .instrument { border-left:0; border-top:1px solid var(--ink); } .ledger { grid-template-columns:repeat(2,1fr); } .instrument { min-height:420px; } }
     @media (max-width:620px) {
       .shell { width:calc(100% - 28px); }
       h1 { font-size:44px; }
@@ -144,13 +188,13 @@
       main { padding:48px 0 60px; }
       .ledger { grid-template-columns:1fr; margin:36px 0 52px; }
       .copy,.block { padding:22px 20px; }
-      .instrument { padding:17px; min-height:400px; }
-      .drow .ds { display:none; }
+      .instrument { min-height:400px; }
+      .drow .ds,.drow .db { display:none; }
       .keys td:first-child { width:104px; }
       .nav-actions .family { display:none; }
       footer { align-items:flex-start; flex-direction:column; justify-content:center; }
     }
-    @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } .trow,.keycap.done { transition:none; animation:none; } }
+    @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } .trow,.frow,.keycap.done { transition:none; animation:none; } }
   </style>
 </head>
 <body id="top">
@@ -165,14 +209,14 @@
     </nav>
 
     <main>
-      <div class="eyebrow i18n" data-en="browser extension · local by design · open source" data-ru="расширение браузера · локально · open source">browser extension · local by design · open source</div>
+      <div class="eyebrow i18n" data-en="browser extension · local by design · open source · v4.15" data-ru="расширение браузера · локально · open source · v4.15">browser extension · local by design · open source · v4.15</div>
       <h1><span class="i18n" data-en="the keys your browser" data-ru="клавиши, которые браузер">the keys your browser</span> <em class="i18n" data-en="kept for itself" data-ru="забрал себе">kept for itself</em></h1>
-      <p class="lead i18n" data-en="fifty tabs, a bookmark dialog nobody asked for, new tabs landing at the top of the list. aside tweaks takes the keyboard back, moves a kept page to the top of the bar instead of copying it, and puts one palette over tabs, history and bookmarks." data-ru="полсотни вкладок, диалог закладки, которого никто не просил, и новая вкладка, улетающая в начало списка. aside tweaks забирает клавиатуру обратно, переносит нужную страницу наверх панели закладок вместо копии и кладёт одну палитру поверх вкладок, истории и закладок.">fifty tabs, a bookmark dialog nobody asked for, new tabs landing at the top of the list. aside tweaks takes the keyboard back, moves a kept page to the top of the bar instead of copying it, and puts one palette over tabs, history and bookmarks.</p>
-      <p class="small-line"><span class="i18n" data-en="built for" data-ru="сделано для">built for</span> <a href="https://aside.com">aside</a> — <span class="i18n" data-en="a chromium browser with an agent in the sidebar. runs on any chromium 114+, manifest v3." data-ru="браузера на chromium с агентом в боковой панели. работает на любом chromium 114+, manifest v3.">a chromium browser with an agent in the sidebar. runs on any chromium 114+, manifest v3.</span></p>
+      <p class="lead i18n" data-en="a hundred tabs, four copies of one app under one title, a bookmark dialog nobody asked for. aside tweaks takes the keyboard back, folds a kept page into the bookmarks bar instead of copying it, sees a duplicate by title and by address, and puts one palette – built like raycast – over tabs, history, bookmarks, obsidian notes and the agents running on the machine." data-ru="сотня вкладок, четыре копии одного приложения под одним заголовком, диалог закладки, которого никто не просил. aside tweaks забирает клавиатуру обратно, складывает нужную страницу в панель закладок вместо копии, видит дубль и по заголовку, и по адресу, и кладёт одну палитру – устроенную как raycast – поверх вкладок, истории, закладок, заметок obsidian и агентов, которые работают на этой машине.">a hundred tabs, four copies of one app under one title, a bookmark dialog nobody asked for. aside tweaks takes the keyboard back, folds a kept page into the bookmarks bar instead of copying it, sees a duplicate by title and by address, and puts one palette – built like raycast – over tabs, history, bookmarks, obsidian notes and the agents running on the machine.</p>
+      <p class="small-line"><span class="i18n" data-en="built for" data-ru="сделано для">built for</span> <a href="https://aside.com">aside</a> – <span class="i18n" data-en="a chromium browser with an agent in the sidebar. runs on any chromium 114+, manifest v3. every surface is drawn in the sidebar's own look: grey field, white pill, system font." data-ru="браузера на chromium с агентом в боковой панели. работает на любом chromium 114+, manifest v3. все поверхности нарисованы в облике самого сайдбара: серое поле, белая пилюля, системный шрифт.">a chromium browser with an agent in the sidebar. runs on any chromium 114+, manifest v3. every surface is drawn in the sidebar's own look: grey field, white pill, system font.</span></p>
 
       <div class="buttons">
         <a class="button primary i18n" href="https://github.com/aPoWall/aside-tweaks" data-en="get it on github" data-ru="забрать на github">get it on github</a>
-        <a class="button i18n" href="#rebind" data-en="rebind a key here ↓" data-ru="перепривязать клавишу здесь ↓">rebind a key here ↓</a>
+        <a class="button i18n" href="#palette" data-en="try the palette here ↓" data-ru="попробовать палитру здесь ↓">try the palette here ↓</a>
       </div>
 
       <div class="trust" aria-label="product properties">
@@ -184,48 +228,65 @@
       </div>
 
       <div class="ledger" aria-label="instrument properties">
-        <div><small class="i18n" data-en="palette" data-ru="палитра">palette</small><strong>⇧⌘K</strong></div>
+        <div><small class="i18n" data-en="palette" data-ru="палитра">palette</small><strong>⇧⌘K · ⌘K actions</strong></div>
         <div><small class="i18n" data-en="keep a page" data-ru="оставить страницу">keep a page</small><strong class="i18n" data-en="⌘D · bookmark ⇄ tab" data-ru="⌘D · закладка ⇄ вкладка">⌘D · bookmark ⇄ tab</strong></div>
         <div><small class="i18n" data-en="one sweep" data-ru="один свод">one sweep</small><strong class="i18n" data-en="⌥⌘T · tidy" data-ru="⌥⌘T · уборка">⌥⌘T · tidy</strong></div>
-        <div><small class="i18n" data-en="collection" data-ru="коллекция">collection</small><strong>ai mindset apps</strong></div>
+        <div><small class="i18n" data-en="beyond the browser" data-ru="за пределами браузера">beyond the browser</small><strong class="i18n" data-en="notes · &gt; agents" data-ru="заметки · &gt; агенты">notes · &gt; agents</strong></div>
       </div>
 
-      <div class="label i18n" id="rebind" data-en="01 · the keys, rebindable right here" data-ru="01 · клавиши, перепривязываются прямо здесь">01 · the keys, rebindable right here</div>
+      <div class="label i18n" id="palette" data-en="01 · the palette, running on this page" data-ru="01 · палитра, работает прямо на странице">01 · the palette, running on this page</div>
       <article class="split" style="margin-top:16px">
         <div class="copy">
           <span class="idx">01</span>
-          <h2 class="i18n" data-en="take the key back" data-ru="забрать клавишу">take the key back</h2>
-          <p class="i18n" data-en="an extension is normally allowed four shortcuts, re-bindable only on the browser's own settings page. this one listens on the page in the capture phase — before the browser applies its accelerator — so any combination the page can see becomes yours." data-ru="расширению обычно положено четыре сочетания, и менять их можно только на служебной странице браузера. это слушает клавиши на самой странице в фазе перехвата — раньше, чем браузер применит свой акселератор, — поэтому твоим становится любое сочетание, которое видит страница.">an extension is normally allowed four shortcuts, re-bindable only on the browser's own settings page. this one listens on the page in the capture phase — before the browser applies its accelerator — so any combination the page can see becomes yours.</p>
-          <p class="i18n" data-en="bindings are stored by physical key code, so a non-latin keyboard layout doesn't quietly break them. click a row on the right and press a combination — the recorder is the same one that lives in the extension." data-ru="привязки хранятся по физической клавише, поэтому нелатинская раскладка их не ломает. нажми строку справа и введи сочетание — это тот же рекордер, что стоит в расширении.">bindings are stored by physical key code, so a non-latin keyboard layout doesn't quietly break them. click a row on the right and press a combination — the recorder is the same one that lives in the extension.</p>
-          <div class="tags"><span>capture phase</span><span>event.code</span><span>⌘D</span><span>⇧⌘D</span><span>⌥⌘T</span></div>
-        </div>
-        <div class="instrument">
-          <div class="instrument-head"><span class="i18n" data-en="keymap · click a row, press keys" data-ru="раскладка · нажми строку и введи клавиши">keymap · click a row, press keys</span><b>■ live</b></div>
-          <div class="keyrows" id="keyrows"></div>
-          <div class="receipt"><span class="i18n" data-en="esc cancels · ⌫ clears" data-ru="esc отменяет · ⌫ снимает">esc cancels · ⌫ clears</span><strong id="keystate">—</strong></div>
-        </div>
-      </article>
-
-      <div class="label i18n" style="margin-top:52px" data-en="02 · the palette, running on this page" data-ru="02 · палитра, работает прямо на странице">02 · the palette, running on this page</div>
-      <article class="split" style="margin-top:16px">
-        <div class="copy">
-          <span class="idx">02</span>
           <h2 class="i18n" data-en="type, don't hunt" data-ru="печатать, а не искать">type, don't hunt</h2>
-          <p class="i18n" data-en="with fifty tabs open, scanning a sidebar is slower than typing three letters. the palette searches open tabs, browser history and bookmarks at once, and tab narrows the scope." data-ru="когда открыто полсотни вкладок, глазами по списку дольше, чем набрать три буквы. палитра ищет сразу по открытым вкладкам, истории и закладкам, а ⇥ сужает область.">with fifty tabs open, scanning a sidebar is slower than typing three letters. the palette searches open tabs, browser history and bookmarks at once, and tab narrows the scope.</p>
-          <p class="i18n" data-en="history collapses by normalised url, so one site stops flooding the list. ranking follows what you actually pick — frequency with a two-week decay. paste an address and it offers to open it plainly, inside a named block, or already pinned. type arithmetic and it answers." data-ru="история сворачивается по нормализованному адресу, поэтому один сайт больше не занимает весь список. порядок задаёт то, что ты действительно выбираешь: частота с затуханием за две недели. вставь адрес — предложит открыть просто, внутри блока или сразу закреплённым. набери арифметику — ответит.">history collapses by normalised url, so one site stops flooding the list. ranking follows what you actually pick — frequency with a two-week decay. paste an address and it offers to open it plainly, inside a named block, or already pinned. type arithmetic and it answers.</p>
-          <div class="tags"><span>tabs</span><span>history</span><span>bookmarks</span><span>commands</span><span>arithmetic</span></div>
+          <p class="i18n" data-en="the shape is raycast's: a row is icon, title, subtitle and its type on the right; the footer names what ↵ will do to the selected row; ⌘K opens the actions for that row – switch, pin, bookmark ⇄ tab, close, copy url. esc clears the query first and closes only when it is empty." data-ru="устройство как у raycast: строка – иконка, заголовок, подпись и её тип справа; нижняя строка называет, что ↵ сделает с выбранной; ⌘K открывает действия этой строки – переключиться, закрепить, закладка ⇄ вкладка, закрыть, скопировать адрес. esc сначала чистит запрос и закрывает только пустой.">the shape is raycast's: a row is icon, title, subtitle and its type on the right; the footer names what ↵ will do to the selected row; ⌘K opens the actions for that row – switch, pin, bookmark ⇄ tab, close, copy url. esc clears the query first and closes only when it is empty.</p>
+          <p class="i18n" data-en="an empty query shows the tabs you were in last, current one at the bottom. a page open twice carries ×2. history collapses by normalised url. ranking follows what you actually pick – frequency with a two-week decay. paste an address and it offers to open it plainly, in a named block, or pinned. arithmetic answers. and with the desk bridge, notes from obsidian and agents from orca sit in the same list." data-ru="пустой запрос показывает вкладки, где ты был последним, текущая внизу. открытая дважды страница несёт ×2. история сворачивается по нормализованному адресу. порядок задаёт то, что ты выбираешь: частота с затуханием за две недели. вставь адрес – предложит открыть просто, в блоке или закреплённым. арифметика отвечает. а с мостом к машине в том же списке лежат заметки obsidian и агенты orca.">an empty query shows the tabs you were in last, current one at the bottom. a page open twice carries ×2. history collapses by normalised url. ranking follows what you actually pick – frequency with a two-week decay. paste an address and it offers to open it plainly, in a named block, or pinned. arithmetic answers. and with the desk bridge, notes from obsidian and agents from orca sit in the same list.</p>
+          <div class="tags"><span>tabs</span><span>history</span><span>bookmarks</span><span>notes</span><span>&gt; agents</span><span>⌘K</span><span>2+2</span></div>
         </div>
         <div class="instrument">
-          <div class="instrument-head"><span class="i18n" data-en="palette · working demo" data-ru="палитра · рабочее демо">palette · working demo</span><b>■ runs here</b></div>
+          <div class="instrument-head"><span class="i18n" data-en="palette · working demo · try: aim · mini · &gt; · 19*3" data-ru="палитра · рабочее демо · попробуй: aim · mini · &gt; · 19*3">palette · working demo · try: aim · mini · &gt; · 19*3</span><b class="i18n" data-en="runs here" data-ru="работает здесь">runs here</b></div>
+          <div class="pal-top">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="6.8" cy="6.8" r="4.6"/><path d="M10.4 10.4L14 14" stroke-linecap="round"/></svg>
+            <input id="demoq" placeholder="search tabs, history, bookmarks, notes · paste a url · > agent · 2+2" autocomplete="off" spellcheck="false" aria-label="palette query">
+          </div>
           <div class="scopes" id="demoscopes" role="group" aria-label="scope">
             <button data-s="all" aria-pressed="true">all</button>
             <button data-s="tabs" aria-pressed="false">tabs</button>
             <button data-s="history" aria-pressed="false">history</button>
             <button data-s="marks" aria-pressed="false">bookmarks</button>
+            <button data-s="notes" aria-pressed="false">notes</button>
+            <button data-s="cmd" aria-pressed="false">commands</button>
+            <span class="desk">desk</span>
           </div>
-          <input id="demoq" placeholder="try: lab · aim · 19*3" autocomplete="off" spellcheck="false" aria-label="palette query">
-          <div id="demolist" role="listbox" aria-label="palette results"></div>
-          <div class="receipt"><span class="i18n" data-en="tab ⇥ scope · ↑↓ move" data-ru="⇥ область · ↑↓ выбор">tab ⇥ scope · ↑↓ move</span><strong id="democount">—</strong></div>
+          <div class="pal-list" id="demolist" role="listbox" aria-label="palette results"></div>
+          <div class="pal-foot">
+            <div class="acts" id="demoacts" role="menu"></div>
+            <span class="brand"><i></i>aside tweaks</span>
+            <span class="right">
+              <span><b class="primary" id="demoprimary">switch</b> <b>↵</b></span>
+              <button id="demoactsbtn"><b>actions</b> ⌘K</button>
+            </span>
+          </div>
+        </div>
+      </article>
+
+      <div class="label i18n" style="margin-top:52px" data-en="02 · a pin is a bookmark plus a tab" data-ru="02 · пин – это закладка плюс вкладка">02 · a pin is a bookmark plus a tab</div>
+      <article class="split" style="margin-top:16px">
+        <div class="copy">
+          <span class="idx">02</span>
+          <h2 class="i18n" data-en="fold, don't copy" data-ru="сложить, а не скопировать">fold, don't copy</h2>
+          <p class="i18n" data-en="aside's sidebar shows the bookmarks bar above the tabs, and an open tab whose address matches a bookmark is folded into that row: one line, live, asleep with 💤 when discarded, gone from the tab list below. that is arc's pinned tab, built from a bookmark and a tab." data-ru="сайдбар aside показывает панель закладок над вкладками, и открытая вкладка с адресом закладки вплавляется в её строку: одна строка, живая, с 💤 когда спит, и её больше нет в списке вкладок ниже. это и есть закреплённая вкладка arc, собранная из закладки и вкладки.">aside's sidebar shows the bookmarks bar above the tabs, and an open tab whose address matches a bookmark is folded into that row: one line, live, asleep with 💤 when discarded, gone from the tab list below. that is arc's pinned tab, built from a bookmark and a tab.</p>
+          <p class="i18n" data-en="so ⌘D writes the page as the last row of the bar, takes the tab out of its block – inside a block the sidebar would show it twice – and leaves it open, loaded and selected. nothing closes, so no sleeping neighbour wakes up and reloads. ⌘D again removes the bookmark; the tab stays where the eye already is." data-ru="поэтому ⌘D пишет страницу последней строкой панели, выводит вкладку из блока – внутри блока сайдбар показал бы её дважды – и оставляет открытой, загруженной и выделенной. ничего не закрывается, поэтому спящий сосед не просыпается и не перезагружается. ⌘D ещё раз снимает закладку; вкладка остаётся там, где уже смотрит глаз.">so ⌘D writes the page as the last row of the bar, takes the tab out of its block – inside a block the sidebar would show it twice – and leaves it open, loaded and selected. nothing closes, so no sleeping neighbour wakes up and reloads. ⌘D again removes the bookmark; the tab stays where the eye already is.</p>
+          <div class="tags"><span>⌘D</span><span>bookmarks bar</span><span>fold</span><span>⇧⌘D pin</span></div>
+        </div>
+        <div class="instrument">
+          <div class="instrument-head"><span class="i18n" data-en="sidebar · press ⌘D" data-ru="сайдбар · нажми ⌘D">sidebar · press ⌘D</span><b id="foldstate" class="i18n" data-en="tab" data-ru="вкладка">tab</b></div>
+          <div class="fold" id="fold"></div>
+          <div class="simbar">
+            <button class="go" id="foldgo">⌘D</button>
+            <button id="foldreset" class="i18n" data-en="reset" data-ru="сбросить">reset</button>
+          </div>
+          <div class="receipt"><span class="i18n" data-en="bookmarks bar · tabs" data-ru="панель закладок · вкладки">bookmarks bar · tabs</span><strong id="foldcount">2 + 4</strong></div>
         </div>
       </article>
 
@@ -234,36 +295,78 @@
         <div class="copy">
           <span class="idx">03</span>
           <h2 class="i18n" data-en="tidy up" data-ru="уборка">tidy up</h2>
-          <p class="i18n" data-en="⌥⌘T is four operations in one gesture, in the order that survives: duplicates and empty tabs closed, groups flattened, order aligned, blocks rebuilt. flattening comes first — a grouped tab refuses to cross its group boundary, and a sweep that starts by grouping trips over itself." data-ru="⌥⌘T — четыре операции одним жестом и в том порядке, который выживает: закрыть дубли и пустые, расплести группы, выровнять порядок, собрать блоки заново. расплетать нужно первым: сгруппированная вкладка не уезжает за границу своей группы, и свод, начинающий с группировки, спотыкается о самого себя.">⌥⌘T is four operations in one gesture, in the order that survives: duplicates and empty tabs closed, groups flattened, order aligned, blocks rebuilt. flattening comes first — a grouped tab refuses to cross its group boundary, and a sweep that starts by grouping trips over itself.</p>
-          <p class="i18n" data-en="order by site, or by the order you opened them. blocks are yours: a name plus substrings, and everything unmatched falls back to its root domain." data-ru="порядок — по сайту или по тому, в каком порядке ты их открывал. блоки твои: имя плюс подстроки, всё непопавшее уходит по корневому домену.">order by site, or by the order you opened them. blocks are yours: a name plus substrings, and everything unmatched falls back to its root domain.</p>
-          <div class="tags"><span>clean</span><span>flatten</span><span>order</span><span>blocks</span></div>
+          <p class="i18n" data-en="⌥⌘T is four operations in one gesture, in the order that survives: duplicates and empty tabs closed, groups flattened, loose tabs on top by recency, blocks rebuilt from three tabs or more. flattening comes before grouping – a grouped tab refuses to cross its group boundary." data-ru="⌥⌘T – четыре операции одним жестом и в том порядке, который выживает: закрыть дубли и пустые, расплести группы, россыпь наверх по свежести, блоки заново из трёх и более вкладок. расплести раньше, чем сгруппировать: сгруппированная вкладка не уезжает за границу своей группы.">⌥⌘T is four operations in one gesture, in the order that survives: duplicates and empty tabs closed, groups flattened, loose tabs on top by recency, blocks rebuilt from three tabs or more. flattening comes before grouping – a grouped tab refuses to cross its group boundary.</p>
+          <p class="i18n" data-en="a duplicate is the same address through http, www, a trailing slash and tracking params – and since v4.15 also the same site under the same title: four «aim visual» tabs with four query strings are one page to the eye, and «0 duplicates» on them was a lie. of the copies the one you used last stays. «new tab» and titles that only repeat the address never match." data-ru="дубль – тот же адрес сквозь http, www, хвостовой слэш и utm – а с v4.15 ещё и тот же сайт под тем же заголовком: четыре вкладки «aim visual» с четырьмя query-строками для глаза одна страница, и «0 duplicates» на них было ложью. из копий остаётся та, где ты был последним. «new tab» и заголовки, повторяющие адрес, не совпадают никогда.">a duplicate is the same address through http, www, a trailing slash and tracking params – and since v4.15 also the same site under the same title: four «aim visual» tabs with four query strings are one page to the eye, and «0 duplicates» on them was a lie. of the copies the one you used last stays. «new tab» and titles that only repeat the address never match.</p>
+          <div class="tags"><span>clean</span><span>flatten</span><span>order</span><span>blocks</span><span class="i18n" data-en="twins by title" data-ru="близнецы по заголовку">twins by title</span></div>
         </div>
         <div class="instrument">
-          <div class="instrument-head"><span class="i18n" data-en="tab list · press tidy" data-ru="список вкладок · нажми уборку">tab list · press tidy</span><b id="simstate">■ messy</b></div>
+          <div class="instrument-head"><span class="i18n" data-en="tab list · press tidy" data-ru="список вкладок · нажми уборку">tab list · press tidy</span><b id="simstate" class="i18n" data-en="messy" data-ru="грязно">messy</b></div>
           <div class="tabsim" id="tabsim"></div>
           <div class="simbar">
             <button class="go" id="simtidy" data-en="⌥⌘T tidy up" data-ru="⌥⌘T убрать">⌥⌘T tidy up</button>
             <button id="simreset" data-en="reset" data-ru="сбросить">reset</button>
           </div>
-          <div class="receipt"><span class="i18n" data-en="clean → flatten → order → blocks" data-ru="чистка → расплести → порядок → блоки">clean → flatten → order → blocks</span><strong id="simcount">8</strong></div>
+          <div class="receipt"><span class="i18n" data-en="clean → flatten → order → blocks" data-ru="чистка → расплести → порядок → блоки">clean → flatten → order → blocks</span><strong id="simcount">9</strong></div>
         </div>
       </article>
 
-      <div class="label i18n" style="margin-top:52px" data-en="04 · keys and limits" data-ru="04 · клавиши и границы">04 · keys and limits</div>
+      <div class="label i18n" style="margin-top:52px" data-en="04 · the keys, rebindable right here" data-ru="04 · клавиши, перепривязываются прямо здесь">04 · the keys, rebindable right here</div>
+      <article class="split" style="margin-top:16px">
+        <div class="copy">
+          <span class="idx">04</span>
+          <h2 class="i18n" data-en="take the key back" data-ru="забрать клавишу">take the key back</h2>
+          <p class="i18n" data-en="an extension is normally allowed four shortcuts, re-bindable only on the browser's own settings page. this one listens on the page in the capture phase – before the browser applies its accelerator – so any combination the page can see becomes yours." data-ru="расширению обычно положено четыре сочетания, и менять их можно только на служебной странице браузера. это слушает клавиши на самой странице в фазе перехвата – раньше, чем браузер применит свой акселератор, – поэтому твоим становится любое сочетание, которое видит страница.">an extension is normally allowed four shortcuts, re-bindable only on the browser's own settings page. this one listens on the page in the capture phase – before the browser applies its accelerator – so any combination the page can see becomes yours.</p>
+          <p class="i18n" data-en="bindings are stored by physical key code, so a non-latin keyboard layout doesn't quietly break them. click a row on the right and press a combination – the recorder is the same one that lives in the extension." data-ru="привязки хранятся по физической клавише, поэтому нелатинская раскладка их не ломает. нажми строку справа и введи сочетание – это тот же рекордер, что стоит в расширении.">bindings are stored by physical key code, so a non-latin keyboard layout doesn't quietly break them. click a row on the right and press a combination – the recorder is the same one that lives in the extension.</p>
+          <div class="tags"><span>capture phase</span><span>event.code</span><span>⌘D</span><span>⇧⌘D</span><span>⌥⌘T</span><span>⌥⌘D</span></div>
+        </div>
+        <div class="instrument">
+          <div class="instrument-head"><span class="i18n" data-en="keymap · click a row, press keys" data-ru="раскладка · нажми строку и введи клавиши">keymap · click a row, press keys</span><b class="i18n" data-en="live" data-ru="живая">live</b></div>
+          <div class="keyrows" id="keyrows"></div>
+          <div class="receipt"><span class="i18n" data-en="esc cancels · ⌫ clears" data-ru="esc отменяет · ⌫ снимает">esc cancels · ⌫ clears</span><strong id="keystate">–</strong></div>
+        </div>
+      </article>
+
+      <div class="label i18n" style="margin-top:52px" data-en="05 · the desk, from the palette" data-ru="05 · стол, из палитры">05 · the desk, from the palette</div>
+      <article class="split" style="margin-top:16px">
+        <div class="copy">
+          <span class="idx">05</span>
+          <h2 class="i18n" data-en="notes and agents" data-ru="заметки и агенты">notes and agents</h2>
+          <p class="i18n" data-en="a browser extension cannot read a file or start a process. a small local server does it on its behalf: it reads each vault's own «recent files» list from obsidian, keeps a filename index for search, and opens a note through obsidian://. type &gt; and the same list shows the terminals running in orca – ↵ switches to one; &gt; followed by a prompt starts a new claude in a folder you configured." data-ru="расширение браузера не может ни прочитать файл, ни запустить процесс. маленький локальный сервер делает это за него: читает из obsidian список «недавних файлов» каждого волта, держит индекс имён для поиска и открывает заметку через obsidian://. набери &gt; – и тот же список показывает терминалы, которые работают в orca: ↵ переключает на один из них; &gt; с текстом запускает нового claude в папке, которую ты разрешил.">a browser extension cannot read a file or start a process. a small local server does it on its behalf: it reads each vault's own «recent files» list from obsidian, keeps a filename index for search, and opens a note through obsidian://. type &gt; and the same list shows the terminals running in orca – ↵ switches to one; &gt; followed by a prompt starts a new claude in a folder you configured.</p>
+          <p class="i18n" data-en="it listens on 127.0.0.1 only and answers only to a header this extension sends – a web page cannot add it without a cors preflight the bridge refuses. it opens only files inside a configured vault and starts an agent only in a configured folder. standard-library python, one launchagent, off until you install it." data-ru="он слушает только 127.0.0.1 и отвечает только на заголовок, который шлёт это расширение: веб-страница не поставит его без cors-преддоговора, а преддоговор мост не подтверждает. открывает только файлы внутри разрешённого волта и запускает агента только в разрешённой папке. python из стандартной библиотеки, один launchagent, выключен, пока не поставишь.">it listens on 127.0.0.1 only and answers only to a header this extension sends – a web page cannot add it without a cors preflight the bridge refuses. it opens only files inside a configured vault and starts an agent only in a configured folder. standard-library python, one launchagent, off until you install it.</p>
+          <div class="tags"><span>obsidian</span><span>orca</span><span>127.0.0.1</span><span>launchagent</span><span>bridge/install.sh</span></div>
+        </div>
+        <div class="instrument">
+          <div class="instrument-head"><span class="i18n" data-en="palette · &gt; agents" data-ru="палитра · &gt; агенты">palette · &gt; agents</span><b>desk</b></div>
+          <div class="pal-top">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="6.8" cy="6.8" r="4.6"/><path d="M10.4 10.4L14 14" stroke-linecap="round"/></svg>
+            <input id="agentq" value="> fix the flaky test in the palette" autocomplete="off" spellcheck="false" aria-label="agent prompt">
+          </div>
+          <div class="pal-list" id="agentlist"></div>
+          <div class="pal-foot">
+            <span class="brand"><i></i>aside tweaks</span>
+            <span class="right"><span><b class="primary" id="agentprimary">switch</b> <b>↵</b></span><span><b>actions</b> ⌘K</span></span>
+          </div>
+        </div>
+      </article>
+
+      <div class="label i18n" style="margin-top:52px" data-en="06 · keys and limits" data-ru="06 · клавиши и границы">06 · keys and limits</div>
       <div class="block" style="margin-top:16px">
         <h3 class="i18n" data-en="what each gesture moves" data-ru="что двигает каждый жест">what each gesture moves</h3>
         <table class="keys">
-          <tr><td><kbd>⌘D</kbd></td><td><span class="i18n" data-en="bookmark ⇄ tab" data-ru="закладка ⇄ вкладка">bookmark ⇄ tab</span><em class="i18n" data-en="the page joins the bookmarks bar and the tab stays open, loaded and selected at the first row of the list — press it again and the bookmark goes, the tab stays where the eye already is" data-ru="страница ложится в панель закладок, а вкладка остаётся открытой, загруженной и выделенной первой строкой списка — второе нажатие снимает закладку, вкладка остаётся там, где уже смотрит глаз">the page joins the bookmarks bar and the tab stays open, loaded and selected at the first row of the list — press it again and the bookmark goes, the tab stays where the eye already is</em></td></tr>
-          <tr><td><kbd>⇧⌘D</kbd></td><td><span class="i18n" data-en="pin" data-ru="пин">pin</span><em class="i18n" data-en="the squares on top of the sidebar. unpinning returns the page to the first row of the tabs and keeps it selected, so nothing gets lost in the middle of the list" data-ru="квадратики вверху боковой панели. открепление возвращает страницу первой строкой вкладок и оставляет её выделенной, чтобы она не потерялась в середине списка">the squares on top of the sidebar. unpinning returns the page to the first row of the tabs and keeps it selected, so nothing gets lost in the middle of the list</em></td></tr>
-          <tr><td><kbd>⌥⌘T</kbd></td><td><span class="i18n" data-en="tidy up" data-ru="уборка">tidy up</span><em class="i18n" data-en="clean, flatten, order, rebuild blocks — reported once, not four times" data-ru="чистка, расплести, порядок, блоки — с одним отчётом вместо четырёх">clean, flatten, order, rebuild blocks — reported once, not four times</em></td></tr>
-          <tr><td><kbd>⇧⌘K</kbd></td><td><span class="i18n" data-en="palette" data-ru="палитра">palette</span><em class="i18n" data-en="a layer over the page: no title bar, no traffic lights, the page darkens and blurs behind it. where no page exists it opens as a window" data-ru="слой поверх страницы: без заголовка и светофора, страница под ним темнеет и размывается. там, где страницы нет, открывается окном">a layer over the page: no title bar, no traffic lights, the page darkens and blurs behind it. where no page exists it opens as a window</em></td></tr>
-          <tr><td><kbd>⌃⇧S</kbd></td><td><span class="i18n" data-en="panel" data-ru="панель">panel</span><em class="i18n" data-en="top of the bookmarks bar, pinned tabs, the rest by blocks, commands" data-ru="верх панели закладок, пины, остальное по блокам, команды">top of the bookmarks bar, pinned tabs, the rest by blocks, commands</em></td></tr>
+          <tr><td><kbd>⇧⌘K</kbd></td><td><span class="i18n" data-en="palette" data-ru="палитра">palette</span><em class="i18n" data-en="a layer over the page: no title bar, the page darkens behind it. where no page exists it opens as a window. ⇥ switches scope, esc clears then closes" data-ru="слой поверх страницы: без заголовка, страница под ним темнеет. там, где страницы нет, открывается окном. ⇥ меняет область, esc чистит и потом закрывает">a layer over the page: no title bar, the page darkens behind it. where no page exists it opens as a window. ⇥ switches scope, esc clears then closes</em></td></tr>
+          <tr><td><kbd>⌘K</kbd></td><td><span class="i18n" data-en="actions" data-ru="действия">actions</span><em class="i18n" data-en="inside the palette: the actions of the selected row. switch · pin · bookmark ⇄ tab · close · copy url for a tab; open · pinned · in a block · copy for anything with an address. the printed keys work without opening it: ⇧↵ ⌘⌫ ⌘B ⌘C" data-ru="внутри палитры: действия выбранной строки. переключиться · закрепить · закладка ⇄ вкладка · закрыть · скопировать адрес у вкладки; открыть · пином · в блоке · скопировать у всего, что с адресом. подписанные клавиши работают и без панели: ⇧↵ ⌘⌫ ⌘B ⌘C">inside the palette: the actions of the selected row. switch · pin · bookmark ⇄ tab · close · copy url for a tab; open · pinned · in a block · copy for anything with an address. the printed keys work without opening it: ⇧↵ ⌘⌫ ⌘B ⌘C</em></td></tr>
+          <tr><td><kbd>&gt;</kbd></td><td><span class="i18n" data-en="agents" data-ru="агенты">agents</span><em class="i18n" data-en="in the palette: the live terminals to switch to; with text after it, «run in ‹folder›» rows that start a new agent with that prompt. needs the desk bridge" data-ru="в палитре: живые терминалы, на которые можно переключиться; с текстом после – строки «run in ‹папка›», которые запускают нового агента с этим промптом. нужен мост">in the palette: the live terminals to switch to; with text after it, «run in ‹folder›» rows that start a new agent with that prompt. needs the desk bridge</em></td></tr>
+          <tr><td><kbd>⌘D</kbd></td><td><span class="i18n" data-en="bookmark ⇄ tab" data-ru="закладка ⇄ вкладка">bookmark ⇄ tab</span><em class="i18n" data-en="the page joins the bookmarks bar as its last row, leaves its block, stays open and selected – the sidebar folds the tab into the bookmark row. again: the bookmark goes, the tab stays on top" data-ru="страница ложится последней строкой панели закладок, выходит из блока, остаётся открытой и выделенной – сайдбар вплавляет вкладку в строку закладки. ещё раз: закладка уходит, вкладка остаётся наверху">the page joins the bookmarks bar as its last row, leaves its block, stays open and selected – the sidebar folds the tab into the bookmark row. again: the bookmark goes, the tab stays on top</em></td></tr>
+          <tr><td><kbd>⇧⌘D</kbd></td><td><span class="i18n" data-en="pin" data-ru="пин">pin</span><em class="i18n" data-en="the squares on top of the sidebar. unpinning returns the page to the first row of the tabs and keeps it selected" data-ru="квадратики вверху боковой панели. открепление возвращает страницу первой строкой вкладок и оставляет её выделенной">the squares on top of the sidebar. unpinning returns the page to the first row of the tabs and keeps it selected</em></td></tr>
+          <tr><td><kbd>⌥⌘D</kbd></td><td><span class="i18n" data-en="clean duplicates" data-ru="чистка дублей">clean duplicates</span><em class="i18n" data-en="by address or by host + title, plus empty tabs; the copy you used last stays. the popup counts what it would close before you press" data-ru="по адресу или по хосту с заголовком, плюс пустые вкладки; остаётся копия, где ты был последним. попап считает, что закроет, ещё до нажатия">by address or by host + title, plus empty tabs; the copy you used last stays. the popup counts what it would close before you press</em></td></tr>
+          <tr><td><kbd>⌥⌘T</kbd></td><td><span class="i18n" data-en="tidy up" data-ru="уборка">tidy up</span><em class="i18n" data-en="clean, flatten, order, rebuild blocks – reported once, not four times" data-ru="чистка, расплести, порядок, блоки – с одним отчётом вместо четырёх">clean, flatten, order, rebuild blocks – reported once, not four times</em></td></tr>
+          <tr><td><kbd>⌃⇧S</kbd></td><td><span class="i18n" data-en="panel" data-ru="панель">panel</span><em class="i18n" data-en="the last rows of the bookmarks bar, pinned tabs, the rest by blocks, commands – one list of commands feeds the panel, the palette and the popup" data-ru="последние строки панели закладок, пины, остальное по блокам, команды – один список команд питает панель, палитру и попап">the last rows of the bookmarks bar, pinned tabs, the rest by blocks, commands – one list of commands feeds the panel, the palette and the popup</em></td></tr>
         </table>
       </div>
 
       <div class="block">
         <h3 class="i18n" data-en="the layer above extensions" data-ru="слой выше расширений">the layer above extensions</h3>
-        <p class="i18n" data-en="⌘T, ⌘W, ⌘N, ⌘Q belong to the system and no extension reaches them — the browser consumes them before a page exists. those keys are menu commands, and macOS re-binds any menu command per application. the repo ships that as a script, so the browser's own bookmark dialog stops sitting on ⌘D:" data-ru="⌘T, ⌘W, ⌘N, ⌘Q принадлежат системе, и до них не дотягивается ни одно расширение — браузер забирает их раньше, чем появится страница. эти клавиши суть команды меню, а macOS переназначает любую команду меню отдельно для приложения. в репозитории это оформлено скриптом, чтобы родной диалог закладки перестал сидеть на ⌘D:">⌘T, ⌘W, ⌘N, ⌘Q belong to the system and no extension reaches them — the browser consumes them before a page exists. those keys are menu commands, and macOS re-binds any menu command per application. the repo ships that as a script, so the browser's own bookmark dialog stops sitting on ⌘D:</p>
+        <p class="i18n" data-en="⌘T, ⌘W, ⌘N, ⌘Q belong to the system and no extension reaches them – the browser consumes them before a page exists. those keys are menu commands, and macOS re-binds any menu command per application. the repo ships that as a script, so the browser's own bookmark dialog stops sitting on ⌘D:" data-ru="⌘T, ⌘W, ⌘N, ⌘Q принадлежат системе, и до них не дотягивается ни одно расширение – браузер забирает их раньше, чем появится страница. эти клавиши суть команды меню, а macOS переназначает любую команду меню отдельно для приложения. в репозитории это оформлено скриптом, чтобы родной диалог закладки перестал сидеть на ⌘D:">⌘T, ⌘W, ⌘N, ⌘Q belong to the system and no extension reaches them – the browser consumes them before a page exists. those keys are menu commands, and macOS re-binds any menu command per application. the repo ships that as a script, so the browser's own bookmark dialog stops sitting on ⌘D:</p>
         <pre><b>$</b> scripts/native-shortcuts.sh
   Bookmark This Tab…         → ⌃⌘B    frees ⌘D
   Bookmark All Tabs…         → ⌃⇧⌘B   frees ⇧⌘D
@@ -273,8 +376,9 @@
 
       <div class="block">
         <h3 class="i18n" data-en="install in two minutes" data-ru="установка за две минуты">install in two minutes</h3>
-        <pre><b>$</b> git clone https://github.com/aPoWall/aside-tweaks.git</pre>
-        <p style="margin-top:13px" class="i18n" data-en="chrome://extensions → developer mode → load unpacked → pick the folder. everything stays on the machine: the extension talks to the browser's own tab, history and bookmark apis and to nothing else." data-ru="chrome://extensions → режим разработчика → load unpacked → выбрать папку. всё остаётся на машине: расширение общается только с родными интерфейсами вкладок, истории и закладок браузера.">chrome://extensions → developer mode → load unpacked → pick the folder. everything stays on the machine: the extension talks to the browser's own tab, history and bookmark apis and to nothing else.</p>
+        <pre><b>$</b> git clone https://github.com/aPoWall/aside-tweaks.git
+<b>$</b> bridge/install.sh          <span style="color:#8a8a8a"># optional · notes and agents · edits ~/.config/aside-tweaks/desk.json</span></pre>
+        <p style="margin-top:13px" class="i18n" data-en="chrome://extensions → developer mode → load unpacked → pick the folder. everything stays on the machine: the extension talks to the browser's own tab, history and bookmark apis, and – if you install the bridge – to a server on 127.0.0.1 that only answers to it." data-ru="chrome://extensions → режим разработчика → load unpacked → выбрать папку. всё остаётся на машине: расширение общается с родными интерфейсами вкладок, истории и закладок браузера и – если поставишь мост – с сервером на 127.0.0.1, который отвечает только ему.">chrome://extensions → developer mode → load unpacked → pick the folder. everything stays on the machine: the extension talks to the browser's own tab, history and bookmark apis, and – if you install the bridge – to a server on 127.0.0.1 that only answers to it.</p>
         <div class="buttons">
           <a class="button primary i18n" href="https://github.com/aPoWall/aside-tweaks" data-en="get it on github" data-ru="забрать на github">get it on github</a>
           <a class="button i18n" href="https://github.com/aPoWall/aside-tweaks#readme" data-en="read the docs" data-ru="почитать документацию">read the docs</a>
@@ -283,7 +387,7 @@
 
       <div class="block">
         <h3 class="i18n" data-en="what it will not do" data-ru="чего оно не сделает">what it will not do</h3>
-        <p class="i18n" data-en="the browser's own sidebar is native chrome — an extension cannot repaint or restyle it, and the theme colour leaves it alone. what this draws is themable instead: palette, popup, settings, panel. and no extension can take ⌘T ⌘W ⌘N ⌘Q, on any browser, including the ones that advertise custom shortcuts. the honest ceiling is written down rather than hidden. the browser's own ✦ tidy is part of that ceiling: no menu command, no url scheme, and the window reports zero elements to accessibility — so this ships its own sweep instead of pretending to press that button." data-ru="боковая панель браузера нарисована его собственным нативным слоем: расширение её не перекрасит и не переделает, тема браузера её тоже не трогает. зато перекрашивается всё, что рисуем мы: палитра, попап, настройки, панель. и ни одно расширение не заберёт ⌘T ⌘W ⌘N ⌘Q — ни в одном браузере, включая те, что обещают произвольные шорткаты. потолок честно записан, а не спрятан. встроенная ✦ tidy — часть этого потолка: у неё нет ни команды меню, ни url-схемы, а окно отдаёт в систему доступности ноль элементов, поэтому здесь работает свой свод, а не имитация чужой кнопки.">the browser's own sidebar is native chrome — an extension cannot repaint or restyle it, and the theme colour leaves it alone. what this draws is themable instead: palette, popup, settings, panel. and no extension can take ⌘T ⌘W ⌘N ⌘Q, on any browser, including the ones that advertise custom shortcuts. the honest ceiling is written down rather than hidden. the browser's own ✦ tidy is part of that ceiling: no menu command, no url scheme, and the window reports zero elements to accessibility — so this ships its own sweep instead of pretending to press that button.</p>
+        <p class="i18n" data-en="the browser's own sidebar is native chrome – an extension cannot repaint or restyle it, and the theme colour leaves it alone. what this draws is themable instead, and by default it borrows the sidebar's own values: palette, popup, settings, panel. no extension can take ⌘T ⌘W ⌘N ⌘Q, on any browser, including the ones that advertise custom shortcuts. the browser's own ✦ tidy is part of that ceiling: no menu command, no url scheme, zero elements for accessibility – so this ships its own sweep. and the bridge does nothing until you install it; without it the palette has no notes and &gt; points you to the settings card." data-ru="боковая панель браузера нарисована его собственным нативным слоем: расширение её не перекрасит и не переделает, тема браузера её тоже не трогает. зато перекрашивается всё, что рисуем мы, и по умолчанию оно берёт значения самого сайдбара: палитра, попап, настройки, панель. ни одно расширение не заберёт ⌘T ⌘W ⌘N ⌘Q – ни в одном браузере, включая те, что обещают произвольные шорткаты. встроенная ✦ tidy – часть этого потолка: ни команды меню, ни url-схемы, ноль элементов для доступности, поэтому здесь свой свод. а мост не делает ничего, пока его не поставишь: без него в палитре нет заметок, а &gt; ведёт в карточку настроек.">the browser's own sidebar is native chrome – an extension cannot repaint or restyle it, and the theme colour leaves it alone. what this draws is themable instead, and by default it borrows the sidebar's own values: palette, popup, settings, panel. no extension can take ⌘T ⌘W ⌘N ⌘Q, on any browser, including the ones that advertise custom shortcuts. the browser's own ✦ tidy is part of that ceiling: no menu command, no url scheme, zero elements for accessibility – so this ships its own sweep. and the bridge does nothing until you install it; without it the palette has no notes and &gt; points you to the settings card.</p>
       </div>
     </main>
 
@@ -309,12 +413,225 @@ function setLang(l) {
   try { localStorage.setItem('at-lang', l); } catch {}
   drawKeys();
   drawSim(false);
+  drawFold();
+  drawAgents();
 }
 
-// ---------- 01 · перепривязка клавиш (тот же рекордер, что в расширении) ----------
+// ---------- 01 · палитра: строение raycast ----------
+const DATA = [
+  { k:'tabs', t:'AI Mindset Lab – Knowledge Base', s:'learn.aimindset.org', kind:'tab' },
+  { k:'tabs', t:'AIM VISUAL', s:'visual-team.aimindset.org', kind:'tab', tw:'×4' },
+  { k:'tabs', t:'S26 · Lab Pulse', s:'pulse.aimindset.org', kind:'asleep' },
+  { k:'tabs', t:'aside tweaks · settings', s:'extension', kind:'tab' },
+  { k:'notes', t:'{AIM} {guide} Internal Mini-Deck Standard – 2026-08-27', s:'team · aim-rules', kind:'note', g:'◇' },
+  { k:'notes', t:'{mac} {research} Agentic Browser Lane – 2026-08-05', s:'vault · research', kind:'note', g:'◇' },
+  { k:'cmd', t:'tidy up', s:'one sweep', kind:'command', key:'⌥⌘T', g:'✦' },
+  { k:'cmd', t:'clean duplicates', s:'closes 3 · 3 duplicates, 0 empty', kind:'command', key:'⌥⌘D', g:'⊗' },
+  { k:'cmd', t:'blocks by meaning', s:'a model reads the titles', kind:'command', g:'✳' },
+  { k:'history', t:'language relay – wrong alphabet, one tap', s:'apps.aimindset.org', kind:'history' },
+  { k:'history', t:'Aside Browser – Help Center', s:'docs.aside.com', kind:'history' },
+  { k:'history', t:'productivity hack · lab session', s:'s26.lab.aimindset.org', kind:'history' },
+  { k:'marks', t:'AI Mindset Knowledge Base', s:'base.aimindset.org', kind:'bookmark' },
+  { k:'marks', t:'aside tweaks · readme', s:'github.com', kind:'bookmark' }
+];
+const AGENTS = [
+  { t:'aside tweaks · site + twins + palette', s:'~/orca/workspaces/vault/harness', live:1 },
+  { t:'brand-night pipeline', s:'~/orca/workspaces/vault/aim-brand-bible', live:1 },
+  { t:'growth chart · access', s:'~/orca/workspaces/vault/marketing', live:0 }
+];
+const FOLDERS = [ { n:'vault', p:'~/vault' }, { n:'team', p:'~/aim-vault-team' }, { n:'code', p:'~/Documents/_code' } ];
+const SECTION = { tabs:'recent', notes:'notes', cmd:'commands', history:'history', marks:'bookmarks', calc:'', open:'open', search:'', agent:'agents', run:'run an agent' };
+const PRIMARY = { tabs:'switch', notes:'open', cmd:'run', history:'open', marks:'open', calc:'copy', open:'open', search:'search', agent:'switch', run:'run' };
+const q = document.getElementById('demoq');
+const list = document.getElementById('demolist');
+const primary = document.getElementById('demoprimary');
+const actsEl = document.getElementById('demoacts');
+const scopeBtns = [...document.querySelectorAll('#demoscopes button')];
+const SCOPES = ['all','tabs','history','marks','notes','cmd'];
+let scope = 'all', sel = 0, rows = [], actsOpen = false, actSel = 0;
+
+function calc(e) {
+  const s = e.trim();
+  if (!/^[\d\s+\-*/%.()]+$/.test(s) || !/[+\-*/%]/.test(s) || s.length > 40) return null;
+  try { const v = Function('"use strict";return (' + s + ')')(); return isFinite(v) ? String(Math.round(v*1e6)/1e6) : null; }
+  catch { return null; }
+}
+function build() {
+  const raw = q.value.trim(), needle = raw.toLowerCase();
+  const out = [];
+  if (raw.startsWith('>')) {
+    const p = raw.slice(1).trim().toLowerCase();
+    for (const a of AGENTS) if (!p || (a.t + a.s).toLowerCase().includes(p)) out.push({ k:'agent', t:a.t, s:a.s, kind:'terminal', g:a.live ? '●' : '○' });
+    if (p) for (const f of FOLDERS) out.push({ k:'run', t:f.n + ' · ' + raw.slice(1).trim(), s:f.p, kind:'new agent', g:'▶' });
+    return out;
+  }
+  const value = calc(raw);
+  if (value !== null) out.push({ k:'calc', t:value, s:raw, kind:'calc', g:'=' });
+  const limit = { tabs: needle ? 6 : 4, notes: needle ? 4 : 2, cmd: needle ? 9 : 3, history: needle ? 6 : 3, marks: 4 };
+  const shown = {};
+  for (const it of DATA) {
+    if (scope !== 'all' && it.k !== scope) continue;
+    if (needle && !(it.t + ' ' + it.s).toLowerCase().includes(needle)) continue;
+    if (scope === 'all' && (shown[it.k] || 0) >= limit[it.k]) continue;
+    shown[it.k] = (shown[it.k] || 0) + 1;
+    out.push(it);
+  }
+  if (needle && /^[\w-]+(\.[\w-]+)+/.test(raw)) out.unshift({ k:'open', t:'Open ' + raw, s:'', kind:'url', g:'→' });
+  else if (needle && !out.length) out.push({ k:'search', t:'Search: ' + raw, s:'google', kind:'web', g:'?' });
+  return out;
+}
+function rowEl(it, i, selIdx) {
+  const d = document.createElement('div');
+  d.className = 'drow';
+  d.setAttribute('role','option');
+  d.dataset.sel = i === selIdx ? '1' : '0';
+  const g = document.createElement('span'); g.className='dg'; g.textContent = it.g || '·';
+  const t = document.createElement('span'); t.className='dt'; t.textContent = it.t;
+  const s = document.createElement('span'); s.className='ds'; s.textContent = it.s || '';
+  d.append(g,t,s);
+  if (it.tw) { const w = document.createElement('span'); w.className='tw'; w.textContent = it.tw; d.append(w); }
+  if (it.key) { const k = document.createElement('span'); k.className='dk'; k.textContent = it.key; d.append(k); }
+  const b = document.createElement('span'); b.className='db'; b.textContent = it.kind || '';
+  d.append(b);
+  return d;
+}
+function render() {
+  list.replaceChildren();
+  let last = null;
+  rows.forEach((it, i) => {
+    const sec = SECTION[it.k];
+    if (sec && sec !== last) { const h = document.createElement('div'); h.className = 'hdr'; h.textContent = sec; list.append(h); last = sec; }
+    const d = rowEl(it, i, sel);
+    d.addEventListener('mousemove', () => { if (sel !== i) { sel = i; render(); } });
+    list.append(d);
+  });
+  primary.textContent = rows[sel] ? PRIMARY[rows[sel].k] || 'open' : '–';
+}
+function refresh() { closeActs(); rows = build(); sel = Math.min(sel, Math.max(0, rows.length-1)); render(); }
+function setScope(s) { scope = s; scopeBtns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.s === s))); refresh(); }
+scopeBtns.forEach(b => b.addEventListener('click', () => { setScope(b.dataset.s); q.focus(); }));
+q.addEventListener('input', refresh);
+
+// панель действий ⌘K – та же, что в расширении
+function actionsOf(it) {
+  if (!it) return [];
+  const url = [{ l:'open', k:'↵' }, { l:'open pinned', k:'⇧↵' }, { l:'open in block · aim', k:'' }, { l:'copy url', k:'⌘C' }];
+  return {
+    tabs: [{ l:'switch to tab', k:'↵' }, { l:'pin', k:'⇧↵' }, { l:'bookmark ⇄ tab', k:'⌘B' }, { l:'close tab', k:'⌘⌫' }, { l:'copy url', k:'⌘C' }],
+    notes: [{ l:'open in obsidian', k:'↵' }, { l:'copy path', k:'⌘C' }],
+    cmd: [{ l:'run', k:'↵' }], calc: [{ l:'copy', k:'↵' }], search: [{ l:'search', k:'↵' }],
+    agent: [{ l:'switch to terminal', k:'↵' }], run: [{ l:'run in folder', k:'↵' }]
+  }[it.k] || url;
+}
+function openActs() {
+  const it = rows[sel]; if (!it) return;
+  const acts = actionsOf(it); actSel = 0;
+  actsEl.replaceChildren();
+  const h = document.createElement('div'); h.className = 'ah'; h.textContent = it.t; actsEl.append(h);
+  acts.forEach((a, i) => {
+    const d = document.createElement('div'); d.className = 'a' + (i === 0 ? ' sel' : '');
+    const l = document.createElement('span'); l.textContent = a.l;
+    const k = document.createElement('span'); k.className = 'k'; k.textContent = a.k;
+    d.append(l, k);
+    d.addEventListener('mouseenter', () => setActSel(i));
+    d.addEventListener('click', closeActs);
+    actsEl.append(d);
+  });
+  actsEl.classList.add('on'); actsOpen = true;
+}
+function setActSel(i) { const els = actsEl.querySelectorAll('.a'); if (!els.length) return; i = (i + els.length) % els.length; els[actSel]?.classList.remove('sel'); actSel = i; els[actSel].classList.add('sel'); }
+function closeActs() { actsEl.classList.remove('on'); actsOpen = false; }
+document.getElementById('demoactsbtn').addEventListener('click', () => { actsOpen ? closeActs() : openActs(); q.focus(); });
+q.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.code === 'KeyK') { e.preventDefault(); actsOpen ? closeActs() : openActs(); return; }
+  if (actsOpen) {
+    if (e.key === 'Escape') { e.preventDefault(); closeActs(); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActSel(actSel + 1); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setActSel(actSel - 1); return; }
+    if (e.key === 'Enter') { e.preventDefault(); closeActs(); return; }
+    return;
+  }
+  if (e.key === 'Escape') { if (q.value) { e.preventDefault(); q.value = ''; refresh(); } return; }
+  if (e.key === 'Tab') { e.preventDefault(); const i = SCOPES.indexOf(scope); setScope(SCOPES[(i + (e.shiftKey?-1:1) + SCOPES.length) % SCOPES.length]); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(sel+1, rows.length-1); render(); }
+  if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(sel-1, 0); render(); }
+});
+
+// ---------- 05 · агенты: та же палитра в режиме > ----------
+const agentq = document.getElementById('agentq');
+const agentlist = document.getElementById('agentlist');
+let agentSel = 0;
+function drawAgents() {
+  const raw = agentq.value.trim();
+  const p = raw.startsWith('>') ? raw.slice(1).trim() : raw;
+  const out = [];
+  for (const a of AGENTS) if (!p || (a.t + a.s).toLowerCase().includes(p.toLowerCase()) || true) out.push({ k:'agent', t:a.t, s:a.s, kind:'terminal', g:a.live ? '●' : '○' });
+  if (p) for (const f of FOLDERS) out.push({ k:'run', t:f.n + ' · ' + p, s:f.p, kind:'new agent', g:'▶' });
+  agentlist.replaceChildren();
+  let last = null;
+  out.forEach((it, i) => {
+    const sec = SECTION[it.k];
+    if (sec !== last) { const h = document.createElement('div'); h.className = 'hdr'; h.textContent = sec; agentlist.append(h); last = sec; }
+    const d = rowEl(it, i, agentSel);
+    d.addEventListener('mousemove', () => { if (agentSel !== i) { agentSel = i; drawAgents(); } });
+    agentlist.append(d);
+  });
+  document.getElementById('agentprimary').textContent = out[agentSel] ? PRIMARY[out[agentSel].k] : '–';
+}
+agentq.addEventListener('input', () => { agentSel = 0; drawAgents(); });
+agentq.addEventListener('keydown', (e) => {
+  const n = agentlist.querySelectorAll('.drow').length;
+  if (e.key === 'ArrowDown') { e.preventDefault(); agentSel = Math.min(agentSel + 1, n - 1); drawAgents(); }
+  if (e.key === 'ArrowUp') { e.preventDefault(); agentSel = Math.max(agentSel - 1, 0); drawAgents(); }
+});
+
+// ---------- 02 · ⌘D: вкладка складывается в строку закладки ----------
+const BAR = [ { t:'aside tweaks · readme', i:'gh' }, { t:'AI Mindset Knowledge Base', i:'aim' } ];
+const TABS0 = [ { t:'Linear · sprint', i:'' }, { t:'AIM VISUAL', i:'aim', sel:1 }, { t:'S26 · Lab Pulse', i:'aim', z:1 }, { t:'GitHub · language-relay', i:'gh' } ];
+const foldEl = document.getElementById('fold');
+const foldstate = document.getElementById('foldstate');
+const foldcount = document.getElementById('foldcount');
+let folded = false, foldBusy = false;
+function frow(r, extra = '') {
+  const d = document.createElement('div');
+  d.className = 'frow' + (r.sel ? ' sel' : '') + extra;
+  const i = document.createElement('span'); i.className = 'fi ' + (r.i || '');
+  const t = document.createElement('span'); t.className = 'ft'; t.textContent = r.t;
+  d.append(i, t);
+  if (r.z) { const z = document.createElement('span'); z.className = 'fz'; z.textContent = '💤'; d.append(z); }
+  if (r.live) { const l = document.createElement('span'); l.className = 'fl'; l.textContent = isRu() ? 'вкладка внутри' : 'tab folded in'; d.append(l); }
+  return d;
+}
+function drawFold() {
+  const ru = isRu();
+  foldEl.replaceChildren();
+  const h1 = document.createElement('div'); h1.className = 'fh'; h1.textContent = ru ? 'закладки' : 'bookmarks'; foldEl.append(h1);
+  BAR.forEach(r => foldEl.append(frow(r)));
+  if (folded) foldEl.append(frow({ t:'AIM VISUAL', i:'aim', sel:1, live:1 }, ' new'));
+  const h2 = document.createElement('div'); h2.className = 'fh'; h2.textContent = ru ? 'вкладки' : 'tabs'; foldEl.append(h2);
+  TABS0.forEach(r => { if (folded && r.sel) return; foldEl.append(frow(r)); });
+  foldcount.textContent = folded ? '3 + 3' : '2 + 4';
+  foldstate.textContent = folded ? (ru ? 'сложено' : 'folded') : (ru ? 'вкладка' : 'tab');
+}
+document.getElementById('foldgo').addEventListener('click', async () => {
+  if (foldBusy) return;
+  foldBusy = true;
+  if (!folded) {
+    const rowsNow = [...foldEl.querySelectorAll('.frow.sel')];
+    rowsNow.forEach(r => r.classList.add('gone'));
+    await new Promise(r => setTimeout(r, 380));
+    folded = true;
+  } else folded = false;
+  drawFold();
+  foldBusy = false;
+});
+document.getElementById('foldreset').addEventListener('click', () => { folded = false; drawFold(); });
+
+// ---------- 04 · перепривязка клавиш (тот же рекордер, что в расширении) ----------
 const BINDINGS = [
-  { id:'fav',  en:'bookmark up', ru:'закладка наверх', sub_en:'moves the page to the top of the bar', sub_ru:'переносит страницу наверх панели', combo:{ meta:1, code:'KeyD' } },
+  { id:'fav',  en:'bookmark ⇄ tab', ru:'закладка ⇄ вкладка', sub_en:'the last row of the bar, the tab folds in', sub_ru:'последняя строка панели, вкладка складывается внутрь', combo:{ meta:1, code:'KeyD' } },
   { id:'pin',  en:'pin / unpin', ru:'пин / снять пин', sub_en:'the squares on top of the sidebar', sub_ru:'квадратики вверху панели', combo:{ meta:1, shift:1, code:'KeyD' } },
+  { id:'dd',   en:'clean duplicates', ru:'чистка дублей', sub_en:'by address or by title, plus empty tabs', sub_ru:'по адресу или по заголовку, плюс пустые', combo:{ meta:1, alt:1, code:'KeyD' } },
   { id:'tidy', en:'tidy up', ru:'уборка', sub_en:'clean, flatten, order, blocks', sub_ru:'чистка, порядок, блоки', combo:{ meta:1, alt:1, code:'KeyT' } }
 ];
 const RESERVED = ['KeyT','KeyW','KeyN','KeyQ','KeyM'];
@@ -322,7 +639,7 @@ const keyrows = document.getElementById('keyrows');
 const keystate = document.getElementById('keystate');
 let recording = null;
 
-const label = c => !c ? '—' : (c.ctrl?'⌃':'') + (c.alt?'⌥':'') + (c.shift?'⇧':'') + (c.meta?'⌘':'') +
+const label = c => !c ? '–' : (c.ctrl?'⌃':'') + (c.alt?'⌥':'') + (c.shift?'⇧':'') + (c.meta?'⌘':'') +
   (c.code.startsWith('Key') ? c.code.slice(3) : c.code.startsWith('Digit') ? c.code.slice(5) : c.code);
 
 function drawKeys() {
@@ -351,7 +668,7 @@ window.addEventListener('keydown', (e) => {
   if (!recording) return;
   e.preventDefault();
   const ru = isRu();
-  if (e.key === 'Escape') { recording = null; keystate.textContent = '—'; drawKeys(); return; }
+  if (e.key === 'Escape') { recording = null; keystate.textContent = '–'; drawKeys(); return; }
   const b = BINDINGS.find(x => x.id === recording);
   if (e.code === 'Backspace') { b.combo = null; recording = null; keystate.textContent = ru ? 'снято' : 'cleared'; drawKeys(); return; }
   if (['MetaLeft','MetaRight','ControlLeft','ControlRight','AltLeft','AltRight','ShiftLeft','ShiftRight'].includes(e.code)) return;
@@ -367,87 +684,17 @@ window.addEventListener('keydown', (e) => {
   drawKeys();
 }, true);
 
-// ---------- 02 · палитра ----------
-const DATA = [
-  { k:'tabs', t:'AI Mindset Lab — Knowledge Base', s:'learn.aimindset.org' },
-  { k:'tabs', t:'aside tweaks · settings', s:'extension' },
-  { k:'tabs', t:'S26 · Lab Pulse', s:'pulse.aimindset.org' },
-  { k:'history', t:'AI Mindset — main page', s:'aimindset.org' },
-  { k:'history', t:'language relay – wrong alphabet, one tap', s:'apps.aimindset.org' },
-  { k:'history', t:'Aside Browser — Help Center', s:'docs.aside.com' },
-  { k:'history', t:'productivity hack · lab session', s:'s26.lab.aimindset.org' },
-  { k:'marks', t:'AI Mindset Knowledge Base', s:'base.aimindset.org' },
-  { k:'marks', t:'aside tweaks · readme', s:'github.com' },
-  { k:'cmd', t:'Tidy up — clean, group, sort', s:'⌥⌘T' },
-  { k:'cmd', t:'Pin / unpin current tab', s:'⇧⌘D' },
-  { k:'cmd', t:'Bookmark ⇄ tab — last row of the bar', s:'⌘D' }
-];
-const BADGE = { tabs:'tab', history:'history', marks:'bookmark', cmd:'command', calc:'copy', open:'url' };
-const q = document.getElementById('demoq');
-const list = document.getElementById('demolist');
-const count = document.getElementById('democount');
-const scopeBtns = [...document.querySelectorAll('#demoscopes button')];
-const SCOPES = ['all','tabs','history','marks'];
-let scope = 'all', sel = 0, rows = [];
-
-function calc(e) {
-  const s = e.trim();
-  if (!/^[\d\s+\-*/%.()]+$/.test(s) || !/[+\-*/%]/.test(s) || s.length > 40) return null;
-  try { const v = Function('"use strict";return (' + s + ')')(); return isFinite(v) ? String(Math.round(v*1e6)/1e6) : null; }
-  catch { return null; }
-}
-function build() {
-  const raw = q.value.trim(), needle = raw.toLowerCase();
-  const out = [];
-  const value = calc(raw);
-  if (value !== null) out.push({ k:'calc', t:value, s:raw });
-  for (const it of DATA) {
-    if (scope !== 'all' && it.k !== scope && it.k !== 'cmd') continue;
-    if (needle && !(it.t + ' ' + it.s).toLowerCase().includes(needle)) continue;
-    out.push(it);
-  }
-  if (needle && /^[\w-]+(\.[\w-]+)+/.test(raw)) out.unshift({ k:'open', t:'Open ' + raw, s:'new tab under the current one' });
-  return out.slice(0, 8);
-}
-function render() {
-  list.replaceChildren();
-  rows.forEach((it, i) => {
-    const d = document.createElement('div');
-    d.className = 'drow';
-    d.setAttribute('role','option');
-    d.dataset.sel = i === sel ? '1' : '0';
-    d.setAttribute('aria-selected', i === sel ? 'true' : 'false');
-    const g = document.createElement('span'); g.className='dg';
-    g.textContent = it.k==='calc'?'=':it.k==='cmd'?'▸':it.k==='open'?'→':'·';
-    const t = document.createElement('span'); t.className='dt'; t.textContent = it.t;
-    const s = document.createElement('span'); s.className='ds'; s.textContent = it.s || '';
-    const b = document.createElement('span'); b.className='db'; b.textContent = BADGE[it.k] || '';
-    d.append(g,t,s,b);
-    d.addEventListener('mousemove', () => { if (sel !== i) { sel = i; render(); } });
-    list.append(d);
-  });
-  count.textContent = rows.length ? rows.length + ' rows' : 'nothing';
-}
-function refresh() { rows = build(); sel = Math.min(sel, Math.max(0, rows.length-1)); render(); }
-function setScope(s) { scope = s; scopeBtns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.s === s))); refresh(); }
-scopeBtns.forEach(b => b.addEventListener('click', () => { setScope(b.dataset.s); q.focus(); }));
-q.addEventListener('input', refresh);
-q.addEventListener('keydown', (e) => {
-  if (e.key === 'Tab') { e.preventDefault(); const i = SCOPES.indexOf(scope); setScope(SCOPES[(i + (e.shiftKey?-1:1) + SCOPES.length) % SCOPES.length]); return; }
-  if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(sel+1, rows.length-1); render(); }
-  if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(sel-1, 0); render(); }
-});
-
-// ---------- 03 · уборка вкладок ----------
+// ---------- 03 · уборка вкладок: дубль по адресу, близнецы по заголовку, пустые ----------
 const SEED = [
-  { t:'AI Mindset Lab — Knowledge Base', h:'learn.aimindset.org', b:'aim' },
+  { t:'AI Mindset Lab – Knowledge Base', h:'learn.aimindset.org', b:'aim' },
   { t:'', h:'', b:'' },
-  { t:'AI Mindset Lab — Knowledge Base', h:'learn.aimindset.org', b:'aim', dup:1 },
+  { t:'AIM VISUAL', h:'visual-team.aimindset.org/?lab=s26', b:'aim', tw:'×3' },
+  { t:'AI Mindset Lab – Knowledge Base', h:'www.learn.aimindset.org/', b:'aim', dup:1, tw:'×2' },
   { t:'GitHub · aPoWall/aside-tweaks', h:'github.com', b:'code' },
-  { t:'', h:'', b:'' },
+  { t:'AIM VISUAL', h:'visual-team.aimindset.org/?lab=refpack', b:'aim', dup:1, tw:'×3', z:1 },
   { t:'S26 · Lab Pulse', h:'pulse.aimindset.org', b:'aim' },
   { t:'GitHub · language-relay', h:'github.com', b:'code' },
-  { t:'Aside Browser — Help Center', h:'docs.aside.com', b:'docs' }
+  { t:'AIM VISUAL', h:'visual-team.aimindset.org/', b:'aim', dup:1, tw:'×3', z:1 }
 ];
 const sim = document.getElementById('tabsim');
 const simstate = document.getElementById('simstate');
@@ -462,19 +709,25 @@ function drawSim(grouped) {
     const d = document.createElement('div');
     d.className = 'trow' + (r.dup || !r.h ? ' dup' : '') + (r.gone ? ' gone' : '');
     const n = document.createElement('span'); n.className='tn';
-    n.textContent = r.t || (ru ? 'пустая вкладка' : 'empty tab');
-    const m = document.createElement('span'); m.className='tm'; m.textContent = r.h || '—';
-    d.append(n,m);
+    n.textContent = (r.z ? '💤 ' : '') + (r.t || (ru ? 'пустая вкладка' : 'empty tab'));
+    d.append(n);
+    if (r.tw && !r.cleaned) { const w = document.createElement('span'); w.className='tw'; w.textContent = r.tw; d.append(w); }
+    const m = document.createElement('span'); m.className='tm'; m.textContent = r.h || '–';
+    d.append(m);
     sim.append(d);
   };
   if (!grouped) simRows.forEach(put);
   else {
+    const loose = simRows.filter(r => simRows.filter(x => x.b === r.b).length < 3);
+    if (loose.length) { const h = document.createElement('div'); h.className = 'thead'; h.textContent = ru ? 'россыпь · по свежести' : 'loose · by recency'; sim.append(h); loose.forEach(put); }
     for (const b of [...new Set(simRows.map(r => r.b))].filter(Boolean)) {
+      const inBlock = simRows.filter(r => r.b === b);
+      if (inBlock.length < 3) continue;
       const h = document.createElement('div');
       h.className = 'thead';
-      h.textContent = b + ' · ' + simRows.filter(r => r.b === b).length;
+      h.textContent = b + ' · ' + inBlock.length;
       sim.append(h);
-      simRows.filter(r => r.b === b).forEach(put);
+      inBlock.forEach(put);
     }
   }
   simcount.textContent = String(simRows.length);
@@ -486,28 +739,27 @@ document.getElementById('simtidy').addEventListener('click', async () => {
   const ru = isRu();
   const wait = ms => new Promise(r => setTimeout(r, ms));
 
-  simstate.textContent = ru ? '■ чистка' : '■ cleaning';
+  simstate.textContent = ru ? 'чистка' : 'cleaning';
   simRows.forEach(r => { if (r.dup || !r.h) r.gone = true; });
   drawSim(false);
-  await wait(420);
-  simRows = simRows.filter(r => !r.gone);
+  await wait(460);
+  simRows = simRows.filter(r => !r.gone).map(r => ({ ...r, cleaned: 1 }));
 
-  simstate.textContent = ru ? '■ порядок' : '■ ordering';
-  simRows.sort((a,b) => a.h.localeCompare(b.h));
+  simstate.textContent = ru ? 'порядок' : 'ordering';
   drawSim(false);
-  await wait(420);
+  await wait(380);
 
-  simstate.textContent = ru ? '■ блоки' : '■ blocks';
+  simstate.textContent = ru ? 'блоки' : 'blocks';
   drawSim(true);
   await wait(260);
-  simstate.textContent = ru ? '■ убрано' : '■ tidy';
+  simstate.textContent = ru ? 'убрано' : 'tidy';
   busy = false;
 });
 
 document.getElementById('simreset').addEventListener('click', () => {
   if (busy) return;
   simRows = SEED.map(x => ({ ...x }));
-  simstate.textContent = isRu() ? '■ грязно' : '■ messy';
+  simstate.textContent = isRu() ? 'грязно' : 'messy';
   drawSim(false);
 });
 
@@ -516,6 +768,8 @@ try { const saved = localStorage.getItem('at-lang'); if (saved === 'ru') setLang
 
 drawKeys();
 drawSim(false);
+drawFold();
+drawAgents();
 refresh();
 </script>
 </body>

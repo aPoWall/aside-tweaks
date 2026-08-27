@@ -28,9 +28,11 @@ const known = (bg.match(/const ACTIONS = \{([\s\S]*?)\};/) || [])[1] || '';
 const unknown = TWEAK_COMMANDS.filter(c => !known.includes(c.action));
 check('каждая команда есть в ACTIONS', unknown.length === 0, unknown.map(c => c.action).join(', '));
 
-// попап выложен руками — значит, его состав нужно сверять
-const missingPopup = commandsFor('popup').filter(c => !popup.includes(`data-action="${c.action}"`));
-check('попап показывает свои команды', missingPopup.length === 0, missingPopup.map(c => c.action).join(', '));
+// попап тоже рендерит из общего списка — и у каждой его команды есть короткое имя и секция
+const popupJs = read('popup.js');
+check('попап рендерит из общего списка', popupJs.includes("commandsFor('popup')") && !popup.includes('data-action='));
+const noShort = commandsFor('popup').filter(c => !c.short || !c.group);
+check('у команд попапа есть short и group', noShort.length === 0, noShort.map(c => c.action).join(', '));
 
 // панель и палитра рендерят из общего списка
 check('панель рендерит из общего списка', panel.includes("commandsFor('panel')"));

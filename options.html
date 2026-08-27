@@ -166,6 +166,9 @@
       <label class="opt"><input type="checkbox" id="dedupIgnoreUtm">
         <span>ignore tracking params<small>utm_*, _gl, gclid, fbclid…</small></span>
       </label>
+      <label class="opt"><input type="checkbox" id="dedupByTitle">
+        <span>same site, same title = same page<small>four «AIM VISUAL» tabs with different query strings read as one; the copy you used last stays. titles like «New Tab» never match</small></span>
+      </label>
       <small style="margin-top:7px">the manual command also collapses empty new tabs — one per window stays. of two copies the one you used last is kept; <code>http</code>, <code>www</code> and a trailing slash do not make a different page.</small>
       <div class="row2" style="margin-top:11px">
         <span>tidy up · blocks from</span>
@@ -284,6 +287,27 @@
         <button id="aiSave">connect openrouter</button>
         <button id="aiForget">forget the key</button>
         <span id="aiState" style="font-size:9px;color:var(--muted)"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="head"><span class="idx">09</span><span class="ttl">desk bridge</span></div>
+    <div class="body">
+      <small style="margin-bottom:11px">
+        two things a browser extension cannot reach on its own live behind a tiny local server:
+        <b>recent notes</b> from Obsidian (the vault's own «recent files» list, plus a filename search) and
+        <b>agents</b> — live Orca terminals to switch to, and a new <code>claude</code> started in a working folder
+        from <code>&gt; prompt</code> in the palette. it listens on <code>127.0.0.1</code> only and answers only
+        to this extension; nothing runs until you install it. install: <code>bridge/install.sh</code>, config in <code>~/.config/aside-tweaks/desk.json</code>.
+      </small>
+      <div class="row2" style="margin-bottom:9px">
+        <span style="width:52px">port</span>
+        <input type="number" id="deskPort" min="1024" max="65535" placeholder="49321" style="width:110px">
+      </div>
+      <div class="row2">
+        <button id="deskConnect">save port and probe</button>
+        <span id="deskState" style="font-size:9px;color:var(--muted)"></span>
       </div>
     </div>
   </div>

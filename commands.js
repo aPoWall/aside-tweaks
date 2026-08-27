@@ -3,68 +3,73 @@
 // Панель, палитра и попап читают отсюда: пока каждый список жил своей жизнью,
 // «очистить дубликаты» была в палитре и отсутствовала в панели, а названия
 // расходились. Поле `on` говорит, на каких поверхностях команда показывается;
-// действия на текущей вкладке в панели не нужны — там они живут в строке.
+// `short` — имя для плитки попапа, где место дорогое; `group` — секция попапа.
 
 const TWEAK_COMMANDS = [
   {
-    action: 'tidyUp', glyph: '✦', title: 'tidy up', sub: 'one sweep', key: '⌥⌘T',
-    hint: 'clean duplicates and empty tabs → flatten → recent loose tabs on top → blocks from 3 tabs · bookmarked pages stay out so the sidebar folds them in',
-    words: 'tidy sweep clean order everything', on: ['panel', 'palette', 'popup']
-  },
-  {
-    action: 'tidyDuplicates', glyph: '⊗', title: 'clean duplicates', sub: 'and empty tabs', key: '⌥⌘D',
-    hint: 'close duplicates and empty tabs, leave the order alone',
-    words: 'dd dedup duplicates empty clean', on: ['panel', 'palette', 'popup']
-  },
-  {
-    action: 'groupBySense', glyph: '✳', title: 'blocks by meaning', sub: 'a model reads the titles', key: '',
-    hint: 'sends titles and hosts of the open tabs to OpenRouter and proposes blocks — you apply them yourself',
-    words: 'ai smart sense meaning model openrouter blocks', on: ['panel', 'palette', 'popup']
-  },
-  {
-    action: 'groupByRules', glyph: '▤', title: 'group by my blocks', sub: 'rules from settings', key: '',
-    hint: 'a block is a name plus substrings, set in settings',
-    words: 'blocks group rules', on: ['panel', 'palette']
-  },
-  {
-    action: 'groupByDomain', glyph: '◈', title: 'group by site', sub: 'root domain', key: '',
-    hint: 'one group per site, groups open expanded',
-    words: 'group site domain host', on: ['panel', 'palette']
-  },
-  {
-    action: 'ungroupAll', glyph: '⊟', title: 'ungroup everything', sub: 'flatten the window', key: '',
-    hint: 'take every tab out of its group, order untouched',
-    words: 'ungroup flatten flat', on: ['panel', 'palette']
-  },
-  {
-    action: 'sortByDomain', glyph: '↕', title: 'order by site', sub: 'a → z', key: '',
-    hint: 'alphabetical by host',
-    words: 'sort order site alphabetical', on: ['panel', 'palette']
-  },
-  {
-    action: 'sortByOpened', glyph: '↻', title: 'order by when opened', sub: 'oldest first', key: '',
-    hint: 'tab id is the open order, so this is the order you opened them',
-    words: 'opened order time recent age', on: ['panel', 'palette']
-  },
-  {
-    action: 'favoriteTab', glyph: '★', title: 'bookmark ⇄ tab', sub: 'last row of the bar', key: '⌘D',
-    hint: 'the page joins the bookmarks bar and leaves its block, so the sidebar folds the open tab into that row · again brings it back to the top',
-    words: 'bookmark bar keep star', on: ['palette', 'popup']
-  },
-  {
-    action: 'pinTab', glyph: '◆', title: 'pin / unpin tab', sub: 'the squares on top', key: '⇧⌘D',
-    hint: 'unpinning returns the page to the first row of the tabs and keeps it selected',
-    words: 'pin unpin squares', on: ['palette', 'popup']
-  },
-  {
-    action: 'bookmarkTab', glyph: '☆', title: 'bookmark, no dialog', sub: 'toggle', key: '',
-    hint: 'writes the bookmark without the browser dialog, second call removes it',
-    words: 'bookmark bm save no dialog', on: ['palette']
-  },
-  {
-    action: 'togglePanel', glyph: '◧', title: 'open the tweaks panel', sub: 'bookmarks · pinned · tabs', key: '⌃⇧S',
+    action: 'togglePanel', glyph: '◧', title: 'open the tweaks panel', short: 'panel', sub: 'bookmarks · pinned · tabs', key: '⌃⇧S',
     hint: 'the side panel of this extension',
-    words: 'panel sidebar surface', on: ['palette']
+    words: 'panel sidebar surface', group: 'surface', on: ['palette', 'popup']
+  },
+  {
+    action: 'openPalette', glyph: '⌕', title: 'palette', short: 'palette', sub: 'tabs · history · notes', key: '⇧⌘K',
+    hint: 'one search over tabs, history, bookmarks, notes and commands',
+    words: 'palette search find', group: 'surface', on: ['popup']
+  },
+  {
+    action: 'favoriteTab', glyph: '★', title: 'bookmark ⇄ tab', short: 'bookmark ⇄ tab', sub: 'last row of the bar', key: '⌘D',
+    hint: 'the page joins the bookmarks bar and leaves its block, so the sidebar folds the open tab into that row · again brings it back to the top',
+    words: 'bookmark bar keep star', group: 'tab', on: ['palette', 'popup']
+  },
+  {
+    action: 'pinTab', glyph: '◆', title: 'pin / unpin tab', short: 'pin / unpin', sub: 'the squares on top', key: '⇧⌘D',
+    hint: 'unpinning returns the page to the first row of the tabs and keeps it selected',
+    words: 'pin unpin squares', group: 'tab', on: ['palette', 'popup']
+  },
+  {
+    action: 'tidyUp', glyph: '✦', title: 'tidy up', short: 'tidy up', sub: 'one sweep', key: '⌥⌘T',
+    hint: 'clean duplicates and empty tabs → flatten → recent loose tabs on top → blocks from 3 tabs · bookmarked pages stay out so the sidebar folds them in',
+    words: 'tidy sweep clean order everything', group: 'window', on: ['panel', 'palette', 'popup']
+  },
+  {
+    action: 'tidyDuplicates', glyph: '⊗', title: 'clean duplicates', short: 'clean duplicates', sub: 'and empty tabs', key: '⌥⌘D',
+    hint: 'close duplicates and empty tabs, leave the order alone · same site + same title counts as one page',
+    words: 'dd dedup duplicates twins empty clean', group: 'window', on: ['panel', 'palette', 'popup']
+  },
+  {
+    action: 'groupBySense', glyph: '✳', title: 'blocks by meaning', short: 'by meaning', sub: 'a model reads the titles', key: '',
+    hint: 'sends titles and hosts of the open tabs to OpenRouter and proposes blocks — you apply them yourself',
+    words: 'ai smart sense meaning model openrouter blocks', group: 'order', on: ['panel', 'palette', 'popup']
+  },
+  {
+    action: 'groupByRules', glyph: '▤', title: 'group by my blocks', short: 'my blocks', sub: 'rules from settings', key: '',
+    hint: 'a block is a name plus substrings, set in settings',
+    words: 'blocks group rules', group: 'order', on: ['panel', 'palette', 'popup']
+  },
+  {
+    action: 'groupByDomain', glyph: '◈', title: 'group by site', short: 'by site', sub: 'root domain', key: '',
+    hint: 'one group per site, groups open expanded',
+    words: 'group site domain host', group: 'order', on: ['panel', 'palette', 'popup']
+  },
+  {
+    action: 'ungroupAll', glyph: '⊟', title: 'ungroup everything', short: 'ungroup', sub: 'flatten the window', key: '',
+    hint: 'take every tab out of its group, order untouched',
+    words: 'ungroup flatten flat', group: 'order', on: ['panel', 'palette', 'popup']
+  },
+  {
+    action: 'sortByDomain', glyph: '↕', title: 'order by site', short: 'a → z by site', sub: 'a → z', key: '',
+    hint: 'alphabetical by host',
+    words: 'sort order site alphabetical', group: 'order', on: ['panel', 'palette', 'popup']
+  },
+  {
+    action: 'sortByOpened', glyph: '↻', title: 'order by when opened', short: 'by opened', sub: 'oldest first', key: '',
+    hint: 'tab id is the open order, so this is the order you opened them',
+    words: 'opened order time recent age', group: 'order', on: ['panel', 'palette', 'popup']
+  },
+  {
+    action: 'bookmarkTab', glyph: '☆', title: 'bookmark, no dialog', short: 'bookmark', sub: 'toggle', key: '',
+    hint: 'writes the bookmark without the browser dialog, second call removes it',
+    words: 'bookmark bm save no dialog', group: 'tab', on: ['palette']
   }
 ];
 

@@ -31,6 +31,7 @@ const DEFAULTS = {
   dedupNotice: true,         // вместо этого просто говорим, что такая уже открыта
   dedupIgnoreHash: true,
   dedupIgnoreUtm: true,
+  dedupByTitle: true,        // тот же хост + тот же заголовок = одна страница, даже если query-строки разные
   nextToCurrent: true,              // legacy-тумблер, читается при миграции
   tabPlacement: 'underCurrent',     // underCurrent | end | browser
   placementGuardMs: 2500,           // сколько держим вкладку на месте, если Aside её двигает
@@ -140,6 +141,51 @@ function normalizeUrl(raw) {
     const path = u.pathname.replace(/\/(index\.html?)?$/, '');
     return host + port + path + (u.searchParams.toString() ? '?' + u.searchParams.toString() : '') + hash;
   } catch { return null; }
+}
+
+// ---------- близнецы ----------
+// Точный ключ — нормализованный адрес. Ближний ключ — тот же хост и тот же заголовок:
+// четыре вкладки «AIM VISUAL» на visual-team.aimindset.org с разными query-строками для
+// глаза одна страница, а по адресу четыре разных, и «0 duplicates» на них выглядит ложью.
+// Ближний ключ считается только когда заголовок что-то говорит: не пустой, не адрес,
+// не «New Tab». Спящую вкладку Aside помечает 💤 прямо в заголовке — снимаем.
+const GENERIC_TITLES = /^(new tab|untitled|loading…?|blank|about:blank)$/i;
+const plainTitle = s => (s || '').replace(/^\s*💤\s*/, '').trim();
+
+function nearKey(t) {
+  if (!settings.dedupByTitle) return null;
+  const title = plainTitle(t.title).toLowerCase();
+  if (title.length < 4 || GENERIC_TITLES.test(title)) return null;
+  let host;
+  try {
+    const u = new URL(t.url || '');
+    if (!/^https?:$/.test(u.protocol)) return null;
+    host = u.host.replace(/^www\./, '');
+  } catch { return null; }
+  if (title === host || title === (t.url || '').toLowerCase()) return null;
+  return host + '|' + title;
+}
+
+// Раскладывает вкладки по кластерам близнецов: вкладки с одним точным ключом — вместе,
+// кластеры с одним ближним ключом — сливаются (union-find). Возвращает только http(s).
+function twinClusters(tabs) {
+  const items = tabs.map(t => ({ t, exact: normalizeUrl(t.url) })).filter(x => x.exact);
+  const parent = items.map((_, i) => i);
+  const find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
+  const first = new Map();
+  items.forEach((x, i) => {
+    const near = nearKey(x.t);
+    for (const k of near ? ['e:' + x.exact, 'n:' + near] : ['e:' + x.exact]) {
+      if (first.has(k)) parent[find(i)] = find(first.get(k)); else first.set(k, i);
+    }
+  });
+  const groups = new Map();
+  items.forEach((x, i) => {
+    const r = find(i);
+    if (!groups.has(r)) groups.set(r, []);
+    groups.get(r).push(x.t);
+  });
+  return [...groups.values()];
 }
 
 // ---------- новые вкладки под текущей ----------
@@ -313,20 +359,15 @@ function keeperOf(a, b) {
 
 async function tidyDuplicates() {
   const all = await chrome.tabs.query({});
-  const seen = new Map();
+  const loose = all.filter(t => !t.pinned);
   const toClose = [];
-  const empties = [];
+  const empties = loose.filter(isEmptyTab);
 
-  for (const t of all) {
-    if (t.pinned) continue;
-    if (isEmptyTab(t)) { empties.push(t); continue; }
-    const key = normalizeUrl(t.url);
-    if (!key) continue;
-    const kept = seen.get(key);
-    if (!kept) { seen.set(key, t); continue; }
-    const keep = keeperOf(kept, t);
-    toClose.push(keep === kept ? t.id : kept.id);
-    seen.set(key, keep);
+  // из каждого кластера близнецов остаётся один хранитель, остальные закрываются
+  for (const twins of twinClusters(loose)) {
+    if (twins.length < 2) continue;
+    const keep = twins.reduce(keeperOf);
+    for (const t of twins) if (t !== keep) toClose.push(t.id);
   }
 
   // пустые убираем целиком; последнюю вкладку окна не трогаем, иначе окно закроется
@@ -856,17 +897,22 @@ async function openUrl({ url, windowId, groupName, pinned } = {}) {
   return 1;
 }
 
+// dups — сколько вкладок закроет чистка прямо сейчас; twinOf — у какой вкладки сколько близнецов,
+// палитра рисует по этому «×N» на строке
 async function getStats() {
   const all = await chrome.tabs.query({});
-  const seen = new Set(); let dups = 0, pinned = 0, empties = 0;
+  let pinned = 0, empties = 0, dups = 0;
+  const twinOf = {};
   for (const t of all) {
     if (t.pinned) pinned++;
     else if (isEmptyTab(t)) empties++;
-    const k = normalizeUrl(t.url);
-    if (!k) continue;
-    if (seen.has(k)) dups++; else seen.add(k);
   }
-  return { total: all.length, dups, pinned, empties };
+  for (const twins of twinClusters(all.filter(t => !t.pinned))) {
+    if (twins.length < 2) continue;
+    dups += twins.length - 1;
+    for (const t of twins) twinOf[t.id] = twins.length;
+  }
+  return { total: all.length, dups, pinned, empties, twinOf };
 }
 
 // ---------- omnibox: tw + Tab ----------
@@ -1005,6 +1051,49 @@ async function openPaletteWindow(windowId) {
 
 chrome.windows.onRemoved.addListener(id => { if (id === paletteWinId) { paletteWinId = null; dimPage(false); } });
 
+// ---------- desk bridge: заметки Obsidian и агенты Orca через локальный мост ----------
+// Мост — bridge/desk.py на 127.0.0.1 (manifest: host_permissions на 127.0.0.1, без диалога —
+// адрес локальный, а мост сам отвечает только этому расширению). Нет моста — нет и заметок.
+
+const DESK_DEFAULTS = { deskPort: 49321 };
+
+async function deskBase() {
+  const { deskPort } = await chrome.storage.sync.get(DESK_DEFAULTS);
+  return `http://127.0.0.1:${Number(deskPort) || 49321}`;
+}
+
+async function deskFetch(path, body) {
+  const base = await deskBase();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), body ? 25000 : 2500);
+  try {
+    // служебный заголовок — ворота моста: Origin из service worker'а браузер не шлёт
+    const headers = { 'X-Aside-Tweaks': 'desk' };
+    const r = await fetch(base + path, body
+      ? { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctrl.signal }
+      : { headers, signal: ctrl.signal });
+    return await r.json();
+  } catch { return null; }
+  finally { clearTimeout(timer); }
+}
+
+let deskHealthCache = { at: 0, data: null };
+async function deskHealth() {
+  if (Date.now() - deskHealthCache.at < 15000) return deskHealthCache.data;
+  const data = await deskFetch('/health');
+  deskHealthCache = { at: Date.now(), data };
+  return data;
+}
+
+const deskNotes = ({ q = '', limit = 30 } = {}) =>
+  deskFetch(`/notes?q=${encodeURIComponent(q)}&limit=${Number(limit) || 30}`);
+const deskAgents = () => deskFetch('/agents');
+const deskOpen = ({ vault, file }) => deskFetch('/open', { vault, file });
+const deskSwitch = ({ handle }) => deskFetch('/switch', { handle });
+const deskRun = ({ prompt, path, name }) => deskFetch('/run', { prompt, path, name });
+
+const DESK = { deskHealth, deskNotes, deskAgents, deskOpen, deskSwitch, deskRun };
+
 // ---------- messages / commands ----------
 
 const ACTIONS = {
@@ -1035,6 +1124,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg?.action === 'openPaletteWindow') { openPaletteWindow(msg.windowId); sendResponse({ ok: true }); return; }
+  if (DESK[msg?.action]) {
+    DESK[msg.action](msg).then(data => sendResponse({ ok: !!data, data })).catch(e => sendResponse({ ok: false, error: String(e) }));
+    return true;
+  }
 
   const fn = ACTIONS[msg?.action];
   if (!fn) return;

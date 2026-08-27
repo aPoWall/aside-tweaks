@@ -1,11 +1,13 @@
 // Aside Tweaks — palette (⇧⌘K)
-// Слой на странице или окно по центру: вкладки, история, закладки, команды, калькулятор.
+// Слой на странице или окно по центру: вкладки, история, закладки, заметки Obsidian
+// (через локальный мост), агенты Orca (`> prompt`), команды, калькулятор.
 // Всё оконное уходит в фон с явным windowId: сама палитра живёт в popup-окне,
 // и «текущее окно» там указывает на неё, а не на браузер.
 //
-// Список строится один раз на запрос. Выбор строки, наведение мыши и стрелки
-// только переключают класс — без перерисовки, иначе каждая строка проигрывает
-// свою анимацию заново и палитра дёргается.
+// Строение как у Raycast: тип строки справа, главное действие в нижней строке,
+// панель действий на ⌘K, esc сначала чистит запрос и только потом закрывает.
+// Список строится один раз на запрос; выбор строки, наведение и стрелки только
+// переключают класс — без перерисовки, иначе палитра дёргается.
 
 const params = new URLSearchParams(location.search);
 const srcWin = Number(params.get('win')) || null;
@@ -21,8 +23,11 @@ function closeSelf() {
 const qEl = document.getElementById('q');
 const listEl = document.getElementById('list');
 const scopesEl = document.getElementById('scopes');
+const actsEl = document.getElementById('acts');
+const primaryEl = document.getElementById('primary');
+const deskDot = document.getElementById('deskdot');
 
-const SCOPES = ['all', 'tabs', 'history', 'bookmarks', 'commands'];
+const SCOPES = ['all', 'tabs', 'history', 'bookmarks', 'notes', 'commands'];
 let scope = 'all';
 
 const CMDS = commandsFor('palette').map(c => ({
@@ -30,7 +35,8 @@ const CMDS = commandsFor('palette').map(c => ({
   title: c.title,
   sub: c.sub || '',
   action: c.action,
-  key: c.key
+  key: c.key,
+  glyph: c.glyph
 }));
 
 let items = [];
@@ -38,6 +44,8 @@ let rows = [];
 let sel = 0;
 let blocks = [];
 let mouseLive = false;   // наведение выбирает строку только после реального движения мыши
+let desk = null;         // мост к машине: { ok, vaults, worktrees } либо null — тогда заметок и агентов нет
+let actsOpen = false, actSel = 0, acts = [];
 
 chrome.storage.sync.get({ groupRules: [] }).then(s => {
   blocks = (s.groupRules || []).map(r => r.name).filter(Boolean);
@@ -123,11 +131,31 @@ async function send(action, extra = {}) {
   return chrome.runtime.sendMessage({ action, windowId: srcWin, ...extra }).catch(() => null);
 }
 
+const copy = async text => { await navigator.clipboard.writeText(text).catch(() => { }); closeSelf(); };
+
 // фон сам переключится на уже открытую вкладку с тем же адресом — дубль не появится
 async function openUrl(url, { pinned = false, group = null } = {}) {
   bump(normUrl(url));
   await send('openUrl', { url, pinned, groupName: group });
   closeSelf();
+}
+
+// действия «открыть» для адреса: просто, пином, в блоке — одинаковы для закладок, истории и вставленного url
+function openActions(url) {
+  const a = [
+    { label: 'open', key: '↵', fn: () => openUrl(url) },
+    { label: 'open pinned', key: '⇧↵', fn: () => openUrl(url, { pinned: true }) }
+  ];
+  for (const b of blocks) a.push({ label: `open in block · ${b}`, key: '', fn: () => openUrl(url, { group: b }) });
+  a.push({ label: 'copy url', key: '⌘C', fn: () => copy(url) });
+  return a;
+}
+
+// ---------- мост к машине: заметки Obsidian и агенты Orca ----------
+
+async function deskProbe() {
+  desk = (await send('deskHealth'))?.data || null;
+  deskDot.classList.toggle('off', !desk?.ok);
 }
 
 // ---------- сбор результатов ----------
@@ -137,25 +165,55 @@ async function build(raw) {
   const q = norm(qRaw);
   const out = [];
 
+  // `> prompt` — режим агентов: живые терминалы Orca и запуск агента в рабочей папке
+  if (qRaw.startsWith('>')) {
+    const prompt = qRaw.slice(1).trim();
+    if (!desk?.ok) {
+      out.push({ kind: 'note', glyph: '○', title: 'desk bridge is not running', sub: 'settings card 08 · bridge/install.sh', kindLabel: 'desk', primary: 'settings', run: () => chrome.runtime.openOptionsPage() });
+      return out;
+    }
+    const agents = (await send('deskAgents'))?.data?.terminals || [];
+    for (const t of agents) {
+      if (prompt && !norm(t.title + ' ' + t.path).includes(norm(prompt))) continue;
+      out.push({
+        kind: 'agent', section: 'agents', glyph: t.connected ? '●' : '○', title: t.title || t.path, sub: t.path.replace(/^\/Users\/[^/]+/, '~'),
+        kindLabel: 'terminal', primary: 'switch',
+        run: async () => { await send('deskSwitch', { handle: t.handle }); closeSelf(); }
+      });
+    }
+    if (prompt) {
+      for (const w of desk.worktrees || []) {
+        out.push({
+          kind: 'run', section: 'run an agent', glyph: '▶', title: `${w.name} · ${prompt}`, sub: w.path.replace(/^\/Users\/[^/]+/, '~'),
+          kindLabel: 'new agent', primary: 'run',
+          run: async () => { await send('deskRun', { prompt, path: w.path, name: w.name }); closeSelf(); }
+        });
+      }
+    }
+    return out;
+  }
+
   const value = calc(qRaw);
   if (value !== null) {
-    out.push({
-      kind: 'calc', glyph: '=', title: value, sub: qRaw, hint: 'copy ↵',
-      run: async () => { await navigator.clipboard.writeText(value).catch(() => { }); closeSelf(); }
-    });
+    out.push({ kind: 'calc', glyph: '=', title: value, sub: qRaw, kindLabel: 'calc', primary: 'copy', run: () => copy(value) });
   }
 
   const wantTabs = scope === 'all' || scope === 'tabs';
   const wantHist = scope === 'all' || scope === 'history';
   const wantMarks = scope === 'all' || scope === 'bookmarks';
+  const wantNotes = (scope === 'all' || scope === 'notes') && desk?.ok;
   const wantCmds = scope === 'all' || scope === 'commands';
 
   // открытые вкладки — по свежести, как ⌃⇥ в Arc: последняя, где был, первой;
   // текущая — в самом низу, с неё и переключаешься
+  // пустые новые вкладки в список не идут — переключаться на них незачем, чистка их и так уберёт
+  const EMPTY = /^(about:blank|chrome:\/\/newtab\/?|chrome:\/\/new-tab-page\/?|aside:\/\/newtab\/?)$/;
   const allTabs = (await chrome.tabs.query({}).catch(() => []))
-    .filter(t => t.url && !t.url.startsWith('chrome-extension://' + chrome.runtime.id));
-  const twins = new Map();
-  for (const t of allTabs) { const k = normUrl(t.url); twins.set(k, (twins.get(k) || 0) + 1); }
+    .filter(t => t.url && !EMPTY.test(t.url) && !t.url.startsWith('chrome-extension://' + chrome.runtime.id));
+  const open = new Set(allTabs.map(t => normUrl(t.url)));
+  // близнецы считает фон — тем же правилом, что и чистка: точный адрес либо тот же хост и заголовок
+  const stats = (await send('getStats'))?.data || null;
+  const twinOf = stats?.twinOf || {};
 
   if (wantTabs) {
     const isCurrent = t => srcTab != null ? t.id === srcTab : (t.active && t.windowId === srcWin);
@@ -175,42 +233,64 @@ async function build(raw) {
       });
     const limit = scope === 'tabs' ? 80 : 6;
     for (const { t } of ranked.slice(0, limit)) {
-      const n = twins.get(normUrl(t.url)) || 1;
+      const n = twinOf[t.id] || 1;
       out.push({
         kind: 'tab', section: q ? 'tabs' : 'recent',
         icon: (t.favIconUrl && /^https?:|^data:/.test(t.favIconUrl)) ? t.favIconUrl : favicon(t.url),
         title: t.title || t.url, sub: hostOf(t.url),
         twin: n > 1 ? '×' + n : '',
-        k: t.pinned ? 'pinned' : '', hint: isCurrent(t) ? 'here' : 'switch ↵',
-        alt: async () => {
-          await chrome.tabs.update(t.id, { pinned: !t.pinned });
-          closeSelf();
-        },
+        kindLabel: t.pinned ? 'pinned' : t.discarded ? 'asleep' : 'tab',
+        primary: isCurrent(t) ? 'here' : 'switch',
         run: async () => {
           bump(normUrl(t.url));
           await chrome.tabs.update(t.id, { active: true });
           await chrome.windows.update(t.windowId, { focused: true });
           closeSelf();
-        }
+        },
+        actions: [
+          { label: 'switch to tab', key: '↵', fn: null },
+          { label: t.pinned ? 'unpin' : 'pin', key: '⇧↵', fn: async () => { await chrome.tabs.update(t.id, { pinned: !t.pinned }); closeSelf(); } },
+          { label: 'bookmark ⇄ tab', key: '⌘B', fn: async () => { await chrome.tabs.update(t.id, { active: true }); await send('favoriteTab', { windowId: t.windowId }); closeSelf(); } },
+          { label: 'close tab', key: '⌘⌫', fn: async () => { await chrome.tabs.remove(t.id).catch(() => { }); refresh(); } },
+          { label: 'copy url', key: '⌘C', fn: () => copy(t.url) }
+        ]
+      });
+    }
+  }
+
+  // заметки Obsidian — недавние из workspace.json обоих волтов, по запросу — поиск по именам
+  if (wantNotes && (q || scope !== 'commands')) {
+    const res = (await send('deskNotes', { q: qRaw, limit: scope === 'notes' ? 40 : (q ? 6 : 3) }))?.data;
+    for (const n of res?.notes || []) {
+      const key = 'note:' + n.vault + '/' + n.file;
+      out.push({
+        kind: 'note', section: 'notes', glyph: '◇', title: n.title, sub: n.vault + (n.folder ? ' · ' + n.folder : ''),
+        kindLabel: 'note', primary: 'open', frec: score(key),
+        run: async () => { bump(key); await send('deskOpen', { vault: n.vault, file: n.file }); closeSelf(); },
+        actions: [
+          { label: 'open in obsidian', key: '↵', fn: null },
+          { label: 'copy path', key: '⌘C', fn: () => copy(n.path || n.file) }
+        ]
       });
     }
   }
 
   // команды — с живым счётом того, что чистка сейчас закроет
   if (wantCmds) {
-    const stats = (await send('getStats'))?.data || null;
+    let shown = 0;
     for (const c of CMDS) {
       if (q && !norm(c.keys + ' ' + c.title).includes(q)) continue;
-      if (!q && scope === 'all' && out.length > 9) break;
+      if (!q && scope === 'all' && shown >= 3) break;
       let sub = c.sub;
       if (c.action === 'tidyDuplicates' && stats) {
         sub = (stats.dups || stats.empties)
-          ? `${stats.dups} duplicate${stats.dups === 1 ? '' : 's'} · ${stats.empties} empty now`
-          : 'nothing to clean right now';
+          ? `closes ${stats.dups + stats.empties} · ${stats.dups} duplicate${stats.dups === 1 ? '' : 's'}, ${stats.empties} empty`
+          : 'nothing to close right now';
       }
+      shown++;
       out.push({
         kind: 'cmd', section: 'commands', glyph: c.glyph || '▸', title: c.title, sub,
-        k: c.key || '', hint: 'run ↵',
+        k: c.key || '', kindLabel: 'command', primary: 'run',
         run: async () => { await send(c.action); closeSelf(); }
       });
     }
@@ -228,12 +308,11 @@ async function build(raw) {
       const k = normUrl(b.url);
       if (seen.has(k)) continue;
       seen.add(k);
-      const open = twins.has(k);
+      const isOpen = open.has(k);
       out.push({
         kind: 'mark', section: 'bookmarks', icon: favicon(b.url), title: b.title || b.url, sub: hostOf(b.url),
-        k: open ? 'open' : '', hint: open ? 'switch ↵' : 'open ↵',
-        run: () => openUrl(b.url),
-        alt: () => openUrl(b.url, { pinned: true })
+        kindLabel: isOpen ? 'open' : 'bookmark', primary: isOpen ? 'switch' : 'open',
+        run: () => openUrl(b.url), actions: openActions(b.url)
       });
       if (seen.size >= (scope === 'bookmarks' ? 30 : 4)) break;
     }
@@ -241,14 +320,12 @@ async function build(raw) {
 
   // история — свёрнутая по нормализованному адресу, иначе один и тот же сайт занимает весь список
   if (wantHist) {
-    const hist = await chrome.history.search({
-      text: qRaw, maxResults: 120, startTime: 0
-    }).catch(() => []);
+    const hist = await chrome.history.search({ text: qRaw, maxResults: 120, startTime: 0 }).catch(() => []);
     const byKey = new Map();
     for (const h of hist) {
       if (!h.url) continue;
       const k = normUrl(h.url);
-      if (twins.has(k)) continue;   // открытое уже есть во вкладках
+      if (open.has(k)) continue;   // открытое уже есть во вкладках
       const prev = byKey.get(k);
       if (!prev || (h.lastVisitTime || 0) > (prev.lastVisitTime || 0)) {
         byKey.set(k, { ...h, visitCount: (prev?.visitCount || 0) + (h.visitCount || 1) });
@@ -257,12 +334,12 @@ async function build(raw) {
     const ranked = [...byKey.entries()]
       .map(([k, h]) => ({ h, w: score(k) * 10 + (h.visitCount || 1) + (h.lastVisitTime || 0) / 1e13 }))
       .sort((a, b) => b.w - a.w)
-      .slice(0, scope === 'history' ? 40 : 8);
+      .slice(0, scope === 'history' ? 40 : (q ? 8 : 6));
     for (const { h } of ranked) {
       out.push({
-        kind: 'hist', section: 'history', icon: favicon(h.url), title: h.title || h.url, sub: hostOf(h.url), hint: 'open ↵',
-        run: () => openUrl(h.url),
-        alt: () => openUrl(h.url, { pinned: true })
+        kind: 'hist', section: 'history', icon: favicon(h.url), title: h.title || h.url, sub: hostOf(h.url),
+        kindLabel: 'history', primary: 'open',
+        run: () => openUrl(h.url), actions: openActions(h.url)
       });
     }
   }
@@ -272,25 +349,15 @@ async function build(raw) {
     const isUrl = looksLikeUrl(qRaw);
     if (isUrl) {
       const url = toUrl(qRaw);
-      const open = twins.has(normUrl(url));
+      const isOpen = open.has(normUrl(url));
       out.unshift({
-        kind: 'open', section: 'open', glyph: '→', title: (open ? 'Switch to ' : 'Open ') + qRaw, sub: '', hint: open ? 'switch ↵' : 'open ↵',
-        run: () => openUrl(url),
-        alt: () => openUrl(url, { pinned: true })
-      });
-      for (const b of blocks) {
-        out.push({
-          kind: 'open', section: 'open', glyph: '▤', title: `Open in block · ${b}`, sub: hostOf(url), hint: 'open ↵',
-          run: () => openUrl(url, { group: b })
-        });
-      }
-      out.push({
-        kind: 'open', section: 'open', glyph: '◆', title: 'Open pinned', sub: hostOf(url), hint: 'open ↵',
-        run: () => openUrl(url, { pinned: true })
+        kind: 'open', section: 'open', glyph: '→', title: (isOpen ? 'Switch to ' : 'Open ') + qRaw, sub: '',
+        kindLabel: 'url', primary: isOpen ? 'switch' : 'open',
+        run: () => openUrl(url), actions: openActions(url)
       });
     } else {
       out.push({
-        kind: 'search', glyph: '?', title: 'Search: ' + qRaw, sub: 'google', hint: 'search ↵',
+        kind: 'search', glyph: '?', title: 'Search: ' + qRaw, sub: 'google', kindLabel: 'web', primary: 'search',
         run: () => openUrl('https://www.google.com/search?q=' + encodeURIComponent(qRaw))
       });
     }
@@ -331,7 +398,7 @@ function rowFor(it, i) {
     const w = document.createElement('span');
     w.className = 'twin';
     w.textContent = it.twin;
-    w.title = 'the same page is open more than once · clean duplicates closes the extras';
+    w.title = 'this page is open more than once · clean duplicates keeps the copy you used last';
     d.append(w);
   }
   if (it.k) {
@@ -340,10 +407,10 @@ function rowFor(it, i) {
     k.textContent = it.k;
     d.append(k);
   }
-  const h = document.createElement('span');
-  h.className = 'hint';
-  h.textContent = it.hint || '';
-  d.append(h);
+  const kind = document.createElement('span');
+  kind.className = 'kind';
+  kind.textContent = it.kindLabel || '';
+  d.append(kind);
   d.addEventListener('click', () => it.run());
   d.addEventListener('mouseenter', () => { if (mouseLive) setSel(i, false); });
   return d;
@@ -351,6 +418,7 @@ function rowFor(it, i) {
 
 function render() {
   mouseLive = false;
+  closeActs();
   listEl.replaceChildren();
   rows = [];
   let last = null;
@@ -371,13 +439,14 @@ function render() {
 }
 
 function setSel(i, scroll) {
-  if (!rows.length) { sel = 0; return; }
+  if (!rows.length) { sel = 0; primaryEl.textContent = '—'; return; }
   i = Math.max(0, Math.min(i, rows.length - 1));
   if (rows[sel] && sel !== i) rows[sel].classList.remove('sel');
   sel = i;
   const el = rows[sel];
   el.classList.add('sel');
   if (scroll) el.scrollIntoView({ block: 'nearest' });
+  primaryEl.textContent = items[sel]?.primary || 'open';
 }
 
 function renderScopes() {
@@ -385,6 +454,67 @@ function renderScopes() {
     b.classList.toggle('on', b.dataset.scope === scope);
     b.onclick = () => { scope = b.dataset.scope; renderScopes(); softRefresh(); qEl.focus(); };
   }
+}
+
+// ---------- панель действий ⌘K ----------
+
+function actionsOf(it) {
+  if (!it) return [];
+  const list = it.actions ? it.actions.slice() : [{ label: it.primary || 'open', key: '↵', fn: null }];
+  // первое действие всегда главное — его выполняет ↵
+  return list.map(a => ({ ...a, fn: a.fn || it.run }));
+}
+
+function openActs() {
+  const it = items[sel];
+  acts = actionsOf(it);
+  if (!acts.length) return;
+  actSel = 0;
+  actsEl.replaceChildren();
+  const h = document.createElement('div');
+  h.className = 'ah';
+  h.textContent = it.title;
+  actsEl.append(h);
+  acts.forEach((a, i) => {
+    const d = document.createElement('div');
+    d.className = 'a' + (i === 0 ? ' sel' : '');
+    const l = document.createElement('span');
+    l.textContent = a.label;
+    const k = document.createElement('span');
+    k.className = 'k';
+    k.textContent = a.key || '';
+    d.append(l, k);
+    d.addEventListener('click', () => { closeActs(); a.fn(); });
+    d.addEventListener('mouseenter', () => setActSel(i));
+    actsEl.append(d);
+  });
+  actsEl.classList.add('on');
+  actsOpen = true;
+}
+
+function setActSel(i) {
+  const els = actsEl.querySelectorAll('.a');
+  if (!els.length) return;
+  i = (i + els.length) % els.length;
+  els[actSel]?.classList.remove('sel');
+  actSel = i;
+  els[actSel].classList.add('sel');
+}
+
+function closeActs() {
+  if (!actsOpen) return;
+  actsEl.classList.remove('on');
+  actsOpen = false;
+}
+
+document.getElementById('actsbtn').addEventListener('click', () => { actsOpen ? closeActs() : openActs(); qEl.focus(); });
+
+// быстрые клавиши строки без открытия панели: ⇧↵, ⌘⌫, ⌘C, ⌘B — те же, что подписаны в панели
+function runByKey(key) {
+  const a = actionsOf(items[sel]).find(x => x.key === key);
+  if (!a) return false;
+  a.fn();
+  return true;
 }
 
 let seq = 0;
@@ -410,10 +540,29 @@ async function softRefresh() {
 
 qEl.addEventListener('input', refresh);
 document.addEventListener('mousemove', () => { mouseLive = true; }, { passive: true });
+document.addEventListener('mousedown', (e) => { if (actsOpen && !actsEl.contains(e.target) && !e.target.closest('#actsbtn')) closeActs(); });
 
 document.addEventListener('keydown', (e) => {
   mouseLive = false;
-  if (e.key === 'Escape') { closeSelf(); return; }
+  const meta = e.metaKey || e.ctrlKey;
+
+  if (meta && e.code === 'KeyK') { e.preventDefault(); actsOpen ? closeActs() : openActs(); return; }
+
+  if (actsOpen) {
+    if (e.key === 'Escape') { e.preventDefault(); closeActs(); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActSel(actSel + 1); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setActSel(actSel - 1); return; }
+    if (e.key === 'Enter') { e.preventDefault(); const a = acts[actSel]; closeActs(); a?.fn(); return; }
+    return;
+  }
+
+  // esc как в Raycast: сначала чистит запрос, пустой запрос закрывает палитру
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    if (qEl.value) { qEl.value = ''; refresh(); return; }
+    closeSelf();
+    return;
+  }
   if (e.key === 'Tab') {
     e.preventDefault();
     const i = SCOPES.indexOf(scope);
@@ -422,16 +571,18 @@ document.addEventListener('keydown', (e) => {
     softRefresh();
     return;
   }
-  if (e.key === 'ArrowDown') { e.preventDefault(); setSel(sel + 1, true); }
-  if (e.key === 'ArrowUp') { e.preventDefault(); setSel(sel - 1, true); }
+  if (e.key === 'ArrowDown') { e.preventDefault(); setSel(sel + 1, true); return; }
+  if (e.key === 'ArrowUp') { e.preventDefault(); setSel(sel - 1, true); return; }
   if (e.key === 'Enter') {
     e.preventDefault();
-    const it = items[sel];
-    if (!it) return;
-    // ⇧↵ — второе действие строки: закрепить вкладку либо открыть адрес сразу пином
-    if (e.shiftKey && it.alt) { it.alt(); return; }
-    it.run();
+    if (e.shiftKey && runByKey('⇧↵')) return;
+    items[sel]?.run();
+    return;
   }
+  if (meta && e.key === 'Backspace') { if (runByKey('⌘⌫')) e.preventDefault(); return; }
+  if (meta && e.code === 'KeyB') { if (runByKey('⌘B')) e.preventDefault(); return; }
+  // ⌘C копирует адрес строки только когда в поле ввода нечего копировать
+  if (meta && e.code === 'KeyC' && qEl.selectionStart === qEl.selectionEnd) { if (runByKey('⌘C')) e.preventDefault(); }
 });
 
 // в окне уход фокуса закрывает палитру; слой на странице закрывается щелчком по фону
@@ -446,4 +597,4 @@ if (embed) {
 
 renderScopes();
 qEl.focus();
-refresh();
+deskProbe().then(refresh);
