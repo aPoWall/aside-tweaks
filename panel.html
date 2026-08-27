@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-look="aside">
 <head>
 <meta charset="utf-8">
 <title>aside tweaks · panel</title>
@@ -34,9 +34,7 @@
   .row {
     display: flex; align-items: center; gap: 8px;
     min-height: var(--row); padding: 2px var(--pad); cursor: default; white-space: nowrap;
-    animation: rowin .16s ease both;
   }
-  @keyframes rowin { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
   .row:hover { background: var(--sel); }
   .row.active { background: var(--sel); box-shadow: inset 2px 0 0 var(--accent); }
   .row.drop-into { box-shadow: inset 0 -2px 0 var(--accent); }
@@ -74,6 +72,16 @@
   footer a { color: var(--muted); text-decoration: none; }
   footer a:hover { color: var(--fg); }
   .empty { padding: 3px var(--pad) 7px; font-size: 10px; color: var(--muted); }
+
+  /* облик aside: строки-пилюли со скруглением, подписи секций как в сайдбаре, спящие с zz */
+  :root[data-look="aside"] .row { margin: 0 6px; padding: 2px calc(var(--pad) - 6px); border-radius: var(--radius); }
+  :root[data-look="aside"] .row.active { box-shadow: var(--sel-shadow); }
+  :root[data-look="aside"] .row.drop-into { box-shadow: inset 0 -2px 0 var(--fg); }
+  :root[data-look="aside"] .sec-hdr { text-transform: none; letter-spacing: 0; font-size: 11px; }
+  :root[data-look="aside"] .sec-hdr .n { color: var(--muted); }
+  :root[data-look="aside"] .blk { font-size: 10.5px; letter-spacing: 0; }
+  :root[data-look="aside"] header .name { font-weight: 600; }
+  :root[data-look="aside"] footer, :root[data-look="aside"] .empty { font-size: 10.5px; }
 </style>
 </head>
 <body>

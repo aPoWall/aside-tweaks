@@ -17,10 +17,10 @@ const DEFAULT_KEYMAP = {
 
 const DEFAULTS = {
   dedupAuto: false, dedupNotice: true, dedupIgnoreHash: true, dedupIgnoreUtm: true,
-  keepPins: true, favoriteMovesTab: true, paletteOverlay: true, keymapEnabled: true, dimBehindPalette: true,
-  tabPlacement: 'underCurrent', placementGuardMs: 2500,
+  keepPins: true, favoriteMovesTab: true, favoriteLeavesGroup: true, paletteOverlay: true, keymapEnabled: true, dimBehindPalette: true,
+  tabPlacement: 'underCurrent', placementGuardMs: 2500, tidyMinGroup: 3,
   keymap: DEFAULT_KEYMAP,
-  theme: { mode: 'light', accent: '#111111', tint: 8, density: 'normal' },
+  theme: { look: 'aside', mode: 'light', accent: '#111111', tint: 0, density: 'normal' },
   groupRules: [{ name: 'aim', patterns: ['aimindset', 'aim-'] }]
 };
 
@@ -344,18 +344,23 @@ function seg(id, value, onPick) {
 
 // ---------- сборка ----------
 
-const TOGGLES = ['dedupAuto', 'dedupNotice', 'dedupIgnoreHash', 'dedupIgnoreUtm', 'keepPins', 'favoriteMovesTab', 'paletteOverlay', 'keymapEnabled', 'dimBehindPalette'];
+const TOGGLES = ['dedupAuto', 'dedupNotice', 'dedupIgnoreHash', 'dedupIgnoreUtm', 'keepPins', 'favoriteMovesTab', 'favoriteLeavesGroup', 'paletteOverlay', 'keymapEnabled', 'dimBehindPalette'];
 
 function renderAll() {
   for (const k of TOGGLES) document.getElementById(k).checked = !!state[k];
 
+  seg('look', state.theme.look || 'aside', v => setTheme({ look: v }).then(renderAll));
   seg('mode', state.theme.mode, v => setTheme({ mode: v }).then(renderAll));
   seg('density', state.theme.density, v => setTheme({ density: v }).then(renderAll));
   seg('placement', state.tabPlacement, v => patch({ tabPlacement: v }).then(renderAll));
 
   const tint = document.getElementById('tint');
-  tint.value = state.theme.tint ?? 8;
-  document.getElementById('tintVal').textContent = (state.theme.tint ?? 8) + '%';
+  tint.value = state.theme.tint ?? 0;
+  document.getElementById('tintVal').textContent = (state.theme.tint ?? 0) + '%';
+
+  const minGroup = document.getElementById('tidyMinGroup');
+  minGroup.value = state.tidyMinGroup ?? 3;
+  document.getElementById('tidyMinGroupVal').textContent = (state.tidyMinGroup ?? 3) + ' tabs';
 
   const guard = document.getElementById('guard');
   guard.value = state.placementGuardMs ?? 2500;
@@ -390,6 +395,11 @@ document.getElementById('guard').addEventListener('input', e => {
   document.getElementById('guardVal').textContent = e.target.value + ' ms';
 });
 document.getElementById('guard').addEventListener('change', e => patch({ placementGuardMs: Number(e.target.value) }));
+
+document.getElementById('tidyMinGroup').addEventListener('input', e => {
+  document.getElementById('tidyMinGroupVal').textContent = e.target.value + ' tabs';
+});
+document.getElementById('tidyMinGroup').addEventListener('change', e => patch({ tidyMinGroup: Number(e.target.value) }));
 
 document.getElementById('addRule').addEventListener('click', async () => {
   await patch({ groupRules: [...(state.groupRules || []), { name: '', patterns: [] }] });

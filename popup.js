@@ -1,7 +1,7 @@
 const LABELS = {
   tidyDuplicates: n => n ? `closed ${n}` : 'nothing to clean',
   pinTab: n => n === 1 ? 'pinned ↑ · squares on top' : 'unpinned',
-  favoriteTab: n => n === 1 ? 'bookmarked ↓ · last row of the bar' : 'back in the tabs, at the top',
+  favoriteTab: n => n === 1 ? 'bookmarked ★ · folded into the bar row' : 'back in the tabs, at the top',
   bookmarkTab: n => n === 1 ? 'bookmarked ✓' : 'bookmark removed',
   groupByRules: n => n ? `${n} groups` : 'nothing to group',
   groupByDomain: n => n ? `${n} groups` : 'nothing to group',
@@ -24,10 +24,10 @@ async function refreshStats() {
   if (!res?.ok) res = await chrome.runtime.sendMessage({ action: 'getStats' }).catch(() => null);
   if (!res?.ok) { document.getElementById('statsub').textContent = 'service worker asleep · press again'; return; }
   if (res?.ok && res.data) {
-    const { total, dups, pinned } = res.data;
+    const { total, dups, pinned, empties = 0 } = res.data;
     document.getElementById('stats').textContent = `${total} tabs`;
     document.getElementById('statsub').textContent =
-      `${dups} duplicate${dups === 1 ? '' : 's'} · ${pinned} pinned`;
+      `${dups} duplicate${dups === 1 ? '' : 's'} · ${empties} empty · ${pinned} pinned`;
   }
 }
 

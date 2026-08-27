@@ -1,13 +1,16 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-look="aside">
 <head>
 <meta charset="utf-8">
 <link rel="stylesheet" href="instrument.css">
 <style>
   /* ширину задаём и документу: без неё браузер иногда не измеряет попап и выдаёт
      ему максимальный размер — окно разъезжается на 800×600 после действия */
-  html { width: 300px; overflow-x: hidden; }
-  body { width: 300px; }
+  html { width: 336px; overflow-x: hidden; }
+  body { width: 336px; }
+  /* системный шрифт шире моноширинного: плитки в две колонки держим на одной строке */
+  :root[data-look="aside"] .tile-main { font-size: 11.5px; letter-spacing: -.01em; white-space: nowrap; }
+  :root[data-look="aside"] .tile-main .k { font-size: 10.5px; }
   :root[data-density="compact"] { --pad: 13px; }
   /* строка ответа держит высоту заранее: текст не должен переверстывать попап */
   #status { display: block; width: 100%; min-height: 11px; }

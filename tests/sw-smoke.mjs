@@ -117,22 +117,57 @@ const call = (action, extra = {}) => new Promise(res => {
 let fails = 0;
 const check = (name, ok, detail = '') => { console.log((ok ? 'PASS ' : 'FAIL ') + name + (detail ? ' · ' + detail : '')); if (!ok) fails++; };
 
-// сцена для уборки: дубль, пустая, разные сайты
+// сцена для уборки: дубль, пустая, разные сайты; lastAccessed — где были последней
 TABS = [
-  { id: 11, windowId: 1, index: 0, pinned: false, active: true, url: 'https://b.com/x' },
-  { id: 12, windowId: 1, index: 1, pinned: false, url: 'https://a.com/' },
-  { id: 13, windowId: 1, index: 2, pinned: false, url: 'https://b.com/x' },
+  { id: 11, windowId: 1, index: 0, pinned: false, active: true, url: 'https://b.com/x', lastAccessed: 200 },
+  { id: 12, windowId: 1, index: 1, pinned: false, url: 'https://a.com/', lastAccessed: 300 },
+  { id: 13, windowId: 1, index: 2, pinned: false, url: 'https://www.b.com/x/', lastAccessed: 150 },
   { id: 14, windowId: 1, index: 3, pinned: false, url: 'chrome://newtab/' },
-  { id: 15, windowId: 1, index: 4, pinned: false, url: 'https://c.com/' }
+  { id: 15, windowId: 1, index: 4, pinned: false, url: 'https://c.com/', lastAccessed: 100 }
 ];
 const stats = await call('getStats');
 check('getStats отвечает', stats?.ok && stats.data?.total === 5, JSON.stringify(stats?.data));
+check('getStats видит дубль сквозь www и слэш, и пустую вкладку', stats.data?.dups === 1 && stats.data?.empties === 1, JSON.stringify(stats?.data));
 
 const tidy = await call('tidyUp', { windowId: 1 });
 await wait(200);
-check('tidyUp отработал', tidy?.ok === true, 'закрыто/групп: ' + tidy?.count);
+check('tidyUp отработал', tidy?.ok === true, 'закрыто/блоков: ' + tidy?.count);
 check('дубль и пустая убраны', TABS.length === 3, 'осталось ' + TABS.map(t => t.id).join(' '));
-check('порядок по сайту', TABS.map(t => t.url).join(' ') === 'https://a.com/ https://b.com/x https://c.com/', TABS.map(t => t.url).join(' '));
+check('россыпь по свежести: где был последним — сверху', TABS.map(t => t.url).join(' ') === 'https://a.com/ https://b.com/x https://c.com/', TABS.map(t => t.url).join(' '));
+check('пары и одиночки блоком не становятся', !log.slice(-12).some(l => l.startsWith('group')), log.slice(-6).join(' | '));
+
+// из двух копий остаётся та, где были последней — не первая попавшаяся
+TABS = [
+  { id: 61, windowId: 1, index: 0, pinned: false, url: 'https://x.com/p', lastAccessed: 100 },
+  { id: 62, windowId: 1, index: 1, pinned: false, url: 'http://x.com/p/', lastAccessed: 900 },
+  { id: 63, windowId: 1, index: 2, pinned: false, active: true, url: 'https://y.com/' }
+];
+const dd = await call('tidyDuplicates');
+check('дедуп оставляет свежую копию', dd?.ok && dd.count === 1 && TABS.some(t => t.id === 62) && !TABS.some(t => t.id === 61), TABS.map(t => t.id).join(' '));
+
+// блок собирается от трёх вкладок; пара того же сайта остаётся россыпью сверху
+TABS = [
+  { id: 51, windowId: 1, index: 0, pinned: false, url: 'https://github.com/1', lastAccessed: 500 },
+  { id: 52, windowId: 1, index: 1, pinned: false, url: 'https://a.com/x', lastAccessed: 400 },
+  { id: 53, windowId: 1, index: 2, pinned: false, url: 'https://github.com/2', lastAccessed: 300 },
+  { id: 54, windowId: 1, index: 3, pinned: false, active: true, url: 'https://a.com/y', lastAccessed: 200 },
+  { id: 55, windowId: 1, index: 4, pinned: false, url: 'https://github.com/3', lastAccessed: 100 }
+];
+let mark = log.length;
+await wait(500);   // тогл-команды глушат повтор в пределах 450 мс
+await call('tidyUp', { windowId: 1 });
+check('tidy: россыпь сверху, блок из трёх ниже', TABS.map(t => t.id).join(' ') === '52 54 51 53 55', TABS.map(t => t.id).join(' '));
+check('tidy: собран ровно один блок', log.slice(mark).filter(l => l.startsWith('group')).join('|') === 'group 51,53,55', log.slice(mark).filter(l => l.startsWith('group')).join('|'));
+
+// страница из панели закладок в блок не идёт: сайдбар вплавит её в строку закладки
+MARKS = [{ id: 'bh', title: 'one', url: 'https://github.com/1' }];
+TABS.forEach((t, i) => { t.index = i; });
+mark = log.length;
+await wait(500);
+await call('tidyUp', { windowId: 1 });
+check('tidy: вкладка с закладкой остаётся вне блока, блока из двух нет',
+  !log.slice(mark).some(l => l.startsWith('group')) && TABS[0]?.id === 51, TABS.map(t => t.id).join(' '));
+MARKS = [];
 
 const pin = await call('pinTab', { windowId: 1 });
 check('pinTab закрепил', pin?.ok && pin.count === 1 && TABS.some(t => t.pinned));
@@ -142,13 +177,22 @@ MARKS = [];
 TABS = [
   { id: 21, windowId: 1, index: 0, pinned: true, url: 'https://pinned.com/' },
   { id: 22, windowId: 1, index: 1, pinned: false, url: 'https://a.com/' },
-  { id: 23, windowId: 1, index: 2, pinned: false, active: true, url: 'https://keep.me/page' },
+  { id: 23, windowId: 1, index: 2, pinned: false, active: true, url: 'https://keep.me/page', groupId: 7 },
   { id: 24, windowId: 1, index: 3, pinned: false, url: 'https://c.com/' }
 ];
+mark = log.length;
 const fav = await call('favoriteTab', { windowId: 1 });
 check('favoriteTab сделал закладку', fav?.ok && fav.count === 1 && MARKS.length === 1, JSON.stringify(MARKS));
 check('вкладка осталась жива — без закрытия и перезагрузки', TABS.some(t => t.id === 23), TABS.map(t => t.id).join(' '));
+check('⌘D вывел вкладку из блока — сайдбар вплавит её в строку закладки', log.slice(mark).includes('ungroup 1') && TABS.find(t => t.id === 23)?.groupId === -1, log.slice(mark).join(' | '));
 check('вкладка встала первой строкой вкладок, под закреплённой', TABS[1]?.id === 23, TABS.map(t => t.id).join(' '));
+
+// адрес уже открыт — переключение вместо второй вкладки, как в Arc
+const before = TABS.length;
+const sw = await call('openUrl', { url: 'http://www.a.com', windowId: 1 });
+check('openUrl переключается на открытую копию, дубля нет', sw?.count === 2 && TABS.length === before && TABS.find(t => t.id === 22)?.active === true, JSON.stringify(sw) + ' · ' + TABS.length);
+TABS.find(t => t.id === 22).active = false;
+TABS.find(t => t.id === 23).active = true;
 
 await wait(500);   // защита от двойного срабатывания: повтор в пределах 450 мс глушится
 const unfav = await call('favoriteTab', { windowId: 1 });
@@ -174,6 +218,7 @@ check('без ключа группировка по смыслу не ходи�
 
 store.local.aiKey = 'sk-or-test';
 store.local.aiModel = 'anthropic/claude-haiku-4.5';
+const markSense = log.length;
 let sentBody = null;
 globalThis.fetch = async (url, opt) => {
   sentBody = JSON.parse(opt.body);
@@ -187,7 +232,7 @@ globalThis.fetch = async (url, opt) => {
 const plan = await call('groupBySense', { windowId: 1 });
 check('предложение собрано', plan?.ok && plan.count === 2, JSON.stringify(plan));
 check('план лежит в session, а не применён молча',
-  store.session.sensePlan?.groups?.length === 2 && !log.some(l => l.startsWith('group')),
+  store.session.sensePlan?.groups?.length === 2 && !log.slice(markSense).some(l => l.startsWith('group')),
   JSON.stringify(store.session.sensePlan?.groups?.map(g => g.name)));
 const promptText = JSON.stringify(sentBody?.messages || []);
 check('наружу уходят только заголовки и хосты',

@@ -1,10 +1,15 @@
 // Aside Tweaks — palette (⇧⌘K)
-// Окно по центру рабочего окна: вкладки, история, закладки, команды, калькулятор.
+// Слой на странице или окно по центру: вкладки, история, закладки, команды, калькулятор.
 // Всё оконное уходит в фон с явным windowId: сама палитра живёт в popup-окне,
 // и «текущее окно» там указывает на неё, а не на браузер.
+//
+// Список строится один раз на запрос. Выбор строки, наведение мыши и стрелки
+// только переключают класс — без перерисовки, иначе каждая строка проигрывает
+// свою анимацию заново и палитра дёргается.
 
 const params = new URLSearchParams(location.search);
 const srcWin = Number(params.get('win')) || null;
+const srcTab = Number(params.get('tab')) || null;
 // встроенный режим: палитра живёт слоем на странице, закрывать окно нечего
 const embed = params.get('embed') === '1';
 
@@ -22,15 +27,17 @@ let scope = 'all';
 
 const CMDS = commandsFor('palette').map(c => ({
   keys: c.words + ' ' + c.title,
-  title: c.title + (c.sub ? ' — ' + c.sub : ''),
+  title: c.title,
+  sub: c.sub || '',
   action: c.action,
   key: c.key
 }));
 
-
 let items = [];
+let rows = [];
 let sel = 0;
 let blocks = [];
+let mouseLive = false;   // наведение выбирает строку только после реального движения мыши
 
 chrome.storage.sync.get({ groupRules: [] }).then(s => {
   blocks = (s.groupRules || []).map(r => r.name).filter(Boolean);
@@ -57,13 +64,17 @@ function score(key) {
 
 // ---------- утилиты ----------
 
-const TRACKING = /^(utm_|_gl$|gclid$|fbclid$|yclid$)/;
+const TRACKING = /^(utm_|_gl$|gclid$|fbclid$|yclid$|mc_cid$|mc_eid$)/;
 
+// тот же ключ, что и у дедупа в фоне: схема, www, порт по умолчанию и хвостовой слэш не различают страницы
 function normUrl(raw) {
   try {
     const u = new URL(raw);
     for (const k of [...u.searchParams.keys()]) if (TRACKING.test(k)) u.searchParams.delete(k);
-    return u.origin + u.pathname.replace(/\/$/, '') + (u.searchParams.toString() ? '?' + u.searchParams.toString() : '');
+    const host = u.hostname.replace(/^www\./, '');
+    const port = u.port && !((u.protocol === 'https:' && u.port === '443') || (u.protocol === 'http:' && u.port === '80')) ? ':' + u.port : '';
+    const path = u.pathname.replace(/\/(index\.html?)?$/, '');
+    return host + port + path + (u.searchParams.toString() ? '?' + u.searchParams.toString() : '');
   } catch { return raw || ''; }
 }
 
@@ -82,6 +93,22 @@ const norm = s => (s || '').toLowerCase();
 const looksLikeUrl = s => /^(https?:\/\/)?[\w-]+(\.[\w-]+)+(:\d+)?([/?#]|$)/.test(s) && !s.includes(' ');
 const toUrl = s => s.startsWith('http') ? s : 'https://' + s;
 
+// Aside помечает спящую вкладку эмодзи 💤 прямо в заголовке — для поиска его снимаем
+const plainTitle = s => (s || '').replace(/^\s*💤\s*/, '');
+
+// насколько строка отвечает запросу: начало заголовка > начало слова > где-то в заголовке > адрес
+function matchScore(q, title, url) {
+  if (!q) return 1;
+  const t = norm(plainTitle(title)), u = norm(url);
+  if (t.startsWith(q)) return 4;
+  if (t.includes(' ' + q) || t.includes('·' + q) || t.includes('-' + q)) return 3;
+  if (t.includes(q)) return 2;
+  if (u.includes(q)) return 1.2;
+  const words = q.split(/\s+/).filter(Boolean);
+  if (words.length > 1 && words.every(w => t.includes(w) || u.includes(w))) return 1.5;
+  return 0;
+}
+
 // калькулятор как в Raycast: только арифметика, никакого произвольного кода
 function calc(expr) {
   const e = expr.trim();
@@ -93,9 +120,10 @@ function calc(expr) {
 }
 
 async function send(action, extra = {}) {
-  return chrome.runtime.sendMessage({ action, windowId: srcWin, ...extra });
+  return chrome.runtime.sendMessage({ action, windowId: srcWin, ...extra }).catch(() => null);
 }
 
+// фон сам переключится на уже открытую вкладку с тем же адресом — дубль не появится
 async function openUrl(url, { pinned = false, group = null } = {}) {
   bump(normUrl(url));
   await send('openUrl', { url, pinned, groupName: group });
@@ -112,7 +140,7 @@ async function build(raw) {
   const value = calc(qRaw);
   if (value !== null) {
     out.push({
-      kind: 'calc', glyph: '=', title: value, sub: qRaw, badge: 'copy',
+      kind: 'calc', glyph: '=', title: value, sub: qRaw, hint: 'copy ↵',
       run: async () => { await navigator.clipboard.writeText(value).catch(() => { }); closeSelf(); }
     });
   }
@@ -122,19 +150,38 @@ async function build(raw) {
   const wantMarks = scope === 'all' || scope === 'bookmarks';
   const wantCmds = scope === 'all' || scope === 'commands';
 
-  // открытые вкладки
-  let tabs = [];
+  // открытые вкладки — по свежести, как ⌃⇥ в Arc: последняя, где был, первой;
+  // текущая — в самом низу, с неё и переключаешься
+  const allTabs = (await chrome.tabs.query({}).catch(() => []))
+    .filter(t => t.url && !t.url.startsWith('chrome-extension://' + chrome.runtime.id));
+  const twins = new Map();
+  for (const t of allTabs) { const k = normUrl(t.url); twins.set(k, (twins.get(k) || 0) + 1); }
+
   if (wantTabs) {
-    tabs = (await chrome.tabs.query({})).filter(t =>
-      t.url && !t.url.startsWith('chrome-extension://' + chrome.runtime.id) &&
-      (!q || norm(t.title).includes(q) || norm(t.url).includes(q))
-    );
-    tabs.sort((a, b) => score(normUrl(b.url)) - score(normUrl(a.url)));
-    for (const t of tabs.slice(0, scope === 'tabs' ? 40 : (q ? 6 : 4))) {
+    const isCurrent = t => srcTab != null ? t.id === srcTab : (t.active && t.windowId === srcWin);
+    const recent = t => t.lastAccessed || 0;
+    const ranked = allTabs
+      .map(t => ({ t, m: matchScore(q, t.title, t.url) }))
+      .filter(x => x.m > 0)
+      .sort((a, b) => {
+        if (q && b.m !== a.m) return b.m - a.m;
+        const ca = isCurrent(a.t), cb = isCurrent(b.t);
+        if (ca !== cb) return ca ? 1 : -1;
+        if (q) {
+          const fa = score(normUrl(a.t.url)), fb = score(normUrl(b.t.url));
+          if (fb !== fa) return fb - fa;
+        }
+        return recent(b.t) - recent(a.t) || b.t.id - a.t.id;
+      });
+    const limit = scope === 'tabs' ? 80 : 6;
+    for (const { t } of ranked.slice(0, limit)) {
+      const n = twins.get(normUrl(t.url)) || 1;
       out.push({
-        kind: 'tab', icon: (t.favIconUrl && /^https?:|^data:/.test(t.favIconUrl)) ? t.favIconUrl : favicon(t.url),
+        kind: 'tab', section: q ? 'tabs' : 'recent',
+        icon: (t.favIconUrl && /^https?:|^data:/.test(t.favIconUrl)) ? t.favIconUrl : favicon(t.url),
         title: t.title || t.url, sub: hostOf(t.url),
-        badge: t.pinned ? 'pinned' : 'tab',
+        twin: n > 1 ? '×' + n : '',
+        k: t.pinned ? 'pinned' : '', hint: isCurrent(t) ? 'here' : 'switch ↵',
         alt: async () => {
           await chrome.tabs.update(t.id, { pinned: !t.pinned });
           closeSelf();
@@ -149,13 +196,21 @@ async function build(raw) {
     }
   }
 
-  // команды
+  // команды — с живым счётом того, что чистка сейчас закроет
   if (wantCmds) {
+    const stats = (await send('getStats'))?.data || null;
     for (const c of CMDS) {
       if (q && !norm(c.keys + ' ' + c.title).includes(q)) continue;
-      if (!q && scope === 'all' && out.length > 7) break;
+      if (!q && scope === 'all' && out.length > 9) break;
+      let sub = c.sub;
+      if (c.action === 'tidyDuplicates' && stats) {
+        sub = (stats.dups || stats.empties)
+          ? `${stats.dups} duplicate${stats.dups === 1 ? '' : 's'} · ${stats.empties} empty now`
+          : 'nothing to clean right now';
+      }
       out.push({
-        kind: 'cmd', glyph: '▸', title: c.title, sub: c.key || '', badge: 'command',
+        kind: 'cmd', section: 'commands', glyph: c.glyph || '▸', title: c.title, sub,
+        k: c.key || '', hint: 'run ↵',
         run: async () => { await send(c.action); closeSelf(); }
       });
     }
@@ -173,8 +228,10 @@ async function build(raw) {
       const k = normUrl(b.url);
       if (seen.has(k)) continue;
       seen.add(k);
+      const open = twins.has(k);
       out.push({
-        kind: 'mark', icon: favicon(b.url), title: b.title || b.url, sub: hostOf(b.url), badge: 'bookmark',
+        kind: 'mark', section: 'bookmarks', icon: favicon(b.url), title: b.title || b.url, sub: hostOf(b.url),
+        k: open ? 'open' : '', hint: open ? 'switch ↵' : 'open ↵',
         run: () => openUrl(b.url),
         alt: () => openUrl(b.url, { pinned: true })
       });
@@ -187,12 +244,11 @@ async function build(raw) {
     const hist = await chrome.history.search({
       text: qRaw, maxResults: 120, startTime: 0
     }).catch(() => []);
-    const openKeys = new Set(tabs.map(t => normUrl(t.url)));
     const byKey = new Map();
     for (const h of hist) {
       if (!h.url) continue;
       const k = normUrl(h.url);
-      if (openKeys.has(k)) continue;
+      if (twins.has(k)) continue;   // открытое уже есть во вкладках
       const prev = byKey.get(k);
       if (!prev || (h.lastVisitTime || 0) > (prev.lastVisitTime || 0)) {
         byKey.set(k, { ...h, visitCount: (prev?.visitCount || 0) + (h.visitCount || 1) });
@@ -204,7 +260,7 @@ async function build(raw) {
       .slice(0, scope === 'history' ? 40 : 8);
     for (const { h } of ranked) {
       out.push({
-        kind: 'hist', icon: favicon(h.url), title: h.title || h.url, sub: hostOf(h.url), badge: 'history',
+        kind: 'hist', section: 'history', icon: favicon(h.url), title: h.title || h.url, sub: hostOf(h.url), hint: 'open ↵',
         run: () => openUrl(h.url),
         alt: () => openUrl(h.url, { pinned: true })
       });
@@ -216,24 +272,25 @@ async function build(raw) {
     const isUrl = looksLikeUrl(qRaw);
     if (isUrl) {
       const url = toUrl(qRaw);
+      const open = twins.has(normUrl(url));
       out.unshift({
-        kind: 'open', glyph: '→', title: 'Open ' + qRaw, sub: '', badge: 'url',
+        kind: 'open', section: 'open', glyph: '→', title: (open ? 'Switch to ' : 'Open ') + qRaw, sub: '', hint: open ? 'switch ↵' : 'open ↵',
         run: () => openUrl(url),
         alt: () => openUrl(url, { pinned: true })
       });
       for (const b of blocks) {
         out.push({
-          kind: 'open', glyph: '▤', title: `Open in block · ${b}`, sub: hostOf(url), badge: 'block',
+          kind: 'open', section: 'open', glyph: '▤', title: `Open in block · ${b}`, sub: hostOf(url), hint: 'open ↵',
           run: () => openUrl(url, { group: b })
         });
       }
       out.push({
-        kind: 'open', glyph: '◆', title: 'Open pinned', sub: hostOf(url), badge: 'pin',
+        kind: 'open', section: 'open', glyph: '◆', title: 'Open pinned', sub: hostOf(url), hint: 'open ↵',
         run: () => openUrl(url, { pinned: true })
       });
     } else {
       out.push({
-        kind: 'search', glyph: '?', title: 'Search: ' + qRaw, sub: '', badge: 'google',
+        kind: 'search', glyph: '?', title: 'Search: ' + qRaw, sub: 'google', hint: 'search ↵',
         run: () => openUrl('https://www.google.com/search?q=' + encodeURIComponent(qRaw))
       });
     }
@@ -244,55 +301,83 @@ async function build(raw) {
 
 // ---------- отрисовка ----------
 
-function render() {
-  listEl.replaceChildren();
-  const HDRS = {
-    tab: 'tabs', cmd: 'commands', mark: 'bookmarks',
-    hist: 'history', open: 'open', search: '', calc: ''
-  };
-  let lastKind = null;
-  items.forEach((it, i) => {
-    if (it.kind !== lastKind && HDRS[it.kind]) {
-      const h = document.createElement('div');
-      h.className = 'hdr';
-      h.textContent = HDRS[it.kind];
-      listEl.append(h);
-    }
-    lastKind = it.kind;
-
-    const d = document.createElement('div');
-    d.className = 'item' + (i === sel ? ' sel' : '');
-    if (it.icon) {
-      const img = document.createElement('img');
-      img.src = it.icon;
-      img.addEventListener('error', () => {
-        const g = document.createElement('span');
-        g.className = 'glyph';
-        g.textContent = '·';
-        img.replaceWith(g);
-      });
-      d.append(img);
-    } else {
+function rowFor(it, i) {
+  const d = document.createElement('div');
+  d.className = 'item';
+  if (it.icon) {
+    const img = document.createElement('img');
+    img.src = it.icon;
+    img.addEventListener('error', () => {
       const g = document.createElement('span');
       g.className = 'glyph';
-      g.textContent = it.glyph || '·';
-      d.append(g);
+      g.textContent = '·';
+      img.replaceWith(g);
+    });
+    d.append(img);
+  } else {
+    const g = document.createElement('span');
+    g.className = 'glyph';
+    g.textContent = it.glyph || '·';
+    d.append(g);
+  }
+  const t = document.createElement('span');
+  t.className = 't';
+  t.textContent = it.title;
+  const s = document.createElement('span');
+  s.className = 's';
+  s.textContent = it.sub || '';
+  d.append(t, s);
+  if (it.twin) {
+    const w = document.createElement('span');
+    w.className = 'twin';
+    w.textContent = it.twin;
+    w.title = 'the same page is open more than once · clean duplicates closes the extras';
+    d.append(w);
+  }
+  if (it.k) {
+    const k = document.createElement('span');
+    k.className = 'k';
+    k.textContent = it.k;
+    d.append(k);
+  }
+  const h = document.createElement('span');
+  h.className = 'hint';
+  h.textContent = it.hint || '';
+  d.append(h);
+  d.addEventListener('click', () => it.run());
+  d.addEventListener('mouseenter', () => { if (mouseLive) setSel(i, false); });
+  return d;
+}
+
+function render() {
+  mouseLive = false;
+  listEl.replaceChildren();
+  rows = [];
+  let last = null;
+  items.forEach((it, i) => {
+    if (it.section && it.section !== last) {
+      const h = document.createElement('div');
+      h.className = 'hdr';
+      h.textContent = it.section;
+      listEl.append(h);
+      last = it.section;
     }
-    const t = document.createElement('span');
-    t.className = 't';
-    t.textContent = it.title;
-    const s = document.createElement('span');
-    s.className = 's';
-    s.textContent = it.sub || '';
-    const b = document.createElement('span');
-    b.className = 'badge';
-    b.textContent = it.badge;
-    d.append(t, s, b);
-    d.addEventListener('click', () => it.run());
-    d.addEventListener('mousemove', () => { if (sel !== i) { sel = i; render(); } });
+    const d = rowFor(it, i);
+    rows.push(d);
     listEl.append(d);
   });
-  listEl.querySelector('.item.sel')?.scrollIntoView({ block: 'nearest' });
+  setSel(sel, true);
+  if (listEl.classList.contains('first')) setTimeout(() => listEl.classList.remove('first'), 240);
+}
+
+function setSel(i, scroll) {
+  if (!rows.length) { sel = 0; return; }
+  i = Math.max(0, Math.min(i, rows.length - 1));
+  if (rows[sel] && sel !== i) rows[sel].classList.remove('sel');
+  sel = i;
+  const el = rows[sel];
+  el.classList.add('sel');
+  if (scroll) el.scrollIntoView({ block: 'nearest' });
 }
 
 function renderScopes() {
@@ -308,20 +393,26 @@ async function refresh() {
   const res = await build(qEl.value);
   if (my !== seq) return;
   items = res;
-  sel = Math.min(sel, Math.max(0, items.length - 1));
   if (qEl.value.trim()) sel = 0;
   render();
 }
 
-qEl.addEventListener('input', refresh);
-
-// смена охвата перерисовывает список целиком; без этого он моргает рывком
-function softRefresh() {
-  listEl.classList.add('fading');
-  return refresh().finally(() => requestAnimationFrame(() => listEl.classList.remove('fading')));
+// смена охвата: список гаснет, подменяется невидимым и проявляется — без рывка
+let swapping = false;
+async function softRefresh() {
+  if (swapping) { refresh(); return; }
+  swapping = true;
+  listEl.classList.add('swap');
+  await new Promise(r => setTimeout(r, 70));
+  await refresh();
+  requestAnimationFrame(() => { listEl.classList.remove('swap'); swapping = false; });
 }
 
+qEl.addEventListener('input', refresh);
+document.addEventListener('mousemove', () => { mouseLive = true; }, { passive: true });
+
 document.addEventListener('keydown', (e) => {
+  mouseLive = false;
   if (e.key === 'Escape') { closeSelf(); return; }
   if (e.key === 'Tab') {
     e.preventDefault();
@@ -331,8 +422,8 @@ document.addEventListener('keydown', (e) => {
     softRefresh();
     return;
   }
-  if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(sel + 1, items.length - 1); render(); }
-  if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(sel - 1, 0); render(); }
+  if (e.key === 'ArrowDown') { e.preventDefault(); setSel(sel + 1, true); }
+  if (e.key === 'ArrowUp') { e.preventDefault(); setSel(sel - 1, true); }
   if (e.key === 'Enter') {
     e.preventDefault();
     const it = items[sel];

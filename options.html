@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-look="aside">
 <head>
 <meta charset="utf-8">
 <title>aside tweaks · settings</title>
@@ -12,9 +12,17 @@
   }
   body {
     max-width: 620px; margin: 40px auto 70px; padding: 0 24px;
-    font: 12px/1.65 "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
+    font: 12px/1.65 var(--font, "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace);
     background: var(--bg); color: var(--fg);
+    -webkit-font-smoothing: antialiased;
   }
+  /* облик aside: карточки на сером поле, заголовки без разрядки, выбранный сегмент — белая пилюля */
+  :root[data-look="aside"] body { font-size: 12.5px; }
+  :root[data-look="aside"] .card { border: 1px solid var(--line); border-radius: 10px; background: var(--bg-soft); }
+  :root[data-look="aside"] .head .ttl { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600; }
+  :root[data-look="aside"] .head .idx { letter-spacing: 0; font-size: 10.5px; }
+  :root[data-look="aside"] .seg button.on { background: var(--sel); color: var(--fg); border-color: var(--line); box-shadow: var(--sel-shadow); }
+  :root[data-look="aside"] small, :root[data-look="aside"] .row2 > span, :root[data-look="aside"] #saved { font-size: 11px; }
   h1 { font-size: 13px; font-weight: 400; margin: 0 0 3px; letter-spacing: .02em; }
   .sub { color: var(--muted); font-size: 10px; margin: 0 0 26px; }
 
@@ -117,7 +125,10 @@
         <b><code>⇧⌘D</code> — pin.</b> the squares on top of the sidebar, the browser's own pin on a key of its own.
       </small>
       <label class="opt"><input type="checkbox" id="favoriteMovesTab">
-        <span>the tab moves along with the bookmark<small>down to the end of the list when bookmarked, up to the top when it comes back. off — only the bookmark changes, the tab never leaves its place. a grouped tab is never pulled out of its block</small></span>
+        <span>the tab moves along with the bookmark<small>to the first row of the tabs in both directions. off — only the bookmark changes, the tab never leaves its place</small></span>
+      </label>
+      <label class="opt"><input type="checkbox" id="favoriteLeavesGroup">
+        <span>⌘D takes the tab out of its block<small>Aside's sidebar folds an open tab into the bookmark row with the same address — but only a tab outside any block. inside a block the page would show twice: in the bookmarks and in the block</small></span>
       </label>
       <label class="opt"><input type="checkbox" id="keepPins">
         <span>Arc-style pins<small>closing a pinned tab brings the pin back asleep instead of dropping it. to remove it for good: unpin, then close</small></span>
@@ -155,7 +166,13 @@
       <label class="opt"><input type="checkbox" id="dedupIgnoreUtm">
         <span>ignore tracking params<small>utm_*, _gl, gclid, fbclid…</small></span>
       </label>
-      <small style="margin-top:7px">the manual command also collapses empty new tabs — one per window stays.</small>
+      <small style="margin-top:7px">the manual command also collapses empty new tabs — one per window stays. of two copies the one you used last is kept; <code>http</code>, <code>www</code> and a trailing slash do not make a different page.</small>
+      <div class="row2" style="margin-top:11px">
+        <span>tidy up · blocks from</span>
+        <input type="range" id="tidyMinGroup" min="2" max="6" step="1">
+        <span id="tidyMinGroupVal">3 tabs</span>
+      </div>
+      <small style="margin-top:7px">tidy up gathers a block only from this many tabs of one rule or site; smaller sets stay loose on top, ordered by where you were last. pages that sit in the bookmarks bar stay out of blocks, so the sidebar can fold them into their row.</small>
     </div>
   </div>
 
@@ -175,16 +192,24 @@
     <div class="head"><span class="idx">06</span><span class="ttl">appearance</span></div>
     <div class="body">
       <small style="margin-bottom:11px">
-        Aside's own sidebar is native browser chrome — an extension cannot repaint it.
-        these colours drive our surfaces: palette <code>⇧⌘K</code>, popup, settings, tweaks panel.
+        Aside's own sidebar is native browser chrome — an extension cannot repaint it, so the default look
+        is lifted from it instead: the same grey field, a white pill on the selected row, the system font.
+        <b>paper</b> is the older apowall instrument look — warm sheet, monospace lowercase.
+        both drive every surface of ours: palette <code>⇧⌘K</code>, popup, settings, tweaks panel.
       </small>
+      <div class="row2" style="margin-bottom:9px">
+        <span style="width:70px">look</span>
+        <div class="seg" id="look" style="flex:1">
+          <button data-v="aside">aside · like the sidebar</button><button data-v="paper">paper · mono</button>
+        </div>
+      </div>
       <div class="swatches" id="swatches"></div>
       <div class="row2" style="margin-bottom:11px">
         <span>custom</span>
         <input type="color" id="accentCustom">
-        <span>background tint</span>
+        <span>paper tint</span>
         <input type="range" id="tint" min="0" max="26" step="1">
-        <span id="tintVal">8%</span>
+        <span id="tintVal">0%</span>
       </div>
       <div class="row2" style="margin-bottom:9px">
         <span style="width:70px">theme</span>

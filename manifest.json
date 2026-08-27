@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Aside Tweaks",
-  "version": "4.13.0",
-  "description": "Palette (⇧⌘K) over tabs, history and bookmarks · own keymap over browser shortcuts · ⌘D moves a page into the bookmarks bar and back · dedupe · new tabs under the current one.",
+  "version": "4.14.0",
+  "description": "Palette (⇧⌘K) in the sidebar's own look — recent tabs first, switch instead of duplicate · own keymap over browser shortcuts · ⌘D folds a page into the bookmarks bar and back · smart dedupe · tidy up · new tabs under the current one.",
   "permissions": [
     "tabs",
     "storage",

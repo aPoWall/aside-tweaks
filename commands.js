@@ -8,7 +8,7 @@
 const TWEAK_COMMANDS = [
   {
     action: 'tidyUp', glyph: '✦', title: 'tidy up', sub: 'one sweep', key: '⌥⌘T',
-    hint: 'clean duplicates and empty tabs → flatten groups → order → rebuild blocks',
+    hint: 'clean duplicates and empty tabs → flatten → recent loose tabs on top → blocks from 3 tabs · bookmarked pages stay out so the sidebar folds them in',
     words: 'tidy sweep clean order everything', on: ['panel', 'palette', 'popup']
   },
   {
@@ -48,7 +48,7 @@ const TWEAK_COMMANDS = [
   },
   {
     action: 'favoriteTab', glyph: '★', title: 'bookmark ⇄ tab', sub: 'last row of the bar', key: '⌘D',
-    hint: 'the page joins the bookmarks bar, the tab stays open · again brings it back to the top',
+    hint: 'the page joins the bookmarks bar and leaves its block, so the sidebar folds the open tab into that row · again brings it back to the top',
     words: 'bookmark bar keep star', on: ['palette', 'popup']
   },
   {

@@ -4,21 +4,27 @@
    Значения цветов приходят из theme.js (акцент, светлая/тёмная, плотность). */
 
 :root {
-  --accent: #e2892a; --accent-fg: #fff;
-  --bg: #f4f1e7; --bg-soft: #faf8f2; --line: #ddd8c9;
-  --fg: #1b1a17; --muted: #8d887a; --dim: #6b675c;
-  --sel: #e9e5d8; --tile: #faf8f2; --tile-fg: #1b1a17;
-  --radius: 7px; --pad: 12px;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  --font-size: 12.5px;
+  --accent: #111111; --accent-fg: #fff;
+  --bg: #ececec; --bg-soft: #f6f6f6; --line: #dddddd;
+  --fg: #1c1c1e; --muted: #6f6f6f; --dim: #48484a;
+  --sel: #ffffff; --tile: #ffffff; --tile-fg: #1c1c1e; --sleep: #8f7fc9;
+  --sel-shadow: 0 1px 2px rgba(0,0,0,.10), 0 0 0 1px rgba(0,0,0,.03);
+  --radius: 8px; --pad: 12px;
 }
 
 * { box-sizing: border-box; margin: 0; }
 
 body {
-  font: 11px/1.45 "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
+  font: var(--font-size)/1.45 var(--font);
   color: var(--fg);
   -webkit-font-smoothing: antialiased;
-  /* зерно бумаги: лёгкий шум поверх цвета, чтобы плоскость не выглядела пластиковой */
   background-color: var(--bg);
+}
+
+/* зерно бумаги: лёгкий шум поверх цвета, чтобы плоскость не выглядела пластиковой */
+:root[data-look="paper"] body {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");
 }
 
@@ -53,11 +59,10 @@ body {
   padding: 7px 9px; text-align: left; cursor: pointer;
   font: inherit; color: var(--tile-fg); background: var(--tile);
   border: 1px solid var(--line); border-radius: var(--radius);
-  transition: border-color .1s, background .1s;
+  transition: border-color .12s, background .12s, transform .1s ease, box-shadow .12s;
 }
 .tile:hover { border-color: var(--fg); transform: translateY(-1px); }
 .tile:active { background: var(--sel); transform: translateY(0) scale(.985); }
-.tile { transition: border-color .12s, background .12s, transform .1s ease; }
 .tile.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .tile.on .tile-sub { color: var(--accent-fg); opacity: .72; }
 .tile-main { display: flex; align-items: baseline; gap: 8px; }
@@ -91,3 +96,25 @@ body {
 .sign a { color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--line); }
 .sign a:hover { color: var(--fg); border-color: var(--fg); }
 .sign .spacer { flex: 1; }
+
+/* ---------- облик aside: серое поле сайдбара, белая пилюля на активном, системный шрифт ---------- */
+
+:root[data-look="aside"] .inst-title { font-weight: 600; letter-spacing: -.02em; }
+:root[data-look="aside"] .sec-label { letter-spacing: 0; font-size: 11px; }
+:root[data-look="aside"] .sec-label .n { color: var(--muted); }
+:root[data-look="aside"] .tile { background: transparent; border-color: transparent; }
+:root[data-look="aside"] .tile:hover { background: rgba(0, 0, 0, .045); border-color: transparent; transform: none; }
+:root[data-look="aside"][data-theme="dark"] .tile:hover { background: rgba(255, 255, 255, .06); }
+:root[data-look="aside"] .tile:active { background: var(--sel); transform: scale(.99); }
+:root[data-look="aside"] .tile.on { background: var(--sel); color: var(--fg); border-color: transparent; box-shadow: var(--sel-shadow); }
+:root[data-look="aside"] .tile.on .tile-sub,
+:root[data-look="aside"] .tile.on .tile-main .k { color: var(--muted); opacity: 1; }
+:root[data-look="aside"] .tile-sub { font-size: 10.5px; }
+:root[data-look="aside"] .tile-main .k { font-size: 11px; }
+:root[data-look="aside"] .readout { background: var(--tile); border-color: transparent; box-shadow: var(--sel-shadow); }
+:root[data-look="aside"] .readout .sub { font-size: 10.5px; }
+:root[data-look="aside"] .inst-sub, :root[data-look="aside"] .hintbar { font-size: 10.5px; }
+:root[data-look="aside"] .sign { font-size: 10px; }
+
+/* бумага: прежние размеры моноширинного набора */
+:root[data-look="paper"] body { font-size: 11px; }

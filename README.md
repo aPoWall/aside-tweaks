@@ -20,10 +20,11 @@ Three things follow from that, and each one is a feature here.
 **A tab list is not a filing cabinet.** Arc taught a generation of users that the page you keep
 belongs *above* the churn — one keystroke moves it up and it stops competing with the twenty tabs
 you opened this hour. Chromium's pin does half of that; it keeps the tab alive in the strip but
-never lets it leave the tree. So `⌘D` here writes the page into the bookmarks bar as its last row
-and moves the tab down out of the way — without closing it. Closing would wake a sleeping neighbour,
-that neighbour reloads, and the whole gesture reads as «the browser took me somewhere». Press `⌘D`
-again on the same page: the bookmark goes and the tab comes back to the very top of the list.
+never lets it leave the tree. So `⌘D` here writes the page into the bookmarks bar as its last row,
+takes the tab out of its block and lets Aside's sidebar fold the two into one live row on top —
+without closing anything. Closing would wake a sleeping neighbour, that neighbour reloads, and the
+whole gesture reads as «the browser took me somewhere». Press `⌘D` again on the same page: the
+bookmark goes and the tab is back in the list, at the very top.
 
 **Shortcuts should belong to the person, not to the vendor.** Chromium lets an extension declare
 four shortcuts and re-bind them only on its own settings page. This extension listens in the
@@ -32,9 +33,9 @@ so any combo the page can see becomes bindable, `⌘D` and `⌘⇧D` included. C
 physical key code, so switching to a non-Latin layout doesn't silently break them.
 
 **Search beats navigation.** With fifty tabs open, hunting the sidebar is slower than typing.
-The palette ranks by what you actually pick — frequency with a two-week decay — collapses history
-by normalised url so one site can't flood the list, and takes a pasted address straight into a
-named block.
+The palette opens on the tabs you were in last, ranks a query by what you actually pick — frequency
+with a two-week decay — collapses history by normalised url so one site can't flood the list, and
+switches to a page that is already open instead of opening it twice.
 
 Everything else is repair work: a placement guard that holds a new tab under the current one while
 the browser re-orders it, cleanup that also collects the empty new tabs, groups that open expanded
@@ -59,11 +60,28 @@ page exists — `chrome://`, a new tab, Aside's own interface — or where the s
 refuses foreign frames, it falls back to a centred window automatically. `⇥` switches scope:
 `all · tabs · history · bookmarks · commands`.
 
-- history collapses by normalised url (utm stripped), so one site stops eating the whole list
-- ranking by pick frequency with a two-week decay, `n · e^(−days/14)`
+- an empty query shows **recent** — the open tabs in the order you were in them, the way `⌃⇥`
+  cycles in Arc; the page you are on sits last, since that is the one you are switching *from*
+- a query ranks title starts above word starts above substrings, then by pick frequency with a
+  two-week decay, `n · e^(−days/14)`
+- history collapses by normalised url (utm stripped), so one site stops eating the whole list;
+  pages that are already open are left to the tabs section
+- a bookmark or a history row whose page is open says `switch ↵` and goes to that tab; a pasted
+  address that is open becomes `Switch to …` — nothing opens twice
+- a tab that is open more than once carries `×2`; *clean duplicates* shows what it would close
+  right now, counted live
 - paste a url and you get `Open`, `Open in block · <name>`, `Open pinned`
 - `⇧↵` is the row's second action: pin the tab, or open the address already pinned
 - arithmetic in the input (`2+2`, `(19*3)/2`), `↵` copies the result
+- the list is built once per query; arrows and the mouse only move the selection, so nothing
+  re-animates while you type — the rows fade in on the first paint and stay put after that
+
+**Two looks.** The default is lifted from Aside's own sidebar: the same grey field (`#ececec`),
+a white pill with a hairline shadow on the selected row, section labels in `#6f6f6f`, the system
+font, light by default. Chosen so the palette reads as part of the browser rather than a visitor.
+The older **paper** look — warm sheet, monospace lowercase, accent tint — stays in settings card 06.
+Both drive every surface here: palette, popup, settings, panel. The sidebar itself is native chrome
+and stays whatever Aside paints it.
 
 **Blocks by meaning — opt-in.** A site is a weak signal: fifteen tabs on one `github.com` say nothing
 about what you are doing. This hands the **titles and hosts** of the open tabs to a model through
@@ -92,20 +110,42 @@ key that keeps firing an old action is set there, not here. Settings card 01 lis
 side read live from `chrome.commands.getAll()`.
 
 **Bookmark ⇄ tab — ⌘D.** The current page becomes the *last* row of the bookmarks bar; the tab
-stays open, loaded and active, and slides to the end of the list. Press it again on the same page
-and it reverses: the bookmark is removed and the tab returns to the very top, right under the pinned
-squares. Nothing is ever closed, so nothing reloads. No dedicated folder — the bar itself is the
-destination. A tab inside a group is never pulled out of its block; turn *the tab moves along with
-the bookmark* off in settings if you want the bookmark alone to change.
+stays open, loaded and active, and moves to the first row of the tabs. Press it again on the same
+page and it reverses: the bookmark is removed and the tab stays on top. Nothing is ever closed, so
+nothing reloads. No dedicated folder — the bar itself is the destination.
+
+What makes this a pin rather than a bookmark is Aside's sidebar: its bookmarks section shows the
+bar, and an **open tab whose address matches a bookmark is folded into that row** — one line, live,
+asleep with `💤` when discarded, gone from the tabs list below. That is Arc's pinned tab, built from
+a bookmark and a tab. The fold only happens for a tab outside any block; inside one the page would
+show twice, in the bar and in the block. So `⌘D` takes the tab out of its block first (settings
+card 02, on by default), and writes the address exactly as the tab has it, because the sidebar
+matches literally.
 
 **Pins, Arc-style.** A pin moves the tab into the squares on top of the sidebar. Closing a pinned
 tab brings the pin back asleep instead of dropping it; to remove it, unpin first. A pin is not a
 bookmark — bookmarking is a separate action that writes to the bookmarks bar with no dialog and
 toggles off on a second call.
 
-**Cleanup.** Auto-dedupe closes a fresh tab when the same url is already open and switches to the
-existing one. The manual command clears every empty new tab as well, leaving a window its last tab
-so it never closes itself.
+**Cleanup.** Two copies are the same page when they differ only by `http`/`https`, `www.`, a
+default port, `index.html`, a trailing slash, tracking params or the `#anchor` — the key is shared
+by dedupe, the palette's `×2` and the bookmark match. Of two copies the one you used last is kept
+(the active one first, then the most recently accessed, then whichever is awake), the rest close.
+The manual command clears every empty new tab as well, leaving a window its last tab so it never
+closes itself. Auto-dedupe stays off by default; opening a duplicate shows a note instead.
+
+**Tidy up — ⌥⌘T.** One sweep, four steps, and what is left reads like a desk rather than an index:
+
+1. duplicates and empty tabs close (as above);
+2. every group is flattened;
+3. **loose tabs go on top, most recent first** — what you touched last is at hand, the way Arc's
+   *Today* reads;
+4. below them, **blocks** — a block is gathered only from **3 or more** tabs of one rule or one
+   site (settings card 04; pairs are not a working area and stay loose), rule blocks in the order
+   of the rules, site blocks by their freshest tab, tabs inside each block by recency.
+
+Pages that sit in the bookmarks bar never enter a block: left loose, the sidebar folds them into
+their bookmark row (see `⌘D`) and they leave the tabs list altogether. Pinned squares are untouched.
 
 **Placement.** New tabs open under the current one. Aside re-orders a fresh tab *after* it is
 created, so a guard keeps putting it back until it stops drifting (window configurable, 2.5 s by
@@ -124,13 +164,16 @@ Written down because these were asked for one by one and each is easy to break b
 
 | Gesture | What must happen |
 |---|---|
-| `⌘D` on a fresh page | bookmark appended as the **last** row of the bar; the tab stays open, loaded, **selected**, and moves to the **first row of the tabs** |
+| `⌘D` on a fresh page | bookmark appended as the **last** row of the bar, url written verbatim; the tab leaves its block, stays open, loaded, **selected**, and moves to the **first row of the tabs** — the sidebar then folds it into the bookmark row |
 | `⌘D` again on the same page | bookmark removed; the tab stays at the first row, still selected |
 | either direction | the page always ends up **at the top**, never at the bottom — the sidebar scrolls up to it, the way pinning already behaves |
 | `⇧⌘D` on an ordinary tab | pinned into the squares on top of the sidebar |
 | `⇧⌘D` on a pinned tab | unpinned **and** moved to the first row of the tabs, and it stays the selected tab |
 | any of the above | nothing is ever closed, so no sleeping neighbour wakes up and reloads |
-| a tab inside a group | never pulled out of its block by these gestures |
+| a tab inside a group | `⌘D` takes it out (so the sidebar can fold it in); `⇧⌘D` and the panel leave blocks alone |
+| opening an address that is already open | the palette, a bookmark row, a pasted url — all **switch** to the open tab; no second copy |
+| `⌥⌘T` | closes duplicates and empties, keeps the copy used last, puts loose tabs on top by recency, gathers blocks only from ≥3 tabs, never groups a page that lives in the bookmarks bar |
+| the palette | opens on recent tabs, current one last; typing never re-animates the list |
 | the same key from two levels | a repeat within 450 ms is swallowed, so a page-level and a browser-level binding on one combo cannot toggle twice |
 | opening a duplicate | a note on the page, nothing closed — cleaning is a command you run |
 | ordering / grouping | always acts on the last **normal** window, even when the palette window was focused last |
@@ -144,10 +187,15 @@ node tests/sw-smoke.mjs
 ```
 
 The service worker is loaded into a stubbed `chrome` and driven the way the popup drives it:
-placement of a fresh tab under the active one, the tidy sweep, pin and unpin, the bookmark toggle
-in both directions, the repeat guard, and ordering while a popup window was the last focused one. It
-exists because a silent `ReferenceError` at load makes every feature look broken at once —
-the worker dies, nothing registers, and the UI just stops answering.
+placement of a fresh tab under the active one, the tidy sweep (recency order, a block only from
+three tabs, a bookmarked page kept loose), duplicate detection through `www.` and a trailing slash
+with the freshest copy kept, pin and unpin, the bookmark toggle in both directions including the
+exit from a block, switching to an open copy instead of opening it twice, the repeat guard, and
+ordering while a popup window was the last focused one. It exists because a silent `ReferenceError`
+at load makes every feature look broken at once — the worker dies, nothing registers, and the UI
+just stops answering.
+
+`node tests/surfaces.mjs` checks that every command exists on every surface it claims.
 
 ## Limits worth knowing
 
@@ -206,7 +254,14 @@ not a menu command, so macOS has no handle to bind it to.
 chrome: colours come from internal palette ids (`kColorAsideFloatingSidebarBackground`,
 `kColorAsideSidebarItemBackgroundHover`), and its preferences expose width, expand-on-hover and
 sections — no colour key at all. The browser theme paints the toolbar and leaves the sidebar alone.
-Everything this extension draws is themable instead: palette, popup, settings, panel.
+Everything this extension draws is themable instead: palette, popup, settings, panel — and by
+default it borrows the sidebar's own values, sampled from a screenshot of it.
+
+**What the sidebar does with bookmarks is the other half of `⌘D`.** With
+`aside.vertical_tabs.bookmarks_section_enabled` the sidebar lists the bookmarks bar above *Chats*
+and *Tabs*, and folds an open tab into the bookmark row that matches its url. The match is literal
+and it skips tabs inside a group — both are facts this extension works around, not switches it can
+flip.
 
 ## Layout
 
@@ -220,7 +275,7 @@ Everything this extension draws is themable instead: palette, popup, settings, p
 | `panel.js` / `.html` | the side panel |
 | `options.js` / `.html` | settings: keys, pins, tabs, cleanup, blocks, appearance |
 | `popup.js` / `.html` | toolbar popup |
-| `theme.js` · `instrument.css` | shared surface: paper palette, accent, numbered sections, tiles |
+| `theme.js` · `instrument.css` | shared surface: the two looks (aside · paper), accent, numbered sections, tiles |
 | `scripts/native-shortcuts.sh` | re-binds Aside's own menu shortcuts at the macOS level |
 
 ## Adjacent: Raycast snippets losing their first letter

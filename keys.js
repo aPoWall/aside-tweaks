@@ -24,16 +24,28 @@ const DEFAULT_KEYMAP = {
 let enabled = true;
 let keymap = DEFAULT_KEYMAP;
 
-chrome.storage.sync.get({ keymap: null, keymapEnabled: true }).then(s => {
+// цвет рамки палитры до загрузки документа — иначе на тёмной теме мигает серым
+let paletteSkin = { bg: '#ececec', line: 'rgba(0,0,0,.14)', dark: false };
+function skinOf(t) {
+  const look = t?.look === 'paper' ? 'paper' : 'aside';
+  const m = t?.mode || 'light';
+  const dark = m === 'dark' || (m === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  const bg = { aside: ['#ececec', '#1e1e20'], paper: ['#f2ede3', '#1a1a18'] }[look][dark ? 1 : 0];
+  return { bg, line: dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.14)', dark };
+}
+
+chrome.storage.sync.get({ keymap: null, keymapEnabled: true, theme: null }).then(s => {
   // поверх дефолтной, а не вместо неё — иначе новые действия остаются без клавиш
   keymap = { ...DEFAULT_KEYMAP, ...(s.keymap || {}) };
   enabled = s.keymapEnabled !== false;
+  paletteSkin = skinOf(s.theme);
 }).catch(() => { });
 
 chrome.storage.onChanged.addListener((ch, area) => {
   if (area !== 'sync') return;
   if (ch.keymap) keymap = { ...DEFAULT_KEYMAP, ...(ch.keymap.newValue || {}) };
   if (ch.keymapEnabled) enabled = ch.keymapEnabled.newValue !== false;
+  if (ch.theme) paletteSkin = skinOf(ch.theme.newValue);
 });
 
 function hit(e, c) {
@@ -136,16 +148,18 @@ function openPaletteLayer({ win, tab }) {
 
   const host = document.createElement('div');
   host.style.cssText = 'all:initial;position:fixed;inset:0;z-index:2147483647';
+  host.style.setProperty('--tw-bg', paletteSkin.bg);
+  host.style.setProperty('--tw-line', paletteSkin.line);
   const root = host.attachShadow({ mode: 'open' });
 
   const style = document.createElement('style');
   style.textContent = `
     .back {
       position: fixed; inset: 0;
-      background: rgba(10, 9, 8, .5);
-      backdrop-filter: blur(3px) saturate(.9);
-      -webkit-backdrop-filter: blur(3px) saturate(.9);
-      opacity: 0; transition: opacity .18s ease;
+      background: rgba(0, 0, 0, .32);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      opacity: 0; transition: opacity .16s ease;
     }
     .wrap {
       position: fixed; inset: 0;
@@ -156,12 +170,13 @@ function openPaletteLayer({ win, tab }) {
     iframe {
       pointer-events: auto;
       width: min(660px, 92vw); height: min(500px, 72vh);
-      border: 1px solid rgba(0, 0, 0, .22); border-radius: 13px;
-      background: #f2ede3;
-      box-shadow: 0 42px 120px rgba(0, 0, 0, .55), 0 12px 34px rgba(0, 0, 0, .32);
-      opacity: 0; transform: translateY(-8px) scale(.985);
-      transition: opacity .18s ease, transform .18s cubic-bezier(.2, .8, .3, 1);
+      border: 1px solid var(--tw-line, rgba(0, 0, 0, .14)); border-radius: 12px;
+      background: var(--tw-bg, #ececec);
+      box-shadow: 0 30px 90px rgba(0, 0, 0, .40), 0 8px 24px rgba(0, 0, 0, .22);
+      opacity: 0; transform: translateY(-6px) scale(.99);
+      transition: opacity .16s ease, transform .16s cubic-bezier(.2, .8, .3, 1);
     }
+    @media (prefers-reduced-motion: reduce) { .back, iframe { transition: none; } }
     :host(.in) .back { opacity: 1; }
     :host(.in) iframe { opacity: 1; transform: none; }
     :host(.out) .back { opacity: 0; }

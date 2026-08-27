@@ -19,9 +19,10 @@ const DEFAULT_KEYMAP = {
 };
 
 const DEFAULT_THEME = {
-  mode: 'light',       // auto | light | dark — инструменты живут на бумаге
+  look: 'aside',       // aside | paper — серое поле сайдбара и системный шрифт, либо бумага apowall
+  mode: 'light',       // auto | light | dark — по умолчанию светло, как сам Aside
   accent: '#111111',   // цвет панели, палитры, попапа
-  tint: 8,             // сколько акцента подмешано в фон панели, %
+  tint: 0,             // сколько акцента подмешано в фон — свойство бумаги, %
   density: 'normal'    // normal | compact
 };
 
@@ -35,6 +36,8 @@ const DEFAULTS = {
   placementGuardMs: 2500,           // сколько держим вкладку на месте, если Aside её двигает
   keepPins: true,
   favoriteMovesTab: true,   // ⌘D двигает и вкладку: вниз при закладке, наверх при возврате
+  favoriteLeavesGroup: true, // ⌘D выводит вкладку из блока: вне блока сайдбар Aside вплавляет её в строку закладки
+  tidyMinGroup: 3,           // блок при уборке собирается от стольких вкладок; пары остаются россыпью
   paletteOverlay: true,     // палитра слоем поверх страницы; выключено — отдельным окном
   keymapEnabled: true,
   dimBehindPalette: true,
@@ -130,7 +133,12 @@ function normalizeUrl(raw) {
       for (const k of [...u.searchParams.keys()]) if (TRACKING_PARAMS.test(k)) u.searchParams.delete(k);
     }
     const hash = settings.dedupIgnoreHash ? '' : u.hash;
-    return u.origin + u.pathname.replace(/\/$/, '') + (u.searchParams.toString() ? '?' + u.searchParams.toString() : '') + hash;
+    // схема, www, порт по умолчанию, index.html и хвостовой слэш — одна и та же страница:
+    // http://site и https://www.site/ открываются как один документ, дубль считаем дублем
+    const host = u.hostname.replace(/^www\./, '');
+    const port = u.port && !((u.protocol === 'https:' && u.port === '443') || (u.protocol === 'http:' && u.port === '80')) ? ':' + u.port : '';
+    const path = u.pathname.replace(/\/(index\.html?)?$/, '');
+    return host + port + path + (u.searchParams.toString() ? '?' + u.searchParams.toString() : '') + hash;
   } catch { return null; }
 }
 
@@ -294,6 +302,15 @@ function isEmptyTab(t) {
   return u === '' || EMPTY_URLS.test(u);
 }
 
+// кого из близнецов оставить: активную, иначе ту, где были последней, иначе не спящую, иначе старшую
+function keeperOf(a, b) {
+  if (!!a.active !== !!b.active) return a.active ? a : b;
+  const la = a.lastAccessed || 0, lb = b.lastAccessed || 0;
+  if (la !== lb) return la > lb ? a : b;
+  if (!!a.discarded !== !!b.discarded) return a.discarded ? b : a;
+  return a.id < b.id ? a : b;
+}
+
 async function tidyDuplicates() {
   const all = await chrome.tabs.query({});
   const seen = new Map();
@@ -307,9 +324,9 @@ async function tidyDuplicates() {
     if (!key) continue;
     const kept = seen.get(key);
     if (!kept) { seen.set(key, t); continue; }
-    const better = t.active || (!t.discarded && kept.discarded);
-    if (better) { toClose.push(kept.id); seen.set(key, t); }
-    else toClose.push(t.id);
+    const keep = keeperOf(kept, t);
+    toClose.push(keep === kept ? t.id : kept.id);
+    seen.set(key, keep);
   }
 
   // пустые убираем целиком; последнюю вкладку окна не трогаем, иначе окно закроется
@@ -466,22 +483,80 @@ async function sortByOpened(windowId) {
   return reorder(windowId, t => t.id, 'by when opened');
 }
 
-// один жест вместо четырёх. Порядок важен: группы расплетаются ДО сортировки,
+// Один жест вместо четырёх. Порядок важен: группы расплетаются ДО перестановок,
 // иначе перемещения упираются в границы групп и шаг падает целиком.
+//
+// Что остаётся после: сверху россыпь — то, чем занимался последним, по свежести, как «сегодня» в Arc;
+// ниже блоки от tidyMinGroup вкладок — сначала правила из настроек, потом сайты, внутри тоже по свежести.
+// Пары одного сайта блоком не становятся: два github — это ещё не рабочая зона.
+// Вкладки, чей адрес лежит в панели закладок, остаются вне блоков: сайдбар Aside сам
+// вплавляет их в строку закладки, и из списка вкладок они исчезают.
 async function tidyUp(windowId) {
   quiet = true;
   const step = async (fn) => { try { return await fn(); } catch { return null; } };
-  let closed = 0, ordered = 0, groups = 0, failed = 0;
+  let closed = 0, loose = 0, blocks = 0, failed = 0;
   try {
     closed = await step(() => tidyDuplicates()) ?? (failed++, 0);
-    await step(() => ungroupAll(windowId));
-    ordered = await step(() => sortByDomain(windowId)) ?? (failed++, 0);
-    groups = await step(() => groupByRules(windowId)) ?? (failed++, 0);
+    const wid = await targetWindowId(windowId);
+    if (wid != null) {
+      await step(() => ungroupAll(wid));
+      const r = await step(() => arrangeWindow(wid));
+      if (r) { loose = r.loose; blocks = r.blocks; } else failed++;
+    }
   } finally {
     quiet = false;
   }
-  flash('TIDY', `tidied up\n${closed} closed · ${ordered} ordered · ${groups} blocks` + (failed ? `\n${failed} steps refused` : ''));
-  return closed + groups;
+  flash('TIDY', `tidied up\n${closed} closed · ${loose} loose on top · ${blocks} block${blocks === 1 ? '' : 's'}` + (failed ? `\n${failed} steps refused` : ''));
+  return closed + blocks;
+}
+
+const recentOf = t => t.lastAccessed || 0;
+
+async function arrangeWindow(wid) {
+  const all = await chrome.tabs.query({ windowId: wid, pinned: false });
+  const bar = await chrome.bookmarks.getChildren(BAR).catch(() => []);
+  const home = new Set(bar.filter(k => k.url).map(k => normalizeUrl(k.url)).filter(Boolean));
+  const min = Math.max(2, Number(settings.tidyMinGroup) || 3);
+  const ruleOrder = (settings.groupRules || []).map(r => r.name).filter(Boolean);
+
+  const buckets = new Map();
+  const looseTabs = [];
+  for (const t of all) {
+    const key = normalizeUrl(t.url);
+    if (key && home.has(key)) { looseTabs.push(t); continue; }   // домой, в строку закладки
+    const name = blockOf(t);
+    if (!name) { looseTabs.push(t); continue; }
+    if (!buckets.has(name)) buckets.set(name, []);
+    buckets.get(name).push(t);
+  }
+  const blockList = [];
+  for (const [name, list] of buckets) {
+    if (list.length < min) { looseTabs.push(...list); continue; }
+    list.sort((a, b) => recentOf(b) - recentOf(a) || a.index - b.index);
+    blockList.push({ name, list, rule: ruleOrder.indexOf(name), fresh: recentOf(list[0]) });
+  }
+  // блоки по правилам — в порядке правил; остальные — по тому, где были последней
+  blockList.sort((a, b) => {
+    const ra = a.rule < 0 ? 1 : 0, rb = b.rule < 0 ? 1 : 0;
+    if (ra !== rb) return ra - rb;
+    if (!ra) return a.rule - b.rule;
+    return b.fresh - a.fresh;
+  });
+  looseTabs.sort((a, b) => recentOf(b) - recentOf(a) || a.index - b.index);
+
+  const order = [...looseTabs, ...blockList.flatMap(b => b.list)];
+  const start = all.length ? Math.min(...all.map(t => t.index)) : 0;
+  for (let i = 0; i < order.length; i++) {
+    await chrome.tabs.move(order[i].id, { index: start + i }).catch(() => { });
+  }
+  let made = 0;
+  for (const b of blockList) {
+    const gid = await chrome.tabs.group({ tabIds: b.list.map(t => t.id) }).catch(() => null);
+    if (gid == null) continue;
+    await chrome.tabGroups.update(gid, { title: b.name, collapsed: false, color: GROUP_COLORS[made % GROUP_COLORS.length] }).catch(() => { });
+    made++;
+  }
+  return { loose: looseTabs.length, blocks: made };
 }
 
 // ---------- группировка по смыслу: модель через OpenRouter ----------
@@ -636,12 +711,23 @@ async function keepSelected(tabId, windowId) {
   if (windowId != null) await chrome.windows.update(windowId, { focused: true }).catch(() => { });
 }
 
+// Сайдбар Aside вплавляет открытую вкладку в строку закладки с тем же адресом — но только
+// вкладку вне блока. Внутри блока страница показывалась бы дважды: в закладках и в блоке.
+// Поэтому ⌘D сначала выводит её из блока.
+async function leaveGroup(tab) {
+  if (!settings.favoriteLeavesGroup) return false;
+  if (tab.groupId == null || tab.groupId < 0) return false;
+  const ok = await chrome.tabs.ungroup([tab.id]).then(() => true).catch(() => false);
+  if (ok) tab.groupId = -1;
+  return ok;
+}
+
 // Всегда наверх, в обе стороны. Низ списка означает прокрутку боковой панели вниз —
 // у полусотни вкладок это выглядит как «меня куда-то унесло». Пин работает именно так,
-// и закладка должна ощущаться так же. Вкладку из группы не выдёргиваем: блок целее.
+// и закладка должна ощущаться так же.
 async function moveTabTo(tab) {
   if (!settings.favoriteMovesTab || tab.pinned) return false;
-  if (tab.groupId != null && tab.groupId > -1) return false;
+  if (tab.groupId != null && tab.groupId > -1) return false;   // блок не разрываем, если ⌘D его не покидает
   const all = await chrome.tabs.query({ windowId: tab.windowId }).catch(() => []);
   const index = all.filter(t => t.pinned).length;   // сразу под закреплёнными квадратиками
   try { await chrome.tabs.move(tab.id, { index }); return true; } catch { return false; }
@@ -657,6 +743,7 @@ async function favoriteTab(windowId) {
 
   if (twin) {
     await chrome.bookmarks.remove(twin.id).catch(() => { });
+    await leaveGroup(tab);
     const moved = await moveTabTo(tab);
     await keepSelected(tab.id, tab.windowId);
     flash('BM−', moved
@@ -665,14 +752,16 @@ async function favoriteTab(windowId) {
     return -1;
   }
 
-  // последняя строка панели закладок — там, куда смотришь после нажатия
+  // последняя строка панели закладок — там, куда смотришь после нажатия;
+  // адрес пишем как есть: сайдбар сличает его с вкладкой буквально
   const made = await chrome.bookmarks.create({ parentId: BAR, index: kids.length, title: tab.title || tab.url, url: tab.url });
   await chrome.storage.session.set({ lastFavId: made?.id ?? null, lastFavAt: Date.now() }).catch(() => { });
+  const left = await leaveGroup(tab);
   const moved = await moveTabTo(tab);
   await keepSelected(tab.id, tab.windowId);
-  flash('BM+', (moved
-    ? 'in the bookmarks bar ★\ntab stays open, first row, selected ↑'
-    : 'in the bookmarks bar ★') + '\n⌘D again takes it out');
+  flash('BM+', 'in the bookmarks bar ★' +
+    (left ? '\nout of its block — the sidebar folds the tab into that row' : moved ? '\ntab stays open, folded into the bar row' : '') +
+    '\n⌘D again takes it out');
   return 1;
 }
 
@@ -728,11 +817,32 @@ async function togglePanel(windowId) {
   }
 }
 
-// открыть адрес: в обычном окне, под текущей вкладкой, при желании сразу в блок или в пин
+async function joinGroup(tab, groupName) {
+  const groups = await chrome.tabGroups.query({ windowId: tab.windowId, title: groupName }).catch(() => []);
+  if (groups.length) { await chrome.tabs.group({ tabIds: [tab.id], groupId: groups[0].id }).catch(() => { }); return; }
+  const gid = await chrome.tabs.group({ tabIds: [tab.id] }).catch(() => null);
+  if (gid != null) await chrome.tabGroups.update(gid, { title: groupName, collapsed: false }).catch(() => { });
+}
+
+// открыть адрес: в обычном окне, под текущей вкладкой, при желании сразу в блок или в пин.
+// Адрес уже открыт — переключаемся на ту вкладку, как Arc, вместо второй такой же.
 async function openUrl({ url, windowId, groupName, pinned } = {}) {
   if (!url) return 0;
   const wid = await targetWindowId(windowId);
   if (wid == null) return 0;
+  const key = normalizeUrl(url);
+  if (key) {
+    const twin = (await chrome.tabs.query({}).catch(() => []))
+      .filter(t => normalizeUrl(t.url) === key)
+      .sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0];
+    if (twin) {
+      if (pinned && !twin.pinned) await chrome.tabs.update(twin.id, { pinned: true }).catch(() => { });
+      await chrome.tabs.update(twin.id, { active: true }).catch(() => { });
+      await chrome.windows.update(twin.windowId, { focused: true }).catch(() => { });
+      if (groupName && !twin.pinned && !pinned) await joinGroup(twin, groupName);
+      return 2;   // переключился, а не открыл
+    }
+  }
   const active = (await chrome.tabs.query({ active: true, windowId: wid }).catch(() => []))[0];
   const tab = await chrome.tabs.create({
     url, windowId: wid, active: true,
@@ -742,28 +852,21 @@ async function openUrl({ url, windowId, groupName, pinned } = {}) {
   if (!tab) return 0;
   await chrome.windows.update(wid, { focused: true }).catch(() => { });
 
-  if (groupName && !pinned) {
-    const groups = await chrome.tabGroups.query({ windowId: wid, title: groupName }).catch(() => []);
-    if (groups.length) {
-      await chrome.tabs.group({ tabIds: [tab.id], groupId: groups[0].id }).catch(() => { });
-    } else {
-      const gid = await chrome.tabs.group({ tabIds: [tab.id] }).catch(() => null);
-      if (gid != null) await chrome.tabGroups.update(gid, { title: groupName, collapsed: false }).catch(() => { });
-    }
-  }
+  if (groupName && !pinned) await joinGroup(tab, groupName);
   return 1;
 }
 
 async function getStats() {
   const all = await chrome.tabs.query({});
-  const seen = new Set(); let dups = 0, pinned = 0;
+  const seen = new Set(); let dups = 0, pinned = 0, empties = 0;
   for (const t of all) {
     if (t.pinned) pinned++;
+    else if (isEmptyTab(t)) empties++;
     const k = normalizeUrl(t.url);
     if (!k) continue;
     if (seen.has(k)) dups++; else seen.add(k);
   }
-  return { total: all.length, dups, pinned };
+  return { total: all.length, dups, pinned, empties };
 }
 
 // ---------- omnibox: tw + Tab ----------
