@@ -1060,7 +1060,7 @@ chrome.windows.onRemoved.addListener(id => { if (id === paletteWinId) { paletteW
 // светофора), а когда закрывается — та вкладка уходит и возвращается прежняя.
 const signalPrev = new Map();   // сигнальная вкладка → вкладка, где были до неё
 
-const SIGNAL_URL = /^http:\/\/127\.0\.0\.1(:\d+)?\/aside-tweaks\/palette/;
+const SIGNAL_URL = /^http:\/\/127\.0\.0\.1(:\d+)?\/aside-tweaks\/palette(\?|#|$)/;
 
 async function paletteSignal({ q = '' } = {}, sender) {
   const sig = sender?.tab;
@@ -1183,7 +1183,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .catch(e => sendResponse({ ok: false, error: String(e) }));
     return true;
   }
-  if (msg?.action === 'openPaletteWindow') { openPaletteWindow(msg.windowId); sendResponse({ ok: true }); return; }
+  if (msg?.action === 'openPaletteWindow') { openPaletteWindow(msg.windowId, typeof msg.q === 'string' ? msg.q : ''); sendResponse({ ok: true }); return; }
   if (SIGNAL[msg?.action]) {
     SIGNAL[msg.action](msg, sender).then(r => sendResponse({ ok: true, count: r })).catch(e => sendResponse({ ok: false, error: String(e) }));
     return true;

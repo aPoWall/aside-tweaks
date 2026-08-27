@@ -147,10 +147,13 @@ function closePalette() {
   }
 }
 
+let paletteQ = '';        // запрос, с которым слой просили — уходит и в запасное окно
+
 function openPaletteLayer({ win, tab, q, signal }) {
   if (palette) return true;
   if (!document.body) return false;
   signalHost = !!signal;
+  paletteQ = q || '';
 
   const host = document.createElement('div');
   host.style.cssText = 'all:initial;position:fixed;inset:0;z-index:2147483647';
@@ -211,7 +214,7 @@ function openPaletteLayer({ win, tab, q, signal }) {
   setTimeout(() => {
     if (palette === host && !paletteReady) {
       closePalette();
-      try { chrome.runtime.sendMessage({ action: 'openPaletteWindow' }, () => void chrome.runtime.lastError); } catch { }
+      try { chrome.runtime.sendMessage({ action: 'openPaletteWindow', q: paletteQ }, () => void chrome.runtime.lastError); } catch { }
     }
   }, 900);
   return true;

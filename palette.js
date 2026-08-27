@@ -123,11 +123,12 @@ function parseNote(name) {
   const d = /\s[–—-]\s(\d{4}-\d{2}-\d{2})(?:\s+\d{4})?\s*$/.exec(t);
   if (d) { date = d[1]; t = t.slice(0, d.index); }
   t = t.replace(/\s{2,}/g, ' ').trim();
-  return { title: t || name, tags, date };
+  if (!t) return { title: name, tags: [], date };
+  return { title: t, tags, date };
 }
 
 // сигнальная страница моста — техническая, в списке вкладок ей не место
-const SIGNAL_URL = /^http:\/\/127\.0\.0\.1(:\d+)?\/aside-tweaks\/palette/;
+const SIGNAL_URL = /^http:\/\/127\.0\.0\.1(:\d+)?\/aside-tweaks\/palette(\?|#|$)/;
 
 // насколько строка отвечает запросу: начало заголовка > начало слова > где-то в заголовке > адрес
 function matchScore(q, title, url) {
