@@ -4,7 +4,7 @@
 const LABELS = {
   tidyDuplicates: n => n ? `closed ${n}` : 'nothing to close',
   pinTab: n => n === 1 ? 'pinned ↑' : 'unpinned',
-  favoriteTab: n => n === 1 ? 'bookmarked ★ · folded into the bar' : 'back in the tabs, on top',
+  favoriteTab: n => n === 1 ? 'bookmarked ★ · tab closed, back to the previous page' : 'bookmark removed · the tab stays',
   bookmarkTab: n => n === 1 ? 'bookmarked ✓' : 'bookmark removed',
   groupByRules: n => n ? `${n} blocks` : 'nothing to group',
   groupByDomain: n => n ? `${n} blocks` : 'nothing to group',

@@ -48,7 +48,10 @@ let blocks = [];
 let mouseLive = false;   // наведение выбирает строку только после реального движения мыши
 let desk = null;         // мост к машине: { ok, vaults, worktrees } либо null — тогда заметок и агентов нет
 // как показывать заметки — карточка 09 настроек
-let notesPrefs = { notesLimit: 3, notesClean: true, notesDate: true };
+let notesPrefs = { notesLimit: 3, notesClean: true, notesDate: true, notesOrder: 'modified' };
+let view = null;         // drill-down: { kind: 'dupes' } — список того, что закроет чистка; null = обычный поиск
+let menuCache = null;    // пункты меню Aside с моста — один раз на открытие палитры
+let currentQ = '';       // запрос, по которому построен список — для подсветки совпадений
 chrome.storage.sync.get(notesPrefs).then(s => { notesPrefs = { ...notesPrefs, ...s }; });
 let actsOpen = false, actSel = 0, acts = [];
 
@@ -219,6 +222,37 @@ async function build(raw) {
     return out;
   }
 
+  // drill-down: что закроет чистка — по кластерам из фона, с причиной
+  if (view?.kind === 'dupes') {
+    const pv = (await send('previewDuplicates'))?.data;
+    if (!pv || !pv.closes) {
+      out.push({ kind: 'info', glyph: '○', title: 'nothing to close right now', sub: 'no twins, no empty tabs', kindLabel: '', primary: 'back', run: () => { view = null; refresh(); } });
+      return out;
+    }
+    for (const c of pv.clusters) {
+      for (const t of c.close) {
+        if (q && !norm(t.title + ' ' + t.url).includes(q)) continue;
+        out.push({
+          kind: 'twin', section: `would close ${pv.closes} · ${c.reason}`, icon: favicon(t.url), title: t.title || t.url, sub: hostOf(t.url),
+          why: 'keeps: ' + (c.keep.title || '').slice(0, 28), kindLabel: t.asleep ? 'asleep' : 'tab', primary: 'switch',
+          run: async () => { await chrome.tabs.update(t.id, { active: true }); closeSelf(); },
+          actions: [
+            { label: 'switch to tab', key: '↵', fn: null },
+            { label: 'close this one', key: '⌘⌫', fn: async () => { await chrome.tabs.remove(t.id).catch(() => { }); refresh(); } },
+            { label: 'keep this one instead', key: '', fn: async () => { await chrome.tabs.update(t.id, { active: true }); refresh(); } }
+          ]
+        });
+      }
+    }
+    for (const e of pv.empties) {
+      out.push({ kind: 'twin', section: 'empty tabs', glyph: '·', title: 'empty tab', sub: e.url || 'new tab', kindLabel: 'tab', primary: 'close',
+        run: async () => { await chrome.tabs.remove(e.id).catch(() => { }); refresh(); } });
+    }
+    out.push({ kind: 'cmd', glyph: '⊗', title: `clean all ${pv.closes} now`, sub: 'the copy you used last stays', kindLabel: 'command', primary: 'run',
+      run: async () => { await send('tidyDuplicates'); closeSelf(); } });
+    return out;
+  }
+
   const value = calc(qRaw);
   if (value !== null) {
     out.push({ kind: 'calc', glyph: '=', title: value, sub: qRaw, kindLabel: 'calc', primary: 'copy', run: () => copy(value) });
@@ -287,13 +321,22 @@ async function build(raw) {
   // заметки Obsidian — недавние из workspace.json обоих волтов, по запросу — поиск по именам
   const notesLimit = scope === 'notes' ? 40 : (q ? 6 : Number(notesPrefs.notesLimit) || 0);
   if (wantNotes && notesLimit > 0 && (q || scope !== 'commands')) {
-    const res = (await send('deskNotes', { q: qRaw, limit: notesLimit }))?.data;
+    const order = notesPrefs.notesOrder === 'opened' ? 'opened' : 'modified';
+    // область notes без запроса: сначала то, что менялось сегодня, потом остальное по свежести
+    const batches = (scope === 'notes' && !q)
+      ? [{ section: 'today', since: 'today', limit: 12 }, { section: 'recent', since: '', limit: notesLimit }]
+      : [{ section: 'notes', since: '', limit: notesLimit }];
+    const seenNotes = new Set();
+    for (const b of batches) {
+    const res = (await send('deskNotes', { q: qRaw, limit: b.limit, sort: order, since: b.since }))?.data;
     for (const n of res?.notes || []) {
+      if (seenNotes.has(n.path)) continue;
+      seenNotes.add(n.path);
       const key = 'note:' + n.vault + '/' + n.file;
       const parsed = notesPrefs.notesClean === false ? { title: n.title, tags: [], date: '' } : parseNote(n.title);
       const folder = (n.folder || '').split('/').filter(Boolean).slice(-1)[0] || '';
       out.push({
-        kind: 'note', section: 'notes', glyph: '◇', title: parsed.title, sub: n.vault + (folder ? ' · ' + folder : ''),
+        kind: 'note', section: b.section, glyph: '◇', title: parsed.title, sub: n.vault + (folder ? ' · ' + folder : ''),
         tags: parsed.tags, date: notesPrefs.notesDate === false ? '' : parsed.date,
         kindLabel: 'note', primary: 'open', frec: score(key),
         run: async () => { bump(key); await send('deskOpen', { vault: n.vault, file: n.file }); closeSelf(); },
@@ -302,6 +345,7 @@ async function build(raw) {
           { label: 'copy path', key: '⌘C', fn: () => copy(n.path || n.file) }
         ]
       });
+    }
     }
   }
 
@@ -318,10 +362,44 @@ async function build(raw) {
           : 'nothing to close right now';
       }
       shown++;
-      out.push({
+      const row = {
         kind: 'cmd', section: 'commands', glyph: c.glyph || '▸', title: c.title, sub,
         k: c.key || '', kindLabel: 'command', primary: 'run',
         run: async () => { await send(c.action); closeSelf(); }
+      };
+      if (c.action === 'tidyDuplicates') {
+        row.actions = [
+          { label: 'clean now', key: '↵', fn: null },
+          { label: 'show what closes', key: '⇧↵', fn: () => { view = { kind: 'dupes' }; refresh(); } }
+        ];
+      }
+      out.push(row);
+    }
+  }
+
+  // пункты меню самого Aside — как Raycast → Search Menu Items, но изнутри браузера
+  if (wantCmds && desk?.ok && (q || scope === 'commands')) {
+    if (!menuCache) menuCache = (await send('deskMenu'))?.data || null;
+    const m = menuCache;
+    if (m?.error === 'accessibility') {
+      out.push({ kind: 'info', glyph: '○', title: 'menu items need Accessibility for the bridge', sub: 'System Settings → Privacy & Security → Accessibility → python3', kindLabel: 'desk', primary: 'settings', run: () => chrome.runtime.openOptionsPage() });
+    } else if (m?.busy && !m.items?.length) {
+      out.push({ kind: 'info', glyph: '◌', title: 'reading the menu bar…', sub: 'about half a minute the first time', kindLabel: 'desk', primary: 'wait', run: () => refresh() });
+    }
+    let shown = 0;
+    const limit = scope === 'commands' ? 200 : 6;
+    for (const it of m?.items || []) {
+      if (q && !norm(it.title + ' ' + it.path).includes(q)) continue;
+      if (shown >= limit) break;
+      shown++;
+      out.push({
+        kind: 'menu', section: (m.app || 'aside').toLowerCase() + ' menu', glyph: '≡', title: it.title, sub: it.path,
+        k: it.key || '', kindLabel: it.enabled ? 'menu' : 'disabled', primary: 'run',
+        run: async () => { const r = await send('deskMenuClick', { menu: it.menu, index: it.index, sub: it.sub }); if (r?.data?.ok) closeSelf(); else refresh(); },
+        actions: [
+          { label: 'run menu item', key: '↵', fn: null },
+          { label: 'refresh the menu tree', key: '', fn: async () => { menuCache = null; await send('deskMenu', { refresh: true }); refresh(); } }
+        ]
       });
     }
   }
@@ -398,6 +476,30 @@ async function build(raw) {
 
 // ---------- отрисовка ----------
 
+// совпадение с запросом выделяется в заголовке и подписи; слова запроса — каждое отдельно
+function highlight(el, text, q) {
+  el.replaceChildren();
+  const words = (q || '').toLowerCase().split(/\s+/).filter(w => w.length >= 2);
+  if (!words.length || !text) { el.textContent = text; return; }
+  const lower = text.toLowerCase();
+  const spans = [];
+  for (const w of words) {
+    let i = lower.indexOf(w);
+    while (i >= 0) { spans.push([i, i + w.length]); i = lower.indexOf(w, i + w.length); }
+  }
+  spans.sort((a, b) => a[0] - b[0]);
+  let pos = 0;
+  for (const [a, b] of spans) {
+    if (a < pos) continue;
+    if (a > pos) el.append(text.slice(pos, a));
+    const m = document.createElement('mark');
+    m.textContent = text.slice(a, b);
+    el.append(m);
+    pos = b;
+  }
+  if (pos < text.length) el.append(text.slice(pos));
+}
+
 function rowFor(it, i) {
   const d = document.createElement('div');
   d.className = 'item';
@@ -419,11 +521,17 @@ function rowFor(it, i) {
   }
   const t = document.createElement('span');
   t.className = 't';
-  t.textContent = it.title;
+  highlight(t, it.title, currentQ);
   const s = document.createElement('span');
   s.className = 's';
-  s.textContent = it.sub || '';
+  highlight(s, it.sub || '', currentQ);
   d.append(t, s);
+  if (it.why) {
+    const w = document.createElement('span');
+    w.className = 'why';
+    w.textContent = it.why;
+    d.append(w);
+  }
   if (it.twin) {
     const w = document.createElement('span');
     w.className = 'twin';
@@ -562,6 +670,7 @@ function runByKey(key) {
 let seq = 0;
 async function refresh() {
   const my = ++seq;
+  currentQ = qEl.value.trim().replace(/^>\s*/, '');
   const res = await build(qEl.value);
   if (my !== seq) return;
   items = res;
@@ -601,10 +710,13 @@ document.addEventListener('keydown', (e) => {
   // esc как в Raycast: сначала чистит запрос, пустой запрос закрывает палитру
   if (e.key === 'Escape') {
     e.preventDefault();
+    if (view) { view = null; refresh(); return; }
     if (qEl.value) { qEl.value = ''; refresh(); return; }
     closeSelf();
     return;
   }
+  // Backspace на пустом поле — шаг назад из режима, как в Raycast
+  if (e.key === 'Backspace' && !qEl.value && view) { e.preventDefault(); view = null; refresh(); return; }
   if (e.key === 'Tab') {
     e.preventDefault();
     const i = SCOPES.indexOf(scope);

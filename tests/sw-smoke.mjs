@@ -198,6 +198,10 @@ TABS = [
   { id: 24, windowId: 1, index: 3, pinned: false, url: 'https://c.com/' }
 ];
 mark = log.length;
+// прежняя механика (v4.14) — при выключенном закрытии
+store.sync.favoriteCloses = false;
+await fire('storeChanged', { favoriteCloses: { newValue: false } }, 'sync');
+await wait(20);
 const fav = await call('favoriteTab', { windowId: 1 });
 check('favoriteTab сделал закладку', fav?.ok && fav.count === 1 && MARKS.length === 1, JSON.stringify(MARKS));
 check('вкладка осталась жива — без закрытия и перезагрузки', TABS.some(t => t.id === 23), TABS.map(t => t.id).join(' '));
@@ -349,6 +353,28 @@ await callFrom('paletteSignal', 93);
 TABS.forEach(t => t.active = t.id === 92);   // палитра переключила на цель
 await callFrom('signalDone', 93);
 check('переключение из палитры сильнее возврата', TABS.find(t => t.id === 92)?.active === true && !TABS.some(t => t.id === 93), TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
+
+// ⌘D по умолчанию: закладка есть, вкладка закрыта, фокус на прежней (по свежести, не по соседству)
+store.sync.favoriteCloses = true;
+await fire('storeChanged', { favoriteCloses: { newValue: true } }, 'sync');
+await wait(20);
+MARKS = [];
+TABS = [
+  { id: 101, windowId: 1, index: 0, pinned: false, url: 'https://old.example/', title: 'Old', lastAccessed: 100 },
+  { id: 102, windowId: 1, index: 1, pinned: false, url: 'https://prev.example/', title: 'Prev', lastAccessed: 900 },
+  { id: 103, windowId: 1, index: 2, pinned: false, active: true, url: 'https://keep.example/page', title: 'Keep me', lastAccessed: 950 }
+];
+await wait(500);   // защита от повтора: то же действие в пределах 450 мс глушится
+const favClose = await call('favoriteTab', { windowId: 1 });
+check('⌘D: закладка последней строкой панели', favClose?.count === 1 && MARKS.length === 1 && MARKS[0].url === 'https://keep.example/page', JSON.stringify(MARKS));
+check('⌘D: вкладка закрыта', !TABS.some(t => t.id === 103), TABS.map(t => t.id).join(' '));
+check('⌘D: фокус на прежней по свежести', TABS.find(t => t.id === 102)?.active === true, TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
+// единственная вкладка окна не закрывается — иначе закроется окно
+MARKS = [];
+TABS = [{ id: 111, windowId: 1, index: 0, pinned: false, active: true, url: 'https://only.example/', title: 'Only', lastAccessed: 10 }];
+await wait(500);
+await call('favoriteTab', { windowId: 1 });
+check('⌘D на единственной вкладке: закладка есть, вкладка живёт', MARKS.length === 1 && TABS.some(t => t.id === 111));
 
 console.log(fails ? `\n${fails} провалов` : '\nвсе проверки зелёные');
 process.exit(fails ? 1 : 0);

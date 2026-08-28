@@ -124,6 +124,9 @@
         press it again on the same page: the bookmark goes away and the tab returns to the very top of the list.<br>
         <b><code>⇧⌘D</code> — pin.</b> the squares on top of the sidebar, the browser's own pin on a key of its own.
       </small>
+      <label class="opt"><input type="checkbox" id="favoriteCloses">
+        <span>after ⌘D the tab closes<small>the page stays as a row of the bookmarks bar and opens again from there; focus returns to the page you came from. off — the tab stays open and moves to the first row (v4.14 behaviour)</small></span>
+      </label>
       <label class="opt"><input type="checkbox" id="favoriteMovesTab">
         <span>the tab moves along with the bookmark<small>to the first row of the tabs in both directions. off — only the bookmark changes, the tab never leaves its place</small></span>
       </label>
@@ -313,7 +316,13 @@
           <button data-v="0">none</button><button data-v="3">3 recent</button><button data-v="5">5 recent</button><button data-v="8">8 recent</button>
         </div>
       </div>
-      <small style="margin-bottom:9px">how many recent notes an empty query shows; a typed query always searches the vault by file name.</small>
+      <div class="row2" style="margin-bottom:9px">
+        <span style="width:52px">order</span>
+        <div class="seg" id="notesOrder" style="flex:1">
+          <button data-v="modified">last modified</button><button data-v="opened">last opened in Obsidian</button>
+        </div>
+      </div>
+      <small style="margin-bottom:9px">how many recent notes an empty query shows and in which order; the <b>notes</b> scope adds a «today» section with everything modified since midnight; a typed query always searches the vault by file name.</small>
       <label class="opt"><input type="checkbox" id="notesClean">
         <span>clean titles<small>vault names like <code>{AIM} {guide} Internal Mini-Deck Standard – 2026-08-27</code> read as <b>Internal Mini-Deck Standard</b> with <code>AIM</code> <code>guide</code> badges and the date on the right; off = the raw file name</small></span>
       </label>

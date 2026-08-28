@@ -38,6 +38,7 @@ const DEFAULTS = {
   keepPins: true,
   favoriteMovesTab: true,   // ⌘D двигает и вкладку: вниз при закладке, наверх при возврате
   favoriteLeavesGroup: true, // ⌘D выводит вкладку из блока: вне блока сайдбар Aside вплавляет её в строку закладки
+  favoriteCloses: true,      // ⌘D после закладки закрывает вкладку и возвращает на прежнюю — как пин в Arc: строка остаётся в панели
   tidyMinGroup: 3,           // блок при уборке собирается от стольких вкладок; пары остаются россыпью
   paletteOverlay: true,     // палитра слоем поверх страницы; выключено — отдельным окном
   keymapEnabled: true,
@@ -382,10 +383,12 @@ async function tidyDuplicates() {
     emptiesClosed++;
   }
 
+  const closedTitles = toClose.map(id => plainTitle(all.find(t => t.id === id)?.title)).filter(Boolean);
   if (toClose.length) await chrome.tabs.remove(toClose);
   const dups = toClose.length - emptiesClosed;
+  const named = closedTitles.slice(0, 3).map(t => t.length > 40 ? t.slice(0, 39) + '…' : t).join(' · ');
   const note = toClose.length
-    ? `closed ${toClose.length}` + (emptiesClosed ? ` · ${dups} dupes, ${emptiesClosed} empty` : ' duplicates')
+    ? `closed ${toClose.length}` + (emptiesClosed ? ` · ${dups} dupes, ${emptiesClosed} empty` : ' duplicates') + (named ? '\n' + named + (closedTitles.length > 3 ? ' …' : '') : '')
     : 'nothing to clean';
   flash(toClose.length ? '−' + toClose.length : '0', note);
   return toClose.length;
@@ -797,6 +800,18 @@ async function favoriteTab(windowId) {
   // адрес пишем как есть: сайдбар сличает его с вкладкой буквально
   const made = await chrome.bookmarks.create({ parentId: BAR, index: kids.length, title: tab.title || tab.url, url: tab.url });
   await chrome.storage.session.set({ lastFavId: made?.id ?? null, lastFavAt: Date.now() }).catch(() => { });
+
+  // закладка есть — вкладка закрывается, фокус уходит туда, где были до неё;
+  // строка в панели закладок остаётся и открывает страницу заново по клику
+  if (settings.favoriteCloses !== false) {
+    const others = (await chrome.tabs.query({ windowId: tab.windowId }).catch(() => [])).filter(t => t.id !== tab.id);
+    const prev = others.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0] || null;
+    if (prev) await chrome.tabs.update(prev.id, { active: true }).catch(() => { });
+    if (others.length) await chrome.tabs.remove(tab.id).catch(() => { });
+    flash('BM+', 'in the bookmarks bar ★ · tab closed' + (prev ? '\nback to ' + plainTitle(prev.title).slice(0, 40) : '') + '\nthe bar row opens it again');
+    return 1;
+  }
+
   const left = await leaveGroup(tab);
   const moved = await moveTabTo(tab);
   await keepSelected(tab.id, tab.windowId);
@@ -895,6 +910,26 @@ async function openUrl({ url, windowId, groupName, pinned } = {}) {
 
   if (groupName && !pinned) await joinGroup(tab, groupName);
   return 1;
+}
+
+// предпросмотр чистки: кластеры близнецов с хранителем и причиной — палитра показывает список
+// до нажатия, чтобы «6 duplicates» не было числом без лица
+async function previewDuplicates() {
+  const all = await chrome.tabs.query({});
+  const loose = all.filter(t => !t.pinned);
+  const clusters = [];
+  for (const twins of twinClusters(loose)) {
+    if (twins.length < 2) continue;
+    const keep = twins.reduce(keeperOf);
+    const exact = new Set(twins.map(t => normalizeUrl(t.url)));
+    clusters.push({
+      reason: exact.size === 1 ? 'same address' : 'same site and title',
+      keep: { id: keep.id, title: plainTitle(keep.title), url: keep.url },
+      close: twins.filter(t => t !== keep).map(t => ({ id: t.id, title: plainTitle(t.title), url: t.url, asleep: !!t.discarded }))
+    });
+  }
+  const empties = loose.filter(isEmptyTab).map(t => ({ id: t.id, title: 'empty tab', url: t.url || '' }));
+  return { clusters, empties, closes: clusters.reduce((n, c) => n + c.close.length, 0) + empties.length };
 }
 
 // dups — сколько вкладок закроет чистка прямо сейчас; twinOf — у какой вкладки сколько близнецов,
@@ -1145,20 +1180,22 @@ async function deskHealth() {
   return data;
 }
 
-const deskNotes = ({ q = '', limit = 30 } = {}) =>
-  deskFetch(`/notes?q=${encodeURIComponent(q)}&limit=${Number(limit) || 30}`);
+const deskNotes = ({ q = '', limit = 30, sort = 'modified', since = '' } = {}) =>
+  deskFetch(`/notes?q=${encodeURIComponent(q)}&limit=${Number(limit) || 30}&sort=${sort === 'opened' ? 'opened' : 'modified'}${since ? '&since=' + encodeURIComponent(since) : ''}`);
 const deskAgents = () => deskFetch('/agents');
 const deskOpen = ({ vault, file }) => deskFetch('/open', { vault, file });
 const deskSwitch = ({ handle }) => deskFetch('/switch', { handle });
 const deskRun = ({ prompt, path, name }) => deskFetch('/run', { prompt, path, name });
+const deskMenu = ({ refresh = false } = {}) => deskFetch('/menu' + (refresh ? '?refresh=1' : ''));
+const deskMenuClick = ({ menu, index, sub }) => deskFetch('/menu/click', { menu, index, sub });
 
-const DESK = { deskHealth, deskNotes, deskAgents, deskOpen, deskSwitch, deskRun };
+const DESK = { deskHealth, deskNotes, deskAgents, deskOpen, deskSwitch, deskRun, deskMenu, deskMenuClick };
 
 // ---------- messages / commands ----------
 
 const ACTIONS = {
   tidyDuplicates, groupByDomain, groupByRules, ungroupAll, sortByDomain,
-  pinTab, favoriteTab, listFavorites, bookmarkTab, tidyUp, sortByOpened, getStats, openPalette, togglePanel,
+  pinTab, favoriteTab, listFavorites, bookmarkTab, tidyUp, sortByOpened, getStats, previewDuplicates, openPalette, togglePanel,
   groupBySense: senseProposal, senseApply
 };
 

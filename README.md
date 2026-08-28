@@ -19,13 +19,12 @@ re-bind any of it from inside the browser.
 Three things follow from that, and each one is a feature here.
 
 **A tab list is not a filing cabinet.** Arc taught a generation of users that the page you keep
-belongs *above* the churn — one keystroke moves it up and it stops competing with the twenty tabs
-you opened this hour. Chromium's pin does half of that; it keeps the tab alive in the strip but
-never lets it leave the tree. So `⌘D` here writes the page into the bookmarks bar as its last row,
-takes the tab out of its block and lets Aside's sidebar fold the two into one live row on top —
-without closing anything. Closing would wake a sleeping neighbour, that neighbour reloads, and the
-whole gesture reads as «the browser took me somewhere». Press `⌘D` again on the same page: the
-bookmark goes and the tab is back in the list, at the very top.
+belongs *above* the churn — one keystroke parks it and it stops competing with the twenty tabs
+you opened this hour. So `⌘D` here writes the page into the bookmarks bar as its last row, closes
+the tab and returns you to the page you came from; the row in the sidebar's bookmarks section
+opens it again when you need it. Press `⌘D` on an open page that already sits in the bar: the
+bookmark goes, the tab stays. Settings card 02 can keep the tab open instead (the v4.14 behaviour:
+the tab leaves its block and the sidebar folds it into the bookmark row).
 
 **Shortcuts should belong to the person, not to the vendor.** Chromium lets an extension declare
 four shortcuts and re-bind them only on its own settings page. This extension listens in the
@@ -124,9 +123,25 @@ the agent command. Nothing runs until you install it; without it the palette sim
 and `>` answers with a pointer to the settings card.
 
 Notes are drawn from their vault names: `{AIM} {guide} Internal Mini-Deck Standard – 2026-08-27`
-reads as **Internal Mini-Deck Standard** with `aim` `guide` badges and the date on the right;
-settings card 09 sets how many recent notes an empty query shows (none · 3 · 5 · 8), whether titles
-are cleaned, and whether the date is shown.
+reads as **Internal Mini-Deck Standard** with `aim` `guide` badges and the date on the right.
+An empty query lists the notes **modified last** (the bridge keeps a filename index with mtime;
+card 09 can switch to Obsidian's own *last opened* order instead); the `notes` scope adds a
+**today** section — everything modified since midnight — above the recent ones. Card 09 also sets
+how many recent notes an empty query shows (none · 3 · 5 · 8), whether titles are cleaned, and
+whether the date is shown.
+
+**Aside's own menu, searchable.** The palette also lists the browser's menu bar — 165 items,
+`Tab → Pin Tab`, `View → Developer → JavaScript Console`, `Aside → Delete Browsing Data…` — with
+their keys on the right, the way Raycast's *Search Menu Items* does, but from inside the browser.
+The bridge reads the tree through Hammerspoon (`hs -c`, half a second, no extra permissions, since
+Hammerspoon already holds Accessibility) and clicks with `selectMenuItem`; without Hammerspoon it
+falls back to System Events, which needs Accessibility for the bridge's `python3` and takes about
+25 seconds. Dynamic tails — open tabs under *Tab*, bookmarks under *Bookmarks*, history, windows —
+are cut at their anchor items. The `commands` scope shows the whole tree; a query matches title and
+path.
+
+**Matches are highlighted.** The typed words are bold inside titles and subtitles; in the dark
+look the selected row is a clearly lighter pill with a hairline ring.
 
 **From anywhere.** A global key cannot reach an extension — `chrome-extension://` pages do not open
 from outside the browser and the service worker sleeps — but it can open a page. The bridge serves
@@ -156,10 +171,11 @@ a manifest can *suggest* them but nothing in the extension can rebind or clear t
 key that keeps firing an old action is set there, not here. Settings card 01 lists both, the browser's
 side read live from `chrome.commands.getAll()`.
 
-**Bookmark ⇄ tab — ⌘D.** The current page becomes the *last* row of the bookmarks bar; the tab
-stays open, loaded and active, and moves to the first row of the tabs. Press it again on the same
-page and it reverses: the bookmark is removed and the tab stays on top. Nothing is ever closed, so
-nothing reloads. No dedicated folder — the bar itself is the destination.
+**Bookmark ⇄ tab — ⌘D.** The current page becomes the *last* row of the bookmarks bar and the tab
+closes; focus returns to the tab you used last in that window (the last tab of a window is never
+closed). Press `⌘D` on an open page that is already in the bar and it reverses: the bookmark is
+removed, the tab stays. No dedicated folder — the bar itself is the destination. With *after ⌘D the
+tab closes* off (card 02) the tab stays open, loaded and selected at the first row instead.
 
 What makes this a pin rather than a bookmark is Aside's sidebar: its bookmarks section shows the
 bar, and an **open tab whose address matches a bookmark is folded into that row** — one line, live,
@@ -173,6 +189,11 @@ matches literally.
 tab brings the pin back asleep instead of dropping it; to remove it, unpin first. A pin is not a
 bookmark — bookmarking is a separate action that writes to the bookmarks bar with no dialog and
 toggles off on a second call.
+
+**Cleanup, previewed.** In the palette the *clean duplicates* row carries a second action, `⇧↵`
+*show what closes*: every tab the sweep would close, with the reason (`same address` or `same site
+and title`) and the copy it keeps; `↵` switches to one, `⌘⌫` closes just that one, and the last
+row cleans them all. After a sweep the note on the page names the first three titles it closed.
 
 **Cleanup.** Two copies are the same page when they differ only by `http`/`https`, `www.`, a
 default port, `index.html`, a trailing slash, tracking params or the `#anchor` — the key is shared
@@ -216,12 +237,12 @@ Written down because these were asked for one by one and each is easy to break b
 
 | Gesture | What must happen |
 |---|---|
-| `⌘D` on a fresh page | bookmark appended as the **last** row of the bar, url written verbatim; the tab leaves its block, stays open, loaded, **selected**, and moves to the **first row of the tabs** — the sidebar then folds it into the bookmark row |
-| `⌘D` again on the same page | bookmark removed; the tab stays at the first row, still selected |
-| either direction | the page always ends up **at the top**, never at the bottom — the sidebar scrolls up to it, the way pinning already behaves |
+| `⌘D` on a fresh page | bookmark appended as the **last** row of the bar, url written verbatim; the tab **closes** and the tab you used last in that window becomes active; the last tab of a window is never closed |
+| `⌘D` on an open page already in the bar | bookmark removed; the tab stays, still selected |
+| card 02 · *after ⌘D the tab closes* off | the tab leaves its block, stays open, loaded, **selected**, and moves to the **first row of the tabs** — the sidebar folds it into the bookmark row |
 | `⇧⌘D` on an ordinary tab | pinned into the squares on top of the sidebar |
 | `⇧⌘D` on a pinned tab | unpinned **and** moved to the first row of the tabs, and it stays the selected tab |
-| any of the above | nothing is ever closed, so no sleeping neighbour wakes up and reloads |
+| `⇧⌘D`, the panel, the palette's pin action | nothing is closed, so no sleeping neighbour wakes up and reloads |
 | a tab inside a group | `⌘D` takes it out (so the sidebar can fold it in); `⇧⌘D` and the panel leave blocks alone |
 | opening an address that is already open | the palette, a bookmark row, a pasted url — all **switch** to the open tab; no second copy |
 | `⌥⌘T` | closes duplicates and empties, keeps the copy used last, puts loose tabs on top by recency, gathers blocks only from ≥3 tabs, never groups a page that lives in the bookmarks bar |

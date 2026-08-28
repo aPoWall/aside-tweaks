@@ -17,9 +17,9 @@ const DEFAULT_KEYMAP = {
 
 const DEFAULTS = {
   dedupAuto: false, dedupNotice: true, dedupIgnoreHash: true, dedupIgnoreUtm: true, dedupByTitle: true,
-  keepPins: true, favoriteMovesTab: true, favoriteLeavesGroup: true, paletteOverlay: true, keymapEnabled: true, dimBehindPalette: true,
+  favoriteCloses: true, keepPins: true, favoriteMovesTab: true, favoriteLeavesGroup: true, paletteOverlay: true, keymapEnabled: true, dimBehindPalette: true,
   tabPlacement: 'underCurrent', placementGuardMs: 2500, tidyMinGroup: 3,
-  notesLimit: 3, notesClean: true, notesDate: true,
+  notesLimit: 3, notesClean: true, notesDate: true, notesOrder: 'modified',
   keymap: DEFAULT_KEYMAP,
   theme: { look: 'aside', mode: 'light', accent: '#111111', tint: 0, density: 'normal' },
   groupRules: [{ name: 'aim', patterns: ['aimindset', 'aim-'] }]
@@ -345,7 +345,7 @@ function seg(id, value, onPick) {
 
 // ---------- сборка ----------
 
-const TOGGLES = ['notesClean', 'notesDate', 'dedupAuto', 'dedupNotice', 'dedupIgnoreHash', 'dedupIgnoreUtm', 'dedupByTitle', 'keepPins', 'favoriteMovesTab', 'favoriteLeavesGroup', 'paletteOverlay', 'keymapEnabled', 'dimBehindPalette'];
+const TOGGLES = ['favoriteCloses', 'notesClean', 'notesDate', 'dedupAuto', 'dedupNotice', 'dedupIgnoreHash', 'dedupIgnoreUtm', 'dedupByTitle', 'keepPins', 'favoriteMovesTab', 'favoriteLeavesGroup', 'paletteOverlay', 'keymapEnabled', 'dimBehindPalette'];
 
 function renderAll() {
   for (const k of TOGGLES) document.getElementById(k).checked = !!state[k];
@@ -355,6 +355,7 @@ function renderAll() {
   seg('density', state.theme.density, v => setTheme({ density: v }).then(renderAll));
   seg('placement', state.tabPlacement, v => patch({ tabPlacement: v }).then(renderAll));
   seg('notesLimit', state.notesLimit ?? 3, v => patch({ notesLimit: Number(v) }).then(renderAll));
+  seg('notesOrder', state.notesOrder || 'modified', v => patch({ notesOrder: v }).then(renderAll));
 
   const tint = document.getElementById('tint');
   tint.value = state.theme.tint ?? 0;

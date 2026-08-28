@@ -18,7 +18,7 @@ const TWEAK_COMMANDS = [
   },
   {
     action: 'favoriteTab', glyph: '★', title: 'bookmark ⇄ tab', short: 'bookmark ⇄ tab', sub: 'last row of the bar', key: '⌘D',
-    hint: 'the page joins the bookmarks bar and leaves its block, so the sidebar folds the open tab into that row · again brings it back to the top',
+    hint: 'the page joins the bookmarks bar and the tab closes — focus returns to the page you came from; the bar row opens it again · ⌘D on an open bookmarked page removes the bookmark',
     words: 'bookmark bar keep star', group: 'tab', on: ['palette', 'popup']
   },
   {
