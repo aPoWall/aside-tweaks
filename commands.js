@@ -28,13 +28,13 @@ const TWEAK_COMMANDS = [
   },
   {
     action: 'tidyUp', glyph: '✦', title: 'tidy up', short: 'tidy up', sub: 'one sweep', key: '⌥⌘T',
-    hint: 'clean duplicates and empty tabs → flatten → recent loose tabs on top → blocks from 3 tabs · bookmarked pages stay out so the sidebar folds them in',
+    hint: 'opens review first, then cleans exact duplicates and empty tabs → flatten → recent loose tabs on top → blocks from 3 tabs',
     words: 'tidy sweep clean order everything', group: 'window', on: ['panel', 'palette', 'popup']
   },
   {
-    action: 'tidyDuplicates', glyph: '⊗', title: 'clean duplicates', short: 'clean duplicates', sub: 'and empty tabs', key: '⌥⌘D',
-    hint: 'close duplicates and empty tabs, leave the order alone · same site + same title counts as one page',
-    words: 'dd dedup duplicates twins empty clean', group: 'window', on: ['panel', 'palette', 'popup']
+    action: 'tidyDuplicates', glyph: '◎', title: 'review tabs', short: 'review tabs', sub: 'exact · related · stale · sources', key: '⌥⌘D',
+    hint: 'review product clusters before closing anything · protected tabs stay protected · every batch gets a receipt',
+    words: 'review dd dedup duplicates twins semantic siblings stale event research source cleanup', group: 'window', on: ['panel', 'palette', 'popup']
   },
   {
     action: 'groupBySense', glyph: '✳', title: 'blocks by meaning', short: 'by meaning', sub: 'a model reads the titles', key: '',

@@ -24,6 +24,14 @@ const DEFAULT_KEYMAP = {
 let enabled = true;
 let keymap = DEFAULT_KEYMAP;
 
+// Review защищает страницы с несохранённым вводом. Content script знает об этом
+// раньше service worker'а и отвечает только булевым флагом — значения полей не читает.
+let reviewDirty = false;
+const editable = el => !!el?.matches?.('input:not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, select, [contenteditable="true"]');
+document.addEventListener('input', e => { if (editable(e.target)) reviewDirty = true; }, true);
+document.addEventListener('change', e => { if (editable(e.target)) reviewDirty = true; }, true);
+document.addEventListener('submit', () => { reviewDirty = false; }, true);
+
 // цвет рамки палитры до загрузки документа — иначе на тёмной теме мигает серым
 let paletteSkin = { bg: '#ececec', line: 'rgba(0,0,0,.14)', dark: false };
 function skinOf(t) {
@@ -148,12 +156,14 @@ function closePalette() {
 }
 
 let paletteQ = '';        // запрос, с которым слой просили — уходит и в запасное окно
+let paletteView = '';     // review / review-tidy
 
-function openPaletteLayer({ win, tab, q, signal }) {
+function openPaletteLayer({ win, tab, q, view, signal }) {
   if (palette) return true;
   if (!document.body) return false;
   signalHost = !!signal;
   paletteQ = q || '';
+  paletteView = view || '';
 
   const host = document.createElement('div');
   host.style.cssText = 'all:initial;position:fixed;inset:0;z-index:2147483647';
@@ -200,7 +210,8 @@ function openPaletteLayer({ win, tab, q, signal }) {
   wrap.className = 'wrap';
   const frame = document.createElement('iframe');
   frame.setAttribute('title', 'aside tweaks palette');
-  frame.src = chrome.runtime.getURL('palette.html') + '?embed=1&win=' + (win ?? '') + '&tab=' + (tab ?? '') + (q ? '&q=' + encodeURIComponent(q) : '');
+  frame.src = chrome.runtime.getURL('palette.html') + '?embed=1&win=' + (win ?? '') + '&tab=' + (tab ?? '') +
+    (q ? '&q=' + encodeURIComponent(q) : '') + (view ? '&view=' + encodeURIComponent(view) : '');
   wrap.append(frame);
 
   root.append(style, back, wrap);
@@ -214,7 +225,7 @@ function openPaletteLayer({ win, tab, q, signal }) {
   setTimeout(() => {
     if (palette === host && !paletteReady) {
       closePalette();
-      try { chrome.runtime.sendMessage({ action: 'openPaletteWindow', q: paletteQ }, () => void chrome.runtime.lastError); } catch { }
+      try { chrome.runtime.sendMessage({ action: 'openPaletteWindow', q: paletteQ, view: paletteView }, () => void chrome.runtime.lastError); } catch { }
     }
   }, 900);
   return true;
@@ -239,6 +250,7 @@ if (SIGNAL_PAGE && window.top === window) {
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === 'ping') { sendResponse({ pong: true, top: window.top === window }); return; }
+  if (msg?.type === 'reviewProtection') { sendResponse({ dirty: reviewDirty }); return; }
   if (msg?.type === 'toast' && typeof msg.text === 'string') toast(msg.text);
   if (msg?.type === 'dim') setDim(!!msg.on);
   if (msg?.type === 'palette') {

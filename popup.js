@@ -2,7 +2,7 @@
 // и попап, и панель, и палитру. Секции — по полю group, имена — по short.
 
 const LABELS = {
-  tidyDuplicates: n => n ? `closed ${n}` : 'nothing to close',
+  tidyDuplicates: () => 'review opened',
   pinTab: n => n === 1 ? 'pinned ↑' : 'unpinned',
   favoriteTab: n => n === 1 ? 'bookmarked ★ · tab closed, back to the previous page' : 'bookmark removed · the tab stays',
   bookmarkTab: n => n === 1 ? 'bookmarked ✓' : 'bookmark removed',
@@ -12,7 +12,7 @@ const LABELS = {
   ungroupAll: n => n ? `${n} ungrouped` : 'no blocks',
   sortByDomain: n => `${n} ordered by site`,
   sortByOpened: n => `${n} ordered by open time`,
-  tidyUp: () => 'tidied ✓',
+  tidyUp: () => 'review opened',
   openPalette: () => 'palette'
 };
 
@@ -49,7 +49,7 @@ function tile(c) {
     const s = document.createElement('span');
     s.className = 'tile-sub';
     s.id = 'dupsub';
-    s.textContent = '…';
+    s.textContent = 'protected preview';
     b.append(s);
   }
   b.addEventListener('click', () => run(c));
@@ -94,7 +94,7 @@ async function refreshStats() {
   if (pinned) parts.push(`${pinned} pinned`);
   document.getElementById('statsub').textContent = parts.length ? '· ' + parts.join(' · ') : '· clean';
   const d = document.getElementById('dupsub');
-  if (d) d.textContent = (dups || empties) ? `closes ${dups + empties}` : 'nothing to close';
+  if (d) d.textContent = (dups || empties) ? `review ${dups + empties}` : 'review product families';
 }
 
 async function run(c) {

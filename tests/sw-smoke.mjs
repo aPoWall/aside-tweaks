@@ -70,6 +70,7 @@ globalThis.chrome = {
       const callback = typeof opts === 'function' ? opts : cb;
       if (callback) { callback(); return; }          // тосты и dim идут колбэком — ответ не нужен
       const t = TABS.find(x => x.id === id);
+      if (msg?.type === 'reviewProtection') return Promise.resolve({ dirty: DIRTY.has(id) });
       if (!t || !LAYER_OK.has(id)) return Promise.reject(new Error('no receiver'));
       sent.push({ id, ...msg });
       if (msg?.type === 'ping') return Promise.resolve({ pong: true, top: true });
@@ -79,6 +80,7 @@ globalThis.chrome = {
   }
 };
 const LAYER_OK = new Set();
+const DIRTY = new Set();
 const sent = [];
 
 // окна: обычное рабочее и popup-окно палитры — «последнее в фокусе» бывает вторым
@@ -148,7 +150,12 @@ check('getStats видит дубль сквозь www и слэш, и пуст�
 
 const tidy = await call('tidyUp', { windowId: 1 });
 await wait(200);
-check('tidyUp отработал', tidy?.ok === true, 'закрыто/блоков: ' + tidy?.count);
+check('tidyUp открыл review и сам ничего не закрыл', tidy?.ok === true && tidy.count === 0 && TABS.length === 5, JSON.stringify(tidy));
+const reviewBeforeTidy = await call('previewTabReview', { windowId: 1 });
+check('review разделяет exact cleanup и защищает активную', reviewBeforeTidy?.data?.summary?.exactClosable === 2 && reviewBeforeTidy.data.clusters[0]?.tabs.some(t => t.active && t.canonical), JSON.stringify(reviewBeforeTidy?.data?.summary));
+const tidyApplied = await call('applyReviewBatch', { clusterKey: 'all-exact', intent: 'tidy', windowId: 1 });
+check('tidy применяется только из строки подтверждения', tidyApplied?.ok && tidyApplied.count === 2 && tidyApplied.data?.receipt?.closed?.length === 2, JSON.stringify(tidyApplied));
+check('receipt перечисляет canonical вкладку каждого exact-кластера', tidyApplied.data?.receipt?.keptTabs?.length === 1 && tidyApplied.data.receipt.keptTabs[0].url === 'https://b.com/x', JSON.stringify(tidyApplied.data?.receipt));
 check('дубль и пустая убраны', TABS.length === 3, 'осталось ' + TABS.map(t => t.id).join(' '));
 check('россыпь по свежести: где был последним — сверху', TABS.map(t => t.url).join(' ') === 'https://a.com/ https://b.com/x https://c.com/', TABS.map(t => t.url).join(' '));
 check('пары и одиночки блоком не становятся', !log.slice(-12).some(l => l.startsWith('group')), log.slice(-6).join(' | '));
@@ -160,7 +167,9 @@ TABS = [
   { id: 63, windowId: 1, index: 2, pinned: false, active: true, url: 'https://y.com/' }
 ];
 const dd = await call('tidyDuplicates');
-check('дедуп оставляет свежую копию', dd?.ok && dd.count === 1 && TABS.some(t => t.id === 62) && !TABS.some(t => t.id === 61), TABS.map(t => t.id).join(' '));
+check('дедуп-команда открывает review и не закрывает молча', dd?.ok && dd.count === 0 && TABS.length === 3, JSON.stringify(dd));
+const ddApplied = await call('applyReviewBatch', { clusterKey: 'all-exact', intent: 'review', windowId: 1 });
+check('после подтверждения остаётся свежая копия', ddApplied?.count === 1 && TABS.some(t => t.id === 62) && !TABS.some(t => t.id === 61), TABS.map(t => t.id).join(' '));
 
 // блок собирается от трёх вкладок; пара того же сайта остаётся россыпью сверху
 TABS = [
@@ -173,6 +182,7 @@ TABS = [
 let mark = log.length;
 await wait(500);   // тогл-команды глушат повтор в пределах 450 мс
 await call('tidyUp', { windowId: 1 });
+await call('applyReviewBatch', { clusterKey: 'all-exact', intent: 'tidy', windowId: 1 });
 check('tidy: россыпь сверху, блок из трёх ниже', TABS.map(t => t.id).join(' ') === '52 54 51 53 55', TABS.map(t => t.id).join(' '));
 check('tidy: собран ровно один блок', log.slice(mark).filter(l => l.startsWith('group')).join('|') === 'group 51,53,55', log.slice(mark).filter(l => l.startsWith('group')).join('|'));
 
@@ -182,6 +192,7 @@ TABS.forEach((t, i) => { t.index = i; });
 mark = log.length;
 await wait(500);
 await call('tidyUp', { windowId: 1 });
+await call('applyReviewBatch', { clusterKey: 'all-exact', intent: 'tidy', windowId: 1 });
 check('tidy: вкладка с закладкой остаётся вне блока, блока из двух нет',
   !log.slice(mark).some(l => l.startsWith('group')) && TABS[0]?.id === 51, TABS.map(t => t.id).join(' '));
 MARKS = [];
@@ -300,8 +311,10 @@ const near = await call('getStats');
 check('близнецы по заголовку считаются: 4 AIM VISUAL → 3 лишних', near?.data?.dups === 3, JSON.stringify(near?.data));
 check('twinOf отдаёт размер кластера на каждую вкладку', near?.data?.twinOf?.[41] === 4 && near?.data?.twinOf?.[44] === 4 && !near?.data?.twinOf?.[45], JSON.stringify(near?.data?.twinOf));
 check('разные заголовки на одном хосте и «New Tab» близнецами не считаются', !near?.data?.twinOf?.[46] && !near?.data?.twinOf?.[47], JSON.stringify(near?.data?.twinOf));
-const nearClean = await call('tidyDuplicates');
-check('чистка закрыла трёх близнецов и оставила активную', nearClean?.count === 3 && TABS.some(t => t.id === 41) && ![42, 43, 44].some(id => TABS.some(t => t.id === id)), TABS.map(t => t.id).join(' '));
+const nearReview = await call('previewTabReview', { windowId: 1 });
+check('review показывает exact-кластер до закрытия', nearReview?.data?.clusters?.some(c => c.kind === 'exact' && c.tabs.length === 4 && c.closeIds.length === 3), JSON.stringify(nearReview?.data?.summary));
+const nearClean = await call('applyReviewBatch', { clusterKey: 'all-exact', intent: 'review', windowId: 1 });
+check('подтверждённая чистка закрыла трёх близнецов и оставила активную', nearClean?.count === 3 && TABS.some(t => t.id === 41) && ![42, 43, 44].some(id => TABS.some(t => t.id === id)), TABS.map(t => t.id).join(' '));
 
 // тумблер выключен — те же вкладки чистка не трогает
 await fire('storeChanged', { dedupByTitle: { newValue: false } }, 'sync');
@@ -315,6 +328,33 @@ const strict = await call('getStats');
 check('dedupByTitle выключен — только точный адрес', strict?.data?.dups === 0, JSON.stringify(strict?.data));
 store.sync.dedupByTitle = true;
 await fire('storeChanged', { dedupByTitle: { newValue: true } }, 'sync');
+
+// semantic review: один продукт на разных хостах, отдельные event и research,
+// canonical + dirty-form защита, явное имя и receipt после подтверждения
+TABS = [
+  { id: 121, windowId: 1, index: 0, pinned: false, url: 'https://space.aimindset.org/#evolution', title: 'AI Mindset {space} · evolution', lastAccessed: 500 },
+  { id: 122, windowId: 1, index: 1, pinned: false, url: 'https://space-dataflow.aimindset.org/?step=q6', title: 'AI Mindset · Space Dataflow', lastAccessed: 400 },
+  { id: 123, windowId: 1, index: 2, pinned: false, url: 'http://127.0.0.1:8916/?present=1', title: 'AI Mindset {space} · session', lastAccessed: 300 },
+  { id: 124, windowId: 1, index: 3, pinned: false, url: 'https://calendly.com/example/30min', title: 'Calendly event', lastAccessed: 200 },
+  { id: 125, windowId: 1, index: 4, pinned: false, active: true, url: 'https://youtube.com/watch?v=abc', title: 'Research talk – YouTube', lastAccessed: 600 }
+];
+DIRTY.add(122);
+const semantic = await call('previewTabReview', { windowId: 1 });
+const spaceCluster = semantic?.data?.clusters?.find(c => c.kind === 'related' && c.tabs.length === 3);
+check('semantic review собирает Space на разных хостах', !!spaceCluster, JSON.stringify(semantic?.data?.clusters?.map(c => [c.kind, c.name, c.tabs.length])));
+check('event и research остаются отдельными классами', semantic?.data?.events?.some(t => t.id === 124) && semantic?.data?.references?.some(t => t.id === 125), JSON.stringify(semantic?.data?.summary));
+check('несохранённая форма защищена', spaceCluster?.tabs?.find(t => t.id === 122)?.protections?.includes('unsaved form'), JSON.stringify(spaceCluster?.tabs?.find(t => t.id === 122)));
+const named = await call('renameReviewCluster', { clusterKey: spaceCluster.key, name: 'Space product', windowId: 1 });
+check('кластер получает явное имя', named?.data?.name === 'Space product', JSON.stringify(named));
+const kept = await call('setReviewCanonical', { clusterKey: spaceCluster.key, tabId: 121, windowId: 1 });
+check('canonical сохраняется и получает receipt', kept?.ok && kept.data?.receipt?.kept?.url?.includes('space.aimindset.org'), JSON.stringify(kept));
+const semantic2 = await call('previewTabReview', { windowId: 1 });
+const namedSpace = semantic2?.data?.clusters?.find(c => c.key === spaceCluster.key);
+check('canonical и имя переживают повторный preview', namedSpace?.name === 'Space product' && namedSpace?.canonicalId === 121 && namedSpace.tabs.find(t => t.id === 121)?.protections?.includes('marked'), JSON.stringify(namedSpace));
+const closedSpace = await call('applyReviewBatch', { clusterKey: spaceCluster.key, intent: 'review', windowId: 1 });
+check('batch закрывает только безопасного sibling, canonical и dirty остаются', closedSpace?.count === 1 && TABS.some(t => t.id === 121) && TABS.some(t => t.id === 122) && !TABS.some(t => t.id === 123), TABS.map(t => t.id).join(' '));
+check('batch пишет source receipt', closedSpace?.data?.receipt?.action === 'close reviewed siblings' && closedSpace.data.receipt.closed.length === 1, JSON.stringify(closedSpace?.data?.receipt));
+DIRTY.clear();
 
 // сигнальная страница моста, путь 1: прежняя вкладка умеет слой — сигнальная закрывается, палитра там
 TABS = [

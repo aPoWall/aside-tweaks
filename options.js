@@ -29,7 +29,7 @@ const ACTIONS = [
   ['favoriteTab', 'bookmark ⇄ tab', 'last row of the bar · press again and the tab returns to the top'],
   ['pinTab', 'pin / unpin tab', 'the squares on top of the sidebar · native ⌃D'],
   ['tidyUp', 'tidy up — one sweep', 'clean, group by blocks, sort'],
-  ['tidyDuplicates', 'clean duplicates + empty tabs', 'native ⌃⇧D'],
+  ['tidyDuplicates', 'review tabs before cleanup', 'native ⌃⇧D'],
   ['togglePanel', 'open tweaks panel', 'native ⌃⇧S is more reliable'],
   ['bookmarkTab', 'bookmark, no dialog', ''],
   ['openPalette', 'palette', 'the browser also holds ⇧⌘K — see the table below'],
@@ -345,7 +345,7 @@ function seg(id, value, onPick) {
 
 // ---------- сборка ----------
 
-const TOGGLES = ['favoriteCloses', 'notesClean', 'notesDate', 'dedupAuto', 'dedupNotice', 'dedupIgnoreHash', 'dedupIgnoreUtm', 'dedupByTitle', 'keepPins', 'favoriteMovesTab', 'favoriteLeavesGroup', 'paletteOverlay', 'keymapEnabled', 'dimBehindPalette'];
+const TOGGLES = ['favoriteCloses', 'notesClean', 'notesDate', 'dedupNotice', 'dedupIgnoreHash', 'dedupIgnoreUtm', 'dedupByTitle', 'keepPins', 'favoriteMovesTab', 'favoriteLeavesGroup', 'paletteOverlay', 'keymapEnabled', 'dimBehindPalette'];
 
 function renderAll() {
   for (const k of TOGGLES) document.getElementById(k).checked = !!state[k];

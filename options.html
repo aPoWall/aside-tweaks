@@ -160,9 +160,6 @@
       <label class="opt"><input type="checkbox" id="dedupNotice">
         <span>say when a page is already open<small>a quiet note on the page, nothing is closed — you decide</small></span>
       </label>
-      <label class="opt"><input type="checkbox" id="dedupAuto">
-        <span>auto-dedupe<small>off by default: closes the fresh tab on its own and jumps to the existing one</small></span>
-      </label>
       <label class="opt"><input type="checkbox" id="dedupIgnoreHash">
         <span>ignore #anchors</span>
       </label>
@@ -172,7 +169,7 @@
       <label class="opt"><input type="checkbox" id="dedupByTitle">
         <span>same site, same title = same page<small>four «AIM VISUAL» tabs with different query strings read as one; the copy you used last stays. titles like «New Tab» never match</small></span>
       </label>
-      <small style="margin-top:7px">the manual command also collapses empty new tabs — one per window stays. of two copies the one you used last is kept; <code>http</code>, <code>www</code> and a trailing slash do not make a different page.</small>
+      <small style="margin-top:7px">⌥⌘D opens review: exact duplicates, related product tabs, event/stale pages and research references stay separate. pinned, active, bookmarked, user-marked and unsaved-form tabs are protected. every batch is previewed.</small>
       <div class="row2" style="margin-top:11px">
         <span>tidy up · blocks from</span>
         <input type="range" id="tidyMinGroup" min="2" max="6" step="1">

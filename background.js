@@ -27,8 +27,8 @@ const DEFAULT_THEME = {
 };
 
 const DEFAULTS = {
-  dedupAuto: false,          // молча закрывать свежую вкладку — слишком грубо
-  dedupNotice: true,         // вместо этого просто говорим, что такая уже открыта
+  dedupAuto: false,          // legacy-настройка: с v4.18 закрытие всегда проходит через review
+  dedupNotice: true,         // свежий дубль получает подсказку, решение остаётся у человека
   dedupIgnoreHash: true,
   dedupIgnoreUtm: true,
   dedupByTitle: true,        // тот же хост + тот же заголовок = одна страница, даже если query-строки разные
@@ -189,6 +189,312 @@ function twinClusters(tabs) {
   return [...groups.values()];
 }
 
+// ---------- review вкладок ----------
+//
+// Дедуп отвечает на узкий вопрос «это одна страница?». Review отвечает на рабочий:
+// «какие страницы принадлежат одному продукту и что с ними сделать?». Кластеры здесь
+// только предложения. Закрытие проверяет защиту повторно прямо перед действием.
+
+const REVIEW_STORE_DEFAULTS = {
+  reviewProtected: {},
+  reviewClusterNames: {},
+  reviewCanonicals: {},
+  reviewReceipts: []
+};
+
+const REVIEW_STOP = new Set([
+  'the', 'and', 'for', 'with', 'from', 'this', 'that', 'page', 'home', 'main', 'version',
+  'www', 'com', 'org', 'net', 'app', 'apps', 'lab', 'localhost', 'http', 'https',
+  'ai', 'mindset', 'github', 'google', 'drive', 'open', 'preview', 'index', 'dashboard',
+  'главная', 'страница', 'версия', 'открыть', 'заметку', 'событие'
+]);
+
+const REVIEW_EVENT = /\b(event|events|calendar|calendly|meetup|ticket|demo day|hackathon|slots?|событи|слоты)\b/i;
+const REVIEW_REFERENCE = /\b(youtube|watch|docs?|guide|research|reference|article|philosophy|skills?|readme|github)\b/i;
+
+function reviewTokens(tab) {
+  let host = '', path = '';
+  try {
+    const u = new URL(tab.url || '');
+    host = u.hostname.replace(/^www\./, '').replace(/\.(aimindset\.org|web\.app|com|org|net|io|dev|ai)$/i, '');
+    path = u.pathname;
+  } catch { }
+  return [...new Set((plainTitle(tab.title) + ' ' + host + ' ' + path)
+    .toLowerCase()
+    .replace(/[{}()[\]–—|·:;,.!?/\\]+/g, ' ')
+    .split(/[^a-zа-яё0-9]+/i)
+    .filter(x => x.length >= 3 && !REVIEW_STOP.has(x) && !/^\d{4}$/.test(x))
+  )];
+}
+
+function titleKey(tab) {
+  return plainTitle(tab.title).toLowerCase()
+    .replace(/\b(ai mindset|главная страница|version|версия|preview)\b/gi, ' ')
+    .replace(/[^a-zа-яё0-9]+/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function semanticScore(a, b) {
+  const at = new Set(reviewTokens(a)), bt = new Set(reviewTokens(b));
+  const shared = [...at].filter(x => bt.has(x));
+  const exactTitle = titleKey(a) && titleKey(a) === titleKey(b);
+  if (exactTitle) return 8;
+  if (shared.length >= 2) return 6;
+  if (shared.some(x => /^s\d+$/i.test(x) || x.length >= 5)) return 4;
+  return 0;
+}
+
+function semanticTabClusters(tabs) {
+  const parent = tabs.map((_, i) => i);
+  const find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
+  for (let i = 0; i < tabs.length; i++) {
+    for (let j = i + 1; j < tabs.length; j++) {
+      if (semanticScore(tabs[i], tabs[j]) >= 4) parent[find(j)] = find(i);
+    }
+  }
+  const groups = new Map();
+  tabs.forEach((tab, i) => {
+    const root = find(i);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root).push(tab);
+  });
+  return [...groups.values()].filter(g => g.length > 1);
+}
+
+function reviewHash(input) {
+  let h = 2166136261;
+  for (const c of String(input)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(36);
+}
+
+function suggestedClusterName(tabs) {
+  const titles = tabs.map(titleKey).filter(Boolean);
+  if (titles.length && titles.every(t => t === titles[0])) return clip(plainTitle(tabs[0].title), 34);
+  const counts = new Map();
+  for (const tab of tabs) for (const token of reviewTokens(tab)) counts.set(token, (counts.get(token) || 0) + 1);
+  const shared = [...counts.entries()].filter(([, n]) => n > 1)
+    .sort((a, b) => b[1] - a[1] || Number(/^s\d+$/i.test(b[0])) - Number(/^s\d+$/i.test(a[0])) || b[0].length - a[0].length);
+  const word = shared[0]?.[0] || reviewTokens(tabs[0])[0] || hostOfTab(tabs[0]);
+  return /^s\d+$/i.test(word) ? word.toUpperCase() : word.replace(/^./, c => c.toUpperCase());
+}
+
+function reviewClusterKey(kind, tabs) {
+  const urls = tabs.map(t => normalizeUrl(t.url) || t.url || String(t.id)).sort().join('|');
+  return `${kind}:${reviewHash(urls)}`;
+}
+
+async function reviewState() {
+  return chrome.storage.local.get(REVIEW_STORE_DEFAULTS);
+}
+
+async function dirtyForm(tab) {
+  if (!/^https?:/.test(tab.url || '')) return false;
+  const response = await chrome.tabs.sendMessage(tab.id, { type: 'reviewProtection' }, { frameId: 0 }).catch(() => null);
+  return !!response?.dirty;
+}
+
+function bookmarkKeys(list) {
+  return new Set((list || []).filter(x => x.url).map(x => normalizeUrl(x.url)).filter(Boolean));
+}
+
+async function protectionFor(tab, state, marks) {
+  const key = normalizeUrl(tab.url);
+  const reasons = [];
+  if (tab.pinned) reasons.push('pinned');
+  if (tab.active) reasons.push('active');
+  if (key && state.reviewProtected[key]) reasons.push('marked');
+  if (key && marks.has(key)) reasons.push('bookmarked');
+  if (await dirtyForm(tab)) reasons.push('unsaved form');
+  return reasons;
+}
+
+function reviewTab(tab, protections = [], canonical = false) {
+  const ageDays = tab.lastAccessed ? Math.max(0, Math.floor((Date.now() - tab.lastAccessed) / 86400000)) : null;
+  return {
+    id: tab.id, windowId: tab.windowId, title: plainTitle(tab.title) || tab.url || 'empty tab', url: tab.url || '',
+    host: hostOfTab(tab), asleep: !!tab.discarded, active: !!tab.active, pinned: !!tab.pinned,
+    canonical, protections, safeToClose: protections.length === 0, ageDays
+  };
+}
+
+function eventReason(tab) {
+  const hay = plainTitle(tab.title) + ' ' + (tab.url || '');
+  const age = tab.lastAccessed ? Math.floor((Date.now() - tab.lastAccessed) / 86400000) : 0;
+  if (REVIEW_EVENT.test(hay)) return age > 7 ? `event · ${age}d untouched` : 'event page';
+  if (tab.discarded && age > 21) return `stale · ${age}d untouched`;
+  return '';
+}
+
+function isResearchReference(tab) {
+  const hay = plainTitle(tab.title) + ' ' + (tab.url || '');
+  return REVIEW_REFERENCE.test(hay) || /\.(dev|ai)\//i.test(tab.url || '');
+}
+
+function chooseCanonical(tabs, clusterKey, state) {
+  const saved = state.reviewCanonicals[clusterKey];
+  const exact = saved && tabs.find(t => normalizeUrl(t.url) === saved);
+  if (exact) return exact;
+  return tabs.reduce(keeperOf);
+}
+
+async function previewTabReview(windowId) {
+  const wid = await targetWindowId(windowId);
+  if (wid == null) return { clusters: [], events: [], references: [], summary: {} };
+  const all = await chrome.tabs.query({ windowId: wid });
+  const [state, bar] = await Promise.all([reviewState(), chrome.bookmarks.getChildren(BAR).catch(() => [])]);
+  const marks = bookmarkKeys(bar);
+  const protections = new Map(await Promise.all(all.map(async tab => [tab.id, await protectionFor(tab, state, marks)])));
+
+  const exactClusters = [];
+  const exactExtra = new Set();
+  const unique = [];
+  const inExact = new Set();
+  for (const twins of twinClusters(all)) {
+    if (twins.length < 2) continue;
+    const key = reviewClusterKey('exact', twins);
+    const keep = chooseCanonical(twins, key, state);
+    inExact.add(keep.id);
+    unique.push(keep);
+    twins.filter(t => t.id !== keep.id).forEach(t => exactExtra.add(t.id));
+    const tabs = twins.map(t => reviewTab(t, protections.get(t.id), t.id === keep.id));
+    exactClusters.push({
+      key, kind: 'exact', reason: new Set(twins.map(t => normalizeUrl(t.url))).size === 1 ? 'same address' : 'same site and title',
+      name: state.reviewClusterNames[key] || suggestedClusterName(twins), canonicalId: keep.id, tabs,
+      closeIds: tabs.filter(t => !t.canonical && t.safeToClose).map(t => t.id)
+    });
+  }
+  for (const tab of all) if (!exactExtra.has(tab.id) && !inExact.has(tab.id)) unique.push(tab);
+
+  const relatedClusters = semanticTabClusters(unique).map(tabsRaw => {
+    const key = reviewClusterKey('related', tabsRaw);
+    const keep = chooseCanonical(tabsRaw, key, state);
+    const tabs = tabsRaw.map(t => reviewTab(t, protections.get(t.id), t.id === keep.id));
+    return {
+      key, kind: 'related', reason: 'same product or working thread',
+      name: state.reviewClusterNames[key] || suggestedClusterName(tabsRaw), canonicalId: keep.id, tabs,
+      closeIds: tabs.filter(t => !t.canonical && t.safeToClose).map(t => t.id)
+    };
+  });
+
+  const relatedIds = new Set(relatedClusters.flatMap(c => c.tabs.map(t => t.id)));
+  const remaining = unique.filter(t => !relatedIds.has(t.id));
+  const events = remaining.map(t => ({ tab: t, reason: eventReason(t) })).filter(x => x.reason)
+    .map(x => ({ ...reviewTab(x.tab, protections.get(x.tab.id)), reason: x.reason }));
+  const eventIds = new Set(events.map(t => t.id));
+  const references = remaining.filter(t => !eventIds.has(t.id) && isResearchReference(t))
+    .map(t => reviewTab(t, protections.get(t.id)));
+  const empties = all.filter(isEmptyTab).map(t => reviewTab(t, protections.get(t.id)));
+
+  return {
+    windowId: wid,
+    clusters: [...exactClusters, ...relatedClusters], events, references, empties,
+    summary: {
+      total: all.length,
+      exact: exactClusters.length,
+      related: relatedClusters.length,
+      events: events.length,
+      references: references.length,
+      protected: all.filter(t => (protections.get(t.id) || []).length).length,
+      exactClosable: exactClusters.reduce((n, c) => n + c.closeIds.length, 0) + empties.filter(t => t.safeToClose).length
+    }
+  };
+}
+
+async function saveReceipt(receipt) {
+  const state = await reviewState();
+  const next = [{ at: new Date().toISOString(), ...receipt }, ...(state.reviewReceipts || [])].slice(0, 40);
+  await chrome.storage.local.set({ reviewReceipts: next });
+  return next[0];
+}
+
+async function setReviewCanonical({ clusterKey, tabId } = {}) {
+  const tab = await chrome.tabs.get(Number(tabId)).catch(() => null);
+  if (!tab || !clusterKey) return { ok: false, reason: 'tab is gone' };
+  const state = await reviewState();
+  const key = normalizeUrl(tab.url);
+  state.reviewCanonicals[clusterKey] = key;
+  if (key) state.reviewProtected[key] = { title: plainTitle(tab.title), markedAt: Date.now(), source: 'canonical' };
+  await chrome.storage.local.set({ reviewCanonicals: state.reviewCanonicals, reviewProtected: state.reviewProtected });
+  const receipt = await saveReceipt({ action: 'keep', clusterKey, kept: { title: plainTitle(tab.title), url: tab.url }, closed: [] });
+  return { ok: true, receipt };
+}
+
+async function setReviewProtection({ tabId, protected: on = true } = {}) {
+  const tab = await chrome.tabs.get(Number(tabId)).catch(() => null);
+  if (!tab) return { ok: false, reason: 'tab is gone' };
+  const state = await reviewState();
+  const key = normalizeUrl(tab.url);
+  if (!key) return { ok: false, reason: 'page cannot be marked' };
+  if (on) state.reviewProtected[key] = { title: plainTitle(tab.title), markedAt: Date.now(), source: 'user' };
+  else delete state.reviewProtected[key];
+  await chrome.storage.local.set({ reviewProtected: state.reviewProtected });
+  return { ok: true, protected: !!on };
+}
+
+async function renameReviewCluster({ clusterKey, name } = {}) {
+  const clean = clip(String(name || ''), 34);
+  if (!clusterKey || !clean) return { ok: false };
+  const state = await reviewState();
+  state.reviewClusterNames[clusterKey] = clean;
+  await chrome.storage.local.set({ reviewClusterNames: state.reviewClusterNames });
+  return { ok: true, name: clean };
+}
+
+async function bookmarkReviewTab({ tabId } = {}) {
+  const tab = await chrome.tabs.get(Number(tabId)).catch(() => null);
+  if (!tab?.url || !/^https?:/.test(tab.url)) return { ok: false, reason: 'page cannot be bookmarked' };
+  const bar = await chrome.bookmarks.getChildren(BAR).catch(() => []);
+  const key = normalizeUrl(tab.url);
+  const twin = bar.find(b => b.url && normalizeUrl(b.url) === key);
+  if (twin) return { ok: true, existed: true };
+  await chrome.bookmarks.create({ parentId: BAR, index: bar.length, title: tab.title || tab.url, url: tab.url });
+  const receipt = await saveReceipt({ action: 'bookmark source', kept: { title: plainTitle(tab.title), url: tab.url }, closed: [] });
+  return { ok: true, receipt };
+}
+
+async function closeReviewTab({ tabId } = {}) {
+  const tab = await chrome.tabs.get(Number(tabId)).catch(() => null);
+  if (!tab) return { ok: false, reason: 'tab is gone' };
+  const [state, bar] = await Promise.all([reviewState(), chrome.bookmarks.getChildren(BAR).catch(() => [])]);
+  const reasons = await protectionFor(tab, state, bookmarkKeys(bar));
+  if (reasons.length) return { ok: false, reason: reasons.join(', ') };
+  const receipt = await saveReceipt({ action: 'close one', kept: null, closed: [{ title: plainTitle(tab.title), url: tab.url }] });
+  await chrome.tabs.remove(tab.id);
+  return { ok: true, receipt };
+}
+
+async function applyReviewBatch({ clusterKey, intent = 'review' } = {}, windowId) {
+  const review = await previewTabReview(windowId);
+  let clusters = review.clusters;
+  let selected = clusters.find(c => c.key === clusterKey) || null;
+  let ids = selected?.closeIds || [];
+  if (clusterKey === 'all-exact') {
+    clusters = clusters.filter(c => c.kind === 'exact');
+    ids = [...new Set([...clusters.flatMap(c => c.closeIds), ...review.empties.filter(t => t.safeToClose).map(t => t.id)])];
+  }
+  if (!ids.length && intent !== 'tidy') return { closed: 0, receipt: null };
+  const live = await Promise.all(ids.map(id => chrome.tabs.get(id).catch(() => null)));
+  const closedTabs = live.filter(Boolean).map(t => ({ title: plainTitle(t.title), url: t.url }));
+  if (closedTabs.length) await chrome.tabs.remove(live.filter(Boolean).map(t => t.id));
+  const kept = selected?.tabs.find(t => t.id === selected.canonicalId) || null;
+  const keptTabs = clusterKey === 'all-exact'
+    ? clusters.map(c => c.tabs.find(t => t.id === c.canonicalId)).filter(Boolean).map(t => ({ title: t.title, url: t.url }))
+    : kept ? [{ title: kept.title, url: kept.url }] : [];
+  const receipt = await saveReceipt({
+    action: intent === 'tidy' && !closedTabs.length ? 'tidy reviewed window' : clusterKey === 'all-exact' ? 'close exact duplicates' : 'close reviewed siblings',
+    clusterKey, clusterName: selected?.name || 'exact duplicates',
+    kept: kept ? { title: kept.title, url: kept.url } : null,
+    keptTabs,
+    closed: closedTabs
+  });
+  if (intent === 'tidy') {
+    const wid = await targetWindowId(windowId);
+    if (wid != null) { await ungroupAll(wid); await arrangeWindow(wid); }
+  }
+  flash(intent === 'tidy' ? 'TIDY' : '−' + closedTabs.length,
+    intent === 'tidy' ? `reviewed window tidied\n${closedTabs.length} closed · receipt saved` : `${closedTabs.length} reviewed tab${closedTabs.length === 1 ? '' : 's'} closed\nreceipt saved`);
+  return { closed: closedTabs.length, receipt };
+}
+
 // ---------- новые вкладки под текущей ----------
 
 // активные вкладки по окнам — переживает засыпание service worker'а
@@ -324,17 +630,9 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     const all = await chrome.tabs.query({});
     const twin = all.find(t => t.id !== tabId && normalizeUrl(t.url) === key && (tabBirth.get(t.id) ?? 0) < birth);
     if (!twin) return;
-    if (!settings.dedupAuto) {
-      // подсказка вместо действия: решение остаётся за человеком
-      flash('DUP', 'this page is already open\n⌥⌘D cleans duplicates');
-      return;
-    }
-    const wasActive = tab.active;
-    await chrome.tabs.remove(tabId);
-    if (wasActive) {
-      await chrome.tabs.update(twin.id, { active: true });
-      await chrome.windows.update(twin.windowId, { focused: true });
-    }
+    // Даже старый dedupAuto больше не закрывает страницу сам. Настройка остаётся в
+    // storage ради мягкой миграции, но любое удаление теперь начинается с review.
+    flash('DUP', 'this page is already open\n⌥⌘D opens review');
   } catch { }
 });
 
@@ -358,7 +656,7 @@ function keeperOf(a, b) {
   return a.id < b.id ? a : b;
 }
 
-async function tidyDuplicates() {
+async function applyDuplicateCleanup() {
   const all = await chrome.tabs.query({});
   const loose = all.filter(t => !t.pinned);
   const toClose = [];
@@ -535,12 +833,12 @@ async function sortByOpened(windowId) {
 // Пары одного сайта блоком не становятся: два github — это ещё не рабочая зона.
 // Вкладки, чей адрес лежит в панели закладок, остаются вне блоков: сайдбар Aside сам
 // вплавляет их в строку закладки, и из списка вкладок они исчезают.
-async function tidyUp(windowId) {
+async function applyTidyUp(windowId) {
   quiet = true;
   const step = async (fn) => { try { return await fn(); } catch { return null; } };
   let closed = 0, loose = 0, blocks = 0, failed = 0;
   try {
-    closed = await step(() => tidyDuplicates()) ?? (failed++, 0);
+    closed = await step(() => applyDuplicateCleanup()) ?? (failed++, 0);
     const wid = await targetWindowId(windowId);
     if (wid != null) {
       await step(() => ungroupAll(wid));
@@ -552,6 +850,18 @@ async function tidyUp(windowId) {
   }
   flash('TIDY', `tidied up\n${closed} closed · ${loose} loose on top · ${blocks} block${blocks === 1 ? '' : 's'}` + (failed ? `\n${failed} steps refused` : ''));
   return closed + blocks;
+}
+
+// Публичные команды открывают review. Прямые apply-действия доступны только из
+// финальной строки подтверждения внутри review-поверхности.
+async function tidyDuplicates(windowId) {
+  await openPalette(windowId, '', 'review');
+  return 0;
+}
+
+async function tidyUp(windowId) {
+  await openPalette(windowId, '', 'review-tidy');
+  return 0;
 }
 
 const recentOf = t => t.lastAccessed || 0;
@@ -1036,7 +1346,7 @@ let paletteOpening = false;   // ⇧⌘K приходит и от страниц
 // Палитра живёт прямо на странице: слой поверх сайта, без заголовка окна и светофора,
 // с затемнением и тенью — так она читается полем, а не вторым окном. Там, где страницы
 // нет (chrome://, новая вкладка, интерфейс самого Aside), падаем в отдельное окно.
-async function openPalette(windowId) {
+async function openPalette(windowId, q = '', view = '') {
   if (paletteOpening) return;
   if (paletteWinId != null) {
     const w = await chrome.windows.get(paletteWinId).catch(() => null);
@@ -1051,14 +1361,14 @@ async function openPalette(windowId) {
     // только верхний документ: во фреймах страницы слой не нужен, а их ответы
     // пришли бы первыми и увели нас в запасное окно
     const shown = await chrome.tabs.sendMessage(tab.id, {
-      type: 'palette', on: true, win: wid, tab: tab.id
+      type: 'palette', on: true, win: wid, tab: tab.id, q, view
     }, { frameId: 0 }).catch(() => null);
     if (shown?.shown) return;
   }
-  await openPaletteWindow(wid);
+  await openPaletteWindow(wid, q, view);
 }
 
-async function openPaletteWindow(windowId, q = '') {
+async function openPaletteWindow(windowId, q = '', view = '') {
   if (paletteWinId != null || paletteOpening) return;
   const wid = await targetWindowId(windowId);
   const src = wid != null ? await chrome.windows.get(wid).catch(() => null) : null;
@@ -1071,7 +1381,8 @@ async function openPaletteWindow(windowId, q = '') {
   const W = 640, H = 480;
   const left = src ? Math.round(src.left + (src.width - W) / 2) : undefined;
   const top = src ? Math.round(src.top + (src.height - H) / 3) : undefined;
-  const page = 'palette.html?win=' + (src?.id ?? '') + '&tab=' + (activeTab?.id ?? '') + (q ? '&q=' + encodeURIComponent(q) : '');
+  const page = 'palette.html?win=' + (src?.id ?? '') + '&tab=' + (activeTab?.id ?? '') +
+    (q ? '&q=' + encodeURIComponent(q) : '') + (view ? '&view=' + encodeURIComponent(view) : '');
   try {
     const w = await chrome.windows.create({
       url: chrome.runtime.getURL(page),
@@ -1195,8 +1506,17 @@ const DESK = { deskHealth, deskNotes, deskAgents, deskOpen, deskSwitch, deskRun,
 
 const ACTIONS = {
   tidyDuplicates, groupByDomain, groupByRules, ungroupAll, sortByDomain,
-  pinTab, favoriteTab, listFavorites, bookmarkTab, tidyUp, sortByOpened, getStats, previewDuplicates, openPalette, togglePanel,
+  pinTab, favoriteTab, listFavorites, bookmarkTab, tidyUp, sortByOpened, getStats, previewDuplicates, previewTabReview, openPalette, togglePanel,
   groupBySense: senseProposal, senseApply
+};
+
+const REVIEW_ACTIONS = {
+  setReviewCanonical,
+  setReviewProtection,
+  renameReviewCluster,
+  bookmarkReviewTab,
+  closeReviewTab,
+  applyReviewBatch
 };
 
 // Одно и то же сочетание приходит с двух уровней — от страницы и от команды браузера.
@@ -1220,13 +1540,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .catch(e => sendResponse({ ok: false, error: String(e) }));
     return true;
   }
-  if (msg?.action === 'openPaletteWindow') { openPaletteWindow(msg.windowId, typeof msg.q === 'string' ? msg.q : ''); sendResponse({ ok: true }); return; }
+  if (msg?.action === 'openPaletteWindow') {
+    openPaletteWindow(msg.windowId, typeof msg.q === 'string' ? msg.q : '', typeof msg.view === 'string' ? msg.view : '');
+    sendResponse({ ok: true }); return;
+  }
   if (SIGNAL[msg?.action]) {
     SIGNAL[msg.action](msg, sender).then(r => sendResponse({ ok: true, count: r })).catch(e => sendResponse({ ok: false, error: String(e) }));
     return true;
   }
   if (DESK[msg?.action]) {
     DESK[msg.action](msg).then(data => sendResponse({ ok: !!data, data })).catch(e => sendResponse({ ok: false, error: String(e) }));
+    return true;
+  }
+  if (REVIEW_ACTIONS[msg?.action]) {
+    const wid = msg.windowId ?? sender?.tab?.windowId;
+    REVIEW_ACTIONS[msg.action](msg, wid)
+      .then(data => sendResponse({ ok: data?.ok !== false, data, count: data?.closed }))
+      .catch(e => sendResponse({ ok: false, error: String(e) }));
     return true;
   }
 

@@ -123,13 +123,13 @@
 <body>
   <div id="top">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="6.8" cy="6.8" r="4.6"/><path d="M10.4 10.4L14 14" stroke-linecap="round"/></svg>
-    <input id="q" placeholder="search tabs, history, bookmarks, notes · paste a url · > agent · 2+2" autocomplete="off" spellcheck="false">
+    <input id="q" aria-label="Search Aside Tweaks" aria-controls="list" placeholder="search tabs, history, bookmarks, notes · paste a url · > agent · 2+2" autocomplete="off" spellcheck="false">
   </div>
   <div id="scopes">
     <button data-scope="all">all</button><button data-scope="tabs">tabs</button><button data-scope="history">history</button><button data-scope="bookmarks">bookmarks</button><button data-scope="notes">notes</button><button data-scope="commands">commands</button>
     <span class="desk off" id="deskdot" title="desk bridge: notes and agents come from the machine">desk</span>
   </div>
-  <div id="list" class="first"></div>
+  <div id="list" class="first" role="listbox" aria-label="Aside Tweaks results"></div>
   <div id="acts" role="menu"></div>
   <div id="hint">
     <span class="brand"><i></i>aside tweaks</span>

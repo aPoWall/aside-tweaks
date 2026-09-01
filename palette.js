@@ -14,6 +14,7 @@ const srcWin = Number(params.get('win')) || null;
 const srcTab = Number(params.get('tab')) || null;
 // запрос, с которым палитру позвали снаружи (Raycast: «aside palette <текст>»)
 const q0 = params.get('q') || '';
+const view0 = params.get('view') || '';
 // встроенный режим: палитра живёт слоем на странице, закрывать окно нечего
 const embed = params.get('embed') === '1';
 
@@ -49,7 +50,7 @@ let mouseLive = false;   // наведение выбирает строку т�
 let desk = null;         // мост к машине: { ok, vaults, worktrees } либо null — тогда заметок и агентов нет
 // как показывать заметки — карточка 09 настроек
 let notesPrefs = { notesLimit: 3, notesClean: true, notesDate: true, notesOrder: 'modified' };
-let view = null;         // drill-down: { kind: 'dupes' } — список того, что закроет чистка; null = обычный поиск
+let view = view0 ? { kind: view0 === 'review-tidy' ? 'review' : view0, intent: view0 === 'review-tidy' ? 'tidy' : 'review' } : null;
 let menuCache = null;    // пункты меню Aside с моста — один раз на открытие палитры
 let currentQ = '';       // запрос, по которому построен список — для подсветки совпадений
 chrome.storage.sync.get(notesPrefs).then(s => { notesPrefs = { ...notesPrefs, ...s }; });
@@ -187,6 +188,178 @@ async function deskProbe() {
   deskDot.classList.toggle('off', !desk?.ok);
 }
 
+// ---------- review: exact pages, product siblings, events and sources ----------
+
+const switchTo = tab => async () => {
+  await chrome.tabs.update(tab.id, { active: true });
+  await chrome.windows.update(srcWin || tab.windowId, { focused: true }).catch(() => { });
+  closeSelf();
+};
+
+const receiptText = receipt => {
+  if (!receipt) return 'no tabs changed';
+  const keepers = receipt.keptTabs?.length ? receipt.keptTabs : receipt.kept ? [receipt.kept] : [];
+  const kept = keepers.length ? keepers.map(t => `keep · ${t.title}\n${t.url}`).join('\n') : 'keep · none';
+  const closed = (receipt.closed || []).map(t => `close · ${t.title}\n${t.url}`).join('\n');
+  return [`aside tweaks receipt · ${receipt.at || new Date().toISOString()}`, `action · ${receipt.action}`, kept, closed].filter(Boolean).join('\n');
+};
+
+async function copyStay(text) {
+  await navigator.clipboard.writeText(text).catch(() => { });
+}
+
+function handoffText(cluster) {
+  const keep = cluster.tabs.find(t => t.id === cluster.canonicalId);
+  return [
+    `aside tweaks handoff · ${cluster.name}`,
+    keep ? `canonical · ${keep.title}\n${keep.url}` : '',
+    ...cluster.tabs.filter(t => t.id !== cluster.canonicalId).map(t => `source · ${t.title}\n${t.url}`)
+  ].filter(Boolean).join('\n');
+}
+
+function protectionTags(tab) {
+  const tags = [];
+  if (tab.canonical) tags.push('canonical');
+  for (const reason of tab.protections || []) tags.push(reason);
+  return [...new Set(tags)];
+}
+
+function reviewTabItem(tab, cluster = null, section = '') {
+  const marked = (tab.protections || []).includes('marked');
+  const actions = [
+    { label: 'switch to tab', key: '↵', fn: switchTo(tab) }
+  ];
+  if (cluster) actions.push({
+    label: `keep for ${cluster.name}`, key: '⇧↵', fn: async () => {
+      await send('setReviewCanonical', { clusterKey: cluster.key, tabId: tab.id });
+      refresh();
+    }
+  });
+  actions.push({ label: 'bookmark as source', key: '⌘B', fn: async () => { await send('bookmarkReviewTab', { tabId: tab.id }); refresh(); } });
+  actions.push({
+    label: marked ? 'remove protection' : 'protect tab', key: '', fn: async () => {
+      await send('setReviewProtection', { tabId: tab.id, protected: !marked });
+      refresh();
+    }
+  });
+  if (tab.safeToClose) actions.push({
+    label: 'close this tab', key: '⌘⌫', fn: async () => {
+      const r = await send('closeReviewTab', { tabId: tab.id });
+      if (r?.data?.receipt) view = { kind: 'receipt', receipt: r.data.receipt, back: 'review' };
+      refresh();
+    }
+  });
+  actions.push({ label: 'copy url', key: '⌘C', fn: () => copyStay(tab.url) });
+  return {
+    kind: 'review-tab', section, icon: favicon(tab.url), title: tab.title || tab.url, sub: tab.host,
+    tags: protectionTags(tab), why: tab.ageDays != null && tab.ageDays > 0 ? `${tab.ageDays}d` : '',
+    kindLabel: tab.safeToClose ? (tab.asleep ? 'asleep' : 'tab') : 'protected', primary: 'switch',
+    run: switchTo(tab), actions
+  };
+}
+
+async function buildReview(q) {
+  const review = (await send('previewTabReview'))?.data;
+  const out = [];
+  if (!review) return [{ kind: 'info', glyph: '○', title: 'review is unavailable', sub: 'reload the extension once', kindLabel: '', primary: 'back', run: () => { view = null; refresh(); } }];
+
+  const clusters = review.clusters || [];
+  for (const kind of ['exact', 'related']) {
+    const list = clusters.filter(c => c.kind === kind);
+    for (let n = 0; n < list.length; n++) {
+      const c = list[n];
+      if (q && !norm(c.name + ' ' + c.tabs.map(t => t.title + ' ' + t.url).join(' ')).includes(q)) continue;
+      const section = kind === 'exact' ? `exact duplicates · ${list.length}` : `related products · ${list.length}`;
+      out.push({
+        kind: 'cluster', section: n === 0 ? section : '', glyph: kind === 'exact' ? '≡' : '⌘',
+        title: c.name, sub: `${c.tabs.length} tabs · ${c.closeIds.length} available to close`,
+        tags: [kind], kindLabel: 'cluster', primary: c.closeIds.length ? 'preview' : 'inspect',
+        run: () => { view = { kind: 'cluster', clusterKey: c.key, intent: view?.intent || 'review' }; refresh(); },
+        actions: [
+          { label: 'inspect cluster', key: '↵', fn: null },
+          { label: 'rename cluster…', key: '', fn: async () => {
+            const name = window.prompt('Cluster name', c.name);
+            if (name?.trim()) await send('renameReviewCluster', { clusterKey: c.key, name: name.trim() });
+            refresh();
+          } },
+          { label: 'copy handoff + sources', key: '⌘C', fn: () => copyStay(handoffText(c)) }
+        ]
+      });
+      c.tabs.forEach(tab => out.push(reviewTabItem(tab, c)));
+    }
+  }
+
+  if (review.events?.length) {
+    review.events.forEach((tab, i) => {
+      const row = reviewTabItem(tab, null, i === 0 ? `stale / event pages · ${review.events.length}` : '');
+      row.why = tab.reason;
+      row.tags = [...row.tags, 'event'];
+      out.push(row);
+    });
+  }
+  if (review.references?.length) {
+    review.references.forEach((tab, i) => {
+      const row = reviewTabItem(tab, null, i === 0 ? `research references · ${review.references.length}` : '');
+      row.tags = [...row.tags, 'source'];
+      out.push(row);
+    });
+  }
+
+  const closable = review.summary?.exactClosable || 0;
+  out.push({
+    kind: 'cmd', section: 'batch', glyph: '✓',
+    title: closable ? `preview ${closable} exact / empty tabs` : 'no exact cleanup waiting',
+    sub: view?.intent === 'tidy' ? 'after confirmation: close → flatten → order → blocks' : 'semantic siblings stay for explicit product review',
+    kindLabel: 'preview', primary: closable ? 'preview' : 'done',
+    run: () => { if (closable) { view = { kind: 'cluster', clusterKey: 'all-exact', intent: view?.intent || 'review' }; refresh(); } }
+  });
+  return out;
+}
+
+async function buildBatchPreview(q) {
+  const review = (await send('previewTabReview'))?.data;
+  if (!review) return [];
+  const allExact = view.clusterKey === 'all-exact';
+  const clusters = allExact ? review.clusters.filter(c => c.kind === 'exact') : review.clusters.filter(c => c.key === view.clusterKey);
+  const candidates = [];
+  const protectedTabs = [];
+  for (const c of clusters) {
+    for (const tab of c.tabs) {
+      if (tab.canonical || !tab.safeToClose) protectedTabs.push({ ...tab, cluster: c });
+      else candidates.push({ ...tab, cluster: c });
+    }
+  }
+  if (allExact) {
+    for (const tab of review.empties || []) (tab.safeToClose ? candidates : protectedTabs).push({ ...tab, cluster: null });
+  }
+  const out = [];
+  candidates.filter(t => !q || norm(t.title + ' ' + t.url).includes(q)).forEach((tab, i) => {
+    const row = reviewTabItem(tab, tab.cluster, i === 0 ? `will close · ${candidates.length}` : '');
+    row.kindLabel = 'will close';
+    row.tags = [...row.tags, tab.cluster?.kind || 'empty'];
+    out.push(row);
+  });
+  protectedTabs.forEach((tab, i) => {
+    const row = reviewTabItem(tab, tab.cluster, i === 0 ? `stays · ${protectedTabs.length}` : '');
+    row.kindLabel = tab.canonical ? 'canonical' : 'protected';
+    out.push(row);
+  });
+  const canApply = candidates.length > 0 || view.intent === 'tidy';
+  out.push({
+    kind: 'cmd', section: 'confirm once', glyph: '⊗',
+    title: candidates.length ? `close these ${candidates.length} reviewed tabs` : view.intent === 'tidy' ? 'tidy the reviewed window' : 'nothing is eligible to close',
+    sub: view.intent === 'tidy' ? 'protected tabs stay · then flatten, order and rebuild blocks' : 'protected tabs stay · receipt records the canonical page and every source',
+    kindLabel: 'confirm', primary: canApply ? (view.intent === 'tidy' ? 'tidy' : 'close') : 'back',
+    run: async () => {
+      if (!canApply) { view = { kind: 'review', intent: view.intent }; refresh(); return; }
+      const r = await send('applyReviewBatch', { clusterKey: view.clusterKey, intent: view.intent });
+      view = r?.data?.receipt ? { kind: 'receipt', receipt: r.data.receipt, back: 'review', intent: view.intent } : { kind: 'review', intent: view.intent };
+      refresh();
+    }
+  });
+  return out;
+}
+
 // ---------- сбор результатов ----------
 
 async function build(raw) {
@@ -222,35 +395,19 @@ async function build(raw) {
     return out;
   }
 
-  // drill-down: что закроет чистка — по кластерам из фона, с причиной
-  if (view?.kind === 'dupes') {
-    const pv = (await send('previewDuplicates'))?.data;
-    if (!pv || !pv.closes) {
-      out.push({ kind: 'info', glyph: '○', title: 'nothing to close right now', sub: 'no twins, no empty tabs', kindLabel: '', primary: 'back', run: () => { view = null; refresh(); } });
-      return out;
-    }
-    for (const c of pv.clusters) {
-      for (const t of c.close) {
-        if (q && !norm(t.title + ' ' + t.url).includes(q)) continue;
-        out.push({
-          kind: 'twin', section: `would close ${pv.closes} · ${c.reason}`, icon: favicon(t.url), title: t.title || t.url, sub: hostOf(t.url),
-          why: 'keeps: ' + (c.keep.title || '').slice(0, 28), kindLabel: t.asleep ? 'asleep' : 'tab', primary: 'switch',
-          run: async () => { await chrome.tabs.update(t.id, { active: true }); closeSelf(); },
-          actions: [
-            { label: 'switch to tab', key: '↵', fn: null },
-            { label: 'close this one', key: '⌘⌫', fn: async () => { await chrome.tabs.remove(t.id).catch(() => { }); refresh(); } },
-            { label: 'keep this one instead', key: '', fn: async () => { await chrome.tabs.update(t.id, { active: true }); refresh(); } }
-          ]
-        });
-      }
-    }
-    for (const e of pv.empties) {
-      out.push({ kind: 'twin', section: 'empty tabs', glyph: '·', title: 'empty tab', sub: e.url || 'new tab', kindLabel: 'tab', primary: 'close',
-        run: async () => { await chrome.tabs.remove(e.id).catch(() => { }); refresh(); } });
-    }
-    out.push({ kind: 'cmd', glyph: '⊗', title: `clean all ${pv.closes} now`, sub: 'the copy you used last stays', kindLabel: 'command', primary: 'run',
-      run: async () => { await send('tidyDuplicates'); closeSelf(); } });
-    return out;
+  if (view?.kind === 'review') return buildReview(q);
+  if (view?.kind === 'cluster') return buildBatchPreview(q);
+  if (view?.kind === 'receipt') {
+    const text = receiptText(view.receipt);
+    return [{
+      kind: 'receipt', section: 'saved receipt', glyph: '✓', title: view.receipt?.action || 'review complete',
+      sub: `${view.receipt?.closed?.length || 0} closed · canonical and sources recorded`, tags: ['receipt'],
+      kindLabel: 'saved', primary: 'copy', run: () => copyStay(text),
+      actions: [
+        { label: 'copy receipt', key: '↵', fn: null },
+        { label: 'back to review', key: '⇧↵', fn: () => { view = { kind: 'review', intent: view.intent || 'review' }; refresh(); } }
+      ]
+    }];
   }
 
   const value = calc(qRaw);
@@ -358,8 +515,8 @@ async function build(raw) {
       let sub = c.sub;
       if (c.action === 'tidyDuplicates' && stats) {
         sub = (stats.dups || stats.empties)
-          ? `closes ${stats.dups + stats.empties} · ${stats.dups} duplicate${stats.dups === 1 ? '' : 's'}, ${stats.empties} empty`
-          : 'nothing to close right now';
+          ? `review ${stats.dups + stats.empties} exact / empty · plus product families`
+          : 'review related products, events and research sources';
       }
       shown++;
       const row = {
@@ -368,10 +525,17 @@ async function build(raw) {
         run: async () => { await send(c.action); closeSelf(); }
       };
       if (c.action === 'tidyDuplicates') {
+        row.primary = 'review';
+        row.run = () => { view = { kind: 'review', intent: 'review' }; refresh(); };
         row.actions = [
-          { label: 'clean now', key: '↵', fn: null },
-          { label: 'show what closes', key: '⇧↵', fn: () => { view = { kind: 'dupes' }; refresh(); } }
+          { label: 'review tab families', key: '↵', fn: null },
+          { label: 'preview exact cleanup', key: '⇧↵', fn: () => { view = { kind: 'cluster', clusterKey: 'all-exact', intent: 'review' }; refresh(); } }
         ];
+      }
+      if (c.action === 'tidyUp') {
+        row.primary = 'review';
+        row.run = () => { view = { kind: 'review', intent: 'tidy' }; refresh(); };
+        row.actions = [{ label: 'review before tidy', key: '↵', fn: null }];
       }
       out.push(row);
     }
@@ -503,6 +667,9 @@ function highlight(el, text, q) {
 function rowFor(it, i) {
   const d = document.createElement('div');
   d.className = 'item';
+  d.setAttribute('role', 'option');
+  d.setAttribute('aria-selected', 'false');
+  d.tabIndex = -1;
   if (it.icon) {
     const img = document.createElement('img');
     img.src = it.icon;
@@ -530,6 +697,7 @@ function rowFor(it, i) {
     const w = document.createElement('span');
     w.className = 'why';
     w.textContent = it.why;
+    w.title = it.why;
     d.append(w);
   }
   if (it.twin) {
@@ -543,6 +711,7 @@ function rowFor(it, i) {
     const b = document.createElement('span');
     b.className = 'tag';
     b.textContent = tag;
+    b.title = tag === 'canonical' ? 'canonical tab for this product' : `protected: ${tag}`;
     d.append(b);
   }
   if (it.date) {
@@ -592,9 +761,11 @@ function setSel(i, scroll) {
   if (!rows.length) { sel = 0; primaryEl.textContent = '—'; return; }
   i = Math.max(0, Math.min(i, rows.length - 1));
   if (rows[sel] && sel !== i) rows[sel].classList.remove('sel');
+  if (rows[sel] && sel !== i) rows[sel].setAttribute('aria-selected', 'false');
   sel = i;
   const el = rows[sel];
   el.classList.add('sel');
+  el.setAttribute('aria-selected', 'true');
   if (scroll) el.scrollIntoView({ block: 'nearest' });
   primaryEl.textContent = items[sel]?.primary || 'open';
 }
@@ -628,6 +799,7 @@ function openActs() {
   acts.forEach((a, i) => {
     const d = document.createElement('div');
     d.className = 'a' + (i === 0 ? ' sel' : '');
+    d.setAttribute('role', 'menuitem');
     const l = document.createElement('span');
     l.textContent = a.label;
     const k = document.createElement('span');
@@ -655,6 +827,12 @@ function closeActs() {
   if (!actsOpen) return;
   actsEl.classList.remove('on');
   actsOpen = false;
+}
+
+function stepBack() {
+  if (view?.kind === 'cluster' || view?.kind === 'receipt') view = { kind: 'review', intent: view.intent || 'review' };
+  else view = null;
+  refresh();
 }
 
 document.getElementById('actsbtn').addEventListener('click', () => { actsOpen ? closeActs() : openActs(); qEl.focus(); });
@@ -710,13 +888,13 @@ document.addEventListener('keydown', (e) => {
   // esc как в Raycast: сначала чистит запрос, пустой запрос закрывает палитру
   if (e.key === 'Escape') {
     e.preventDefault();
-    if (view) { view = null; refresh(); return; }
+    if (view) { stepBack(); return; }
     if (qEl.value) { qEl.value = ''; refresh(); return; }
     closeSelf();
     return;
   }
   // Backspace на пустом поле — шаг назад из режима, как в Raycast
-  if (e.key === 'Backspace' && !qEl.value && view) { e.preventDefault(); view = null; refresh(); return; }
+  if (e.key === 'Backspace' && !qEl.value && view) { e.preventDefault(); stepBack(); return; }
   if (e.key === 'Tab') {
     e.preventDefault();
     const i = SCOPES.indexOf(scope);

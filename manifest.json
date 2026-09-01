@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Aside Tweaks",
-  "version": "4.17.0",
-  "description": "Palette (⇧⌘K) in the sidebar's own look — recent tabs, Obsidian notes by last edit, Aside's own menu items, agents in Orca, ⌘K actions, the palette from anywhere · own keymap over browser shortcuts · ⌘D bookmarks and closes · duplicates by address or by title, previewed before they close · tidy up.",
+  "version": "4.18.0",
+  "description": "A review layer for Aside: product-aware tab families, protected cleanup previews and receipts, plus the palette, keymap, Obsidian and agent bridge.",
   "permissions": [
     "tabs",
     "storage",
@@ -78,10 +78,10 @@
       "description": "Закрепить / открепить вкладку"
     },
     "tidy-duplicates": {
-      "description": "Закрыть дубликаты и пустые вкладки"
+      "description": "Открыть review вкладок перед очисткой"
     },
     "tidy-up": {
-      "description": "Свести всё разом: чистка, порядок, блоки"
+      "description": "Review, затем чистка, порядок и блоки"
     },
     "bookmark-tab": {
       "description": "В закладки без диалога (тогл)"
