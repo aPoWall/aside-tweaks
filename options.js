@@ -26,7 +26,7 @@ const DEFAULTS = {
 };
 
 const ACTIONS = [
-  ['favoriteTab', 'bookmark ⇄ tab', 'last row of the bar · press again and the tab returns to the top'],
+  ['favoriteTab', 'bookmark ⇄ tab', 'first row of the bar · press again and the tab returns to the top'],
   ['pinTab', 'pin / unpin tab', 'the squares on top of the sidebar · native ⌃D'],
   ['tidyUp', 'tidy up — one sweep', 'clean, group by blocks, sort'],
   ['tidyDuplicates', 'review tabs before cleanup', 'native ⌃⇧D'],

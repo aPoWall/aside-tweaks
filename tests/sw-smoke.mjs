@@ -394,21 +394,22 @@ TABS.forEach(t => t.active = t.id === 92);   // палитра переключ�
 await callFrom('signalDone', 93);
 check('переключение из палитры сильнее возврата', TABS.find(t => t.id === 92)?.active === true && !TABS.some(t => t.id === 93), TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
 
-// ⌘D по умолчанию: закладка есть, вкладка закрыта, фокус на прежней (по свежести, не по соседству)
+// ⌘D по умолчанию: новая закладка первая, вкладка закрыта, фокус идёт по рабочему списку
 store.sync.favoriteCloses = true;
 await fire('storeChanged', { favoriteCloses: { newValue: true } }, 'sync');
 await wait(20);
-MARKS = [];
+MARKS = [{ id: 'existing', title: 'Existing', url: 'https://existing.example/', index: 0, parentId: '1' }];
 TABS = [
-  { id: 101, windowId: 1, index: 0, pinned: false, url: 'https://old.example/', title: 'Old', lastAccessed: 100 },
-  { id: 102, windowId: 1, index: 1, pinned: false, url: 'https://prev.example/', title: 'Prev', lastAccessed: 900 },
-  { id: 103, windowId: 1, index: 2, pinned: false, active: true, url: 'https://keep.example/page', title: 'Keep me', lastAccessed: 950 }
+  { id: 101, windowId: 1, index: 0, pinned: true, url: 'https://pinned.example/', title: 'Pinned', lastAccessed: 999 },
+  { id: 102, windowId: 1, index: 1, pinned: false, url: 'https://prev.example/', title: 'Previous', lastAccessed: 900 },
+  { id: 103, windowId: 1, index: 2, pinned: false, active: true, url: 'https://keep.example/page', title: 'Keep me', lastAccessed: 950 },
+  { id: 104, windowId: 1, index: 3, pinned: false, url: 'https://next.example/', title: 'Next', lastAccessed: 50 }
 ];
 await wait(500);   // защита от повтора: то же действие в пределах 450 мс глушится
 const favClose = await call('favoriteTab', { windowId: 1 });
-check('⌘D: закладка последней строкой панели', favClose?.count === 1 && MARKS.length === 1 && MARKS[0].url === 'https://keep.example/page', JSON.stringify(MARKS));
+check('⌘D: новая закладка первой строкой панели', favClose?.count === 1 && MARKS.length === 2 && MARKS[0].url === 'https://keep.example/page' && MARKS[0].index === 0, JSON.stringify(MARKS));
 check('⌘D: вкладка закрыта', !TABS.some(t => t.id === 103), TABS.map(t => t.id).join(' '));
-check('⌘D: фокус на прежней по свежести', TABS.find(t => t.id === 102)?.active === true, TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
+check('⌘D: фокус на следующей незакреплённой, pinned не будится', TABS.find(t => t.id === 104)?.active === true && !TABS.find(t => t.id === 101)?.active, TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
 // единственная вкладка окна не закрывается — иначе закроется окно
 MARKS = [];
 TABS = [{ id: 111, windowId: 1, index: 0, pinned: false, active: true, url: 'https://only.example/', title: 'Only', lastAccessed: 10 }];

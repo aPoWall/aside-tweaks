@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Aside Tweaks – review before cleanup</title>
-  <meta name="description" content="A calm review layer for Aside Browser. Name product clusters, choose one canonical tab, protect work in progress, bookmark sources and preview every cleanup batch.">
-  <meta name="theme-color" content="#f3f2ee">
-  <meta property="og:title" content="Aside Tweaks – review before cleanup">
-  <meta property="og:description" content="Product-aware tab families, protected cleanup previews and receipts – inside Aside.">
-  <meta property="og:image" content="https://apps.aimindset.org/aside-tweaks/aside-tweaks-social.png?v=4">
+  <title>aside tweaks – the keys your browser kept for itself</title>
+  <meta name="description" content="A local-first command palette and precise tab workflow for Aside Browser. Keep a page with ⌘D, search the whole desk with ⇧⌘K and review every cleanup batch.">
+  <meta name="theme-color" content="#ffffff">
+  <meta property="og:title" content="aside tweaks – the keys your browser kept for itself">
+  <meta property="og:description" content="One palette over tabs, history, bookmarks, notes and agents. A predictable place for every page.">
+  <meta property="og:image" content="https://apps.aimindset.org/aside-tweaks/aside-tweaks-social.png?v=5">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://apps.aimindset.org/aside-tweaks/">
   <meta name="twitter:card" content="summary_large_image">
@@ -16,331 +16,447 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap">
   <style>
     :root {
-      --paper:#f3f2ee; --white:#fff; --ink:#151515; --muted:#6f706c;
-      --line:#d8d7d1; --soft:#e8e7e2; --blue:#174fd1; --violet:#7565a9;
-      --safe:#466b59; --warn:#8a5d24; --radius:10px;
-      --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
-      --mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+      --paper:#fff; --ink:#000; --soft:#d9d9d9; --hair:#ececec; --muted:#777;
+      --signal:#c3ff00; --blue:#174fd1; --aside:#ececec; --aside-line:#d6d6d6;
+      --mono:"JetBrains Mono","SFMono-Regular",ui-monospace,Menlo,monospace;
+      --system:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
+      --shell:1320px; --gutter:clamp(18px,4vw,58px);
     }
     * { box-sizing:border-box; }
-    html { scroll-behavior:smooth; background:var(--paper); color:var(--ink); font-family:var(--sans); }
-    body { margin:0; }
-    a { color:inherit; }
-    button { font:inherit; color:inherit; }
+    [hidden] { display:none!important; }
+    html { scroll-behavior:smooth; background:var(--paper); color:var(--ink); font-family:var(--mono); }
+    body { margin:0; overflow-x:hidden; }
+    a,button,input { color:inherit; font:inherit; }
+    a { text-decoration:none; }
+    button { cursor:pointer; }
     :focus-visible { outline:2px solid var(--blue); outline-offset:3px; }
-    .shell { width:min(1180px,calc(100% - 40px)); margin:auto; }
-    .top {
-      height:58px; display:flex; align-items:center; justify-content:space-between;
-      border-bottom:1px solid var(--ink);
-    }
-    .brand { display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:-.02em; text-decoration:none; }
-    .brand-mark { width:25px; height:25px; display:grid; place-items:center; border:1px solid var(--ink); border-radius:6px; font:700 11px var(--mono); background:var(--white); }
-    .top nav { display:flex; align-items:center; gap:22px; font:600 11px var(--mono); text-transform:uppercase; letter-spacing:.08em; }
-    .top nav a { text-decoration:none; }
-    .version { border:1px solid var(--line); padding:5px 8px; border-radius:6px; background:var(--white); }
+    .shell { width:min(var(--shell),calc(100% - 2 * var(--gutter))); margin:auto; }
+    .codefield { position:absolute; inset:0; overflow:hidden; pointer-events:none; transition:transform .18s ease; }
+    .codefield span { position:absolute; font:500 11px/1 var(--mono); opacity:.2; }
 
-    .hero { min-height:calc(100vh - 58px); display:grid; grid-template-columns:minmax(300px,.8fr) minmax(520px,1.2fr); gap:clamp(34px,6vw,86px); align-items:center; padding:54px 0 66px; }
-    .eyebrow,.section-kicker { font:600 11px var(--mono); letter-spacing:.11em; text-transform:uppercase; color:var(--muted); }
-    h1 { margin:16px 0 20px; max-width:590px; font-size:clamp(44px,6vw,76px); line-height:.96; letter-spacing:-.055em; font-weight:650; }
-    .lead { max-width:570px; margin:0; font-size:clamp(17px,1.6vw,21px); line-height:1.48; color:#3d3e3a; }
-    .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:28px; }
-    .button { min-height:42px; display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:0 16px; border:1px solid var(--ink); border-radius:8px; text-decoration:none; font:600 12px var(--mono); background:var(--ink); color:var(--white); }
-    .button.secondary { background:transparent; color:var(--ink); border-color:var(--line); }
-    .facts { display:flex; flex-wrap:wrap; gap:18px 28px; margin-top:28px; font:500 11px/1.45 var(--mono); color:var(--muted); }
-    .facts b { display:block; color:var(--ink); font-size:13px; }
+    .top { min-height:66px; display:flex; align-items:center; justify-content:space-between; gap:24px; border-bottom:1px solid var(--ink); }
+    .brand { display:flex; align-items:center; gap:13px; font-size:17px; font-weight:700; letter-spacing:-.04em; }
+    .mark { width:48px; height:28px; display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--ink); position:relative; }
+    .mark span { display:grid; place-items:center; font-size:9px; }
+    .mark span:first-child { background:var(--ink); color:var(--paper); }
+    .mark i { position:absolute; left:50%; bottom:3px; width:6px; height:4px; background:var(--signal); transform:translateX(-50%); }
+    .topnav { display:flex; align-items:center; gap:20px; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+    .topnav a:hover { text-decoration:underline; text-underline-offset:4px; }
+    .topnav .version { border:1px solid var(--ink); padding:7px 9px; }
+    .subnav { border-bottom:1px solid var(--hair); }
+    .subnav .shell { min-height:46px; display:flex; align-items:center; gap:27px; overflow:auto; scrollbar-width:none; font-size:11px; white-space:nowrap; }
+    .subnav a:first-child { border-bottom:3px solid var(--ink); padding:14px 0 11px; }
 
-    .product-scene { position:relative; padding:0 0 82px; }
-    .window { position:relative; z-index:2; min-height:500px; overflow:hidden; border:1px solid #c8c7c2; border-radius:14px; background:#ececec; box-shadow:0 22px 70px rgba(30,30,26,.14); }
-    .window-top { display:flex; align-items:center; gap:10px; height:54px; padding:0 16px; border-bottom:1px solid #d5d5d2; }
-    .search-icon { width:16px; height:16px; color:#777; }
-    .window-top strong { flex:1; font-size:16px; font-weight:450; color:#4b4b4b; }
-    .window-top kbd,.window-foot kbd { padding:2px 5px; border:1px solid #d1d1cf; border-radius:4px; background:#f7f7f6; font:10px var(--sans); color:#666; }
-    .filters { display:flex; align-items:center; gap:4px; padding:8px 12px; border-bottom:1px solid #d5d5d2; overflow:auto; }
-    .filters button { flex:none; border:0; border-radius:6px; background:transparent; padding:6px 9px; color:#737373; font-size:11px; cursor:pointer; }
-    .filters button[aria-pressed="true"] { color:#191919; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.12); }
-    .filters .guard { margin-left:auto; font:500 10px var(--mono); color:var(--safe); white-space:nowrap; }
-    .review-list { height:360px; overflow:hidden; padding:8px; }
-    .review-head { display:flex; align-items:center; gap:9px; height:42px; padding:0 10px; }
-    .review-head .glyph { width:20px; font-size:15px; }
-    .review-head strong { font-size:13px; }
-    .review-head span { margin-left:auto; color:#777; font-size:10px; }
-    .row { height:42px; display:grid; grid-template-columns:22px minmax(0,1fr) auto auto; gap:9px; align-items:center; padding:0 10px; border-radius:8px; cursor:pointer; }
-    .row[aria-selected="true"] { background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.11); }
-    .row .dot { width:16px; height:16px; display:grid; place-items:center; border:1px solid #c9c9c6; border-radius:4px; color:#676767; font:9px var(--mono); background:#f7f7f6; }
-    .row .copy { min-width:0; }
-    .row b { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12.5px; font-weight:520; }
-    .row small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#777; font-size:10.5px; }
-    .badge { padding:2px 5px; border:1px solid #d1d1ce; border-radius:4px; color:#70706e; font:9px var(--mono); white-space:nowrap; }
-    .badge.canonical { border-color:#a8b6dd; color:var(--blue); }
-    .badge.protected { border-color:#b6c9bd; color:var(--safe); }
-    .kind { min-width:58px; text-align:right; color:#777; font-size:10px; }
-    .window-foot { height:44px; display:flex; align-items:center; gap:14px; padding:0 14px; border-top:1px solid #d5d5d2; color:#6d6d6d; font-size:10.5px; }
-    .window-foot strong { color:#222; font-weight:520; }
-    .window-foot .push { margin-left:auto; }
-    .keeper { position:absolute; z-index:3; right:-28px; bottom:-12px; width:190px; height:190px; object-fit:contain; filter:drop-shadow(0 16px 16px rgba(0,0,0,.13)); }
-    .keeper-label { position:absolute; z-index:4; right:104px; bottom:12px; width:168px; padding:9px 11px; border:1px solid var(--line); border-radius:8px; background:var(--white); font:500 10px/1.4 var(--mono); }
-    .keeper-label b { display:block; font-size:11px; color:var(--blue); }
+    .hero { position:relative; min-height:calc(100vh - 112px); padding:clamp(52px,7vw,90px) 0 66px; border-bottom:1px solid var(--ink); }
+    .hero-grid { position:relative; z-index:1; display:grid; grid-template-columns:minmax(330px,.82fr) minmax(560px,1.18fr); gap:clamp(38px,5vw,76px); align-items:center; }
+    .eyebrow,.kicker { color:var(--muted); font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { max-width:670px; margin:20px 0 22px; font-size:clamp(48px,5.2vw,76px); line-height:.96; letter-spacing:-.075em; }
+    .lead { max-width:650px; margin:0; font-size:clamp(15px,1.4vw,18px); line-height:1.68; letter-spacing:-.03em; }
+    .actions { display:flex; flex-wrap:wrap; align-items:center; gap:14px; margin-top:28px; }
+    .button { min-height:46px; display:inline-flex; align-items:center; justify-content:center; gap:18px; padding:0 18px; border:1px solid var(--ink); background:var(--ink); color:var(--paper); font-size:11px; font-weight:700; transition:.14s ease; }
+    .button:hover,.button:focus-visible { background:var(--signal); color:var(--ink); outline:0; transform:translate(-2px,-2px); box-shadow:4px 4px 0 var(--ink); }
+    .demo-button { border:0; border-bottom:1px solid var(--ink); background:transparent; padding:9px 0 6px; font-size:11px; font-weight:700; }
+    .microproof { display:flex; flex-wrap:wrap; gap:18px 34px; margin-top:33px; }
+    .microproof span { color:var(--muted); font-size:10px; line-height:1.45; }
+    .microproof b { display:block; color:var(--ink); font-size:15px; }
 
-    section { padding:82px 0; border-top:1px solid var(--line); }
-    .section-head { display:grid; grid-template-columns:.7fr 1.3fr; gap:36px; align-items:end; margin-bottom:34px; }
-    h2 { margin:10px 0 0; max-width:700px; font-size:clamp(34px,4.2vw,54px); line-height:1.02; letter-spacing:-.045em; font-weight:640; }
-    .section-head p { margin:0; max-width:550px; color:#555651; line-height:1.55; }
-    .state-grid { display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--white); }
-    .state { min-height:190px; padding:20px; border-right:1px solid var(--line); }
-    .state:last-child { border-right:0; }
-    .state .index { font:600 10px var(--mono); color:var(--muted); }
-    .state h3 { margin:28px 0 9px; font-size:17px; letter-spacing:-.02em; }
-    .state p { margin:0; color:#666761; font-size:13px; line-height:1.5; }
-    .state code { display:inline-block; margin-top:18px; padding:4px 6px; border:1px solid var(--line); border-radius:5px; color:var(--blue); font:10px var(--mono); background:var(--paper); }
+    .demo-wrap { position:relative; min-width:0; padding:0 0 102px; }
+    .demo-toolbar { display:flex; width:max-content; max-width:100%; border:1px solid var(--ink); border-bottom:0; background:var(--paper); }
+    .demo-toolbar button { min-height:34px; padding:0 12px; border:0; border-right:1px solid var(--ink); background:var(--paper); font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+    .demo-toolbar button:last-child { border-right:0; }
+    .demo-toolbar button.on { background:var(--signal); }
+    .stage { position:relative; min-height:520px; overflow:hidden; border:1px solid var(--ink); background:var(--aside); font-family:var(--system); box-shadow:8px 8px 0 rgba(0,0,0,.08); }
+    .stage-chrome { height:42px; display:flex; align-items:center; gap:7px; padding:0 13px; border-bottom:1px solid var(--aside-line); font:600 10px var(--mono); color:#777; }
+    .stage-chrome i { width:8px; height:8px; border:1px solid #999; border-radius:50%; }
+    .stage-chrome span { margin-left:auto; }
+    .sidebar { width:47%; min-width:260px; height:477px; padding:10px 8px; border-right:1px solid var(--aside-line); background:#f0f0f0; }
+    .favorite-strip { min-height:54px; display:flex; gap:8px; align-items:flex-start; padding:2px 6px 8px; }
+    .favorite { width:43px; height:43px; display:grid; place-items:center; flex:none; border:1px solid #d3d3d3; border-radius:10px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.12); font:700 11px var(--mono); }
+    .favorite.new { animation:favorite-in .36s cubic-bezier(.2,.8,.2,1) both; box-shadow:0 0 0 2px var(--signal),0 1px 2px rgba(0,0,0,.12); }
+    .side-head { display:flex; align-items:center; justify-content:space-between; padding:13px 10px 5px; color:#7d7d7d; font-size:11px; font-weight:600; }
+    .aside-tab { height:35px; display:flex; align-items:center; gap:9px; padding:0 10px; border-radius:9px; color:#555; font-size:12px; }
+    .aside-tab .ico { width:15px; height:15px; display:grid; place-items:center; flex:none; border-radius:4px; background:#111; color:#fff; font:700 7px var(--mono); }
+    .aside-tab span:nth-child(2) { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .aside-tab .sleep { margin-left:auto; color:#7565a9; font-size:10px; }
+    .aside-tab.active { background:#fff; color:#111; box-shadow:0 1px 2px rgba(0,0,0,.12); }
+    .aside-tab.parked { visibility:hidden; height:0; }
+    .stage-copy { position:absolute; left:50%; right:0; top:42px; bottom:0; display:grid; place-items:center; color:#b5b5b5; font:600 10px var(--mono); letter-spacing:.08em; }
+    .fly { position:absolute; z-index:12; margin:0; background:#fff; box-shadow:0 7px 24px rgba(0,0,0,.22); pointer-events:none; }
 
-    .contract { display:grid; grid-template-columns:repeat(5,1fr); border:1px solid var(--ink); border-radius:12px; overflow:hidden; background:var(--ink); gap:1px; }
-    .contract article { min-height:156px; padding:18px; background:var(--paper); }
-    .contract svg { width:19px; height:19px; stroke:var(--blue); }
-    .contract h3 { margin:30px 0 7px; font-size:14px; }
-    .contract p { margin:0; color:#656660; font-size:12px; line-height:1.45; }
+    .palette { --dx:0px; --dy:0px; position:absolute; z-index:8; left:13%; top:92px; width:min(630px,82%); height:384px; display:flex; flex-direction:column; border:1px solid #c6c6c6; border-radius:13px; background:var(--aside); box-shadow:0 28px 80px rgba(0,0,0,.27),0 7px 20px rgba(0,0,0,.13); transform:translate(var(--dx),var(--dy)); opacity:1; transition:opacity .16s ease,scale .16s ease; overflow:hidden; }
+    .palette.closed { opacity:0; scale:.98; pointer-events:none; }
+    .palette-top { min-height:51px; display:flex; align-items:center; gap:10px; padding:0 15px; border-bottom:1px solid var(--aside-line); cursor:grab; }
+    .palette-top:active { cursor:grabbing; }
+    .palette-top svg { color:#777; flex:none; }
+    .palette-top input { flex:1; min-width:0; border:0; outline:0; background:transparent; font:16px var(--system); }
+    .palette-top kbd,.palette-foot kbd,.action kbd { padding:2px 5px; border:1px solid #d0d0d0; border-radius:4px; background:#f7f7f7; color:#666; font:10px var(--system); }
+    .scopes { min-height:43px; display:flex; align-items:center; gap:2px; padding:0 11px; border-bottom:1px solid var(--aside-line); overflow:auto; }
+    .scopes button { padding:6px 9px; border:0; border-radius:6px; background:transparent; color:#6f6f6f; font:11px var(--system); }
+    .scopes button.on { color:#111; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.12); }
+    .desk { margin-left:auto; color:#65776a; font:600 9px var(--mono); white-space:nowrap; }
+    .palette-list { flex:1; padding:5px 8px; overflow:hidden; }
+    .result-head { padding:9px 9px 4px; color:#777; font-size:10px; }
+    .result { height:35px; display:flex; align-items:center; gap:10px; padding:0 10px; border-radius:8px; font-size:12px; }
+    .result.sel { background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.12); }
+    .result .glyph { width:17px; flex:none; text-align:center; color:#555; font:12px var(--mono); }
+    .result .title { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .result .sub { min-width:0; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#777; font-size:10.5px; }
+    .result .kind { color:#777; font-size:10px; }
+    .palette-foot { min-height:39px; display:flex; align-items:center; gap:10px; padding:0 13px; border-top:1px solid var(--aside-line); color:#777; font-size:10px; }
+    .palette-foot strong { color:#222; font-weight:500; }
+    .palette-foot .push { margin-left:auto; }
+    .action-menu { position:absolute; right:12px; bottom:38px; width:240px; padding:6px; border:1px solid #d0d0d0; border-radius:10px; background:#fff; box-shadow:0 16px 46px rgba(0,0,0,.22); transform:translateY(5px); opacity:0; pointer-events:none; transition:.14s ease; }
+    .action-menu.on { transform:none; opacity:1; pointer-events:auto; }
+    .action-menu small { display:block; padding:5px 8px 7px; color:#777; }
+    .action { height:30px; display:flex; align-items:center; gap:8px; padding:0 8px; border-radius:6px; font-size:11px; }
+    .action:first-of-type { background:var(--aside); }
+    .action kbd { margin-left:auto; }
 
-    .tool-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
-    .tool { min-height:210px; padding:22px; border:1px solid var(--line); border-radius:12px; background:var(--white); }
-    .tool header { display:flex; justify-content:space-between; align-items:center; font:600 10px var(--mono); color:var(--muted); }
-    .tool h3 { margin:44px 0 10px; font-size:20px; letter-spacing:-.025em; }
-    .tool p { margin:0; color:#5e5f5a; font-size:13px; line-height:1.52; }
-    .tool kbd { padding:3px 5px; border:1px solid var(--line); border-radius:4px; background:var(--paper); font:10px var(--mono); color:var(--ink); }
+    .keeper { --eye-x:0px; --eye-y:0px; --tilt:0deg; --lift:0px; position:absolute; z-index:10; right:-30px; bottom:-6px; width:210px; height:210px; transition:transform .18s ease; transform:translateY(var(--lift)) rotate(var(--tilt)); transform-origin:55% 75%; filter:drop-shadow(0 15px 13px rgba(0,0,0,.18)); }
+    .keeper.react { animation:keeper-react .5s cubic-bezier(.2,.8,.2,1); }
+    .keeper img { width:100%; height:100%; object-fit:contain; }
+    .eye { position:absolute; left:49.6%; top:33.2%; width:13.5%; aspect-ratio:1; border-radius:50%; overflow:hidden; pointer-events:none; }
+    .pupil { position:absolute; left:50%; top:50%; width:53%; height:66%; border-radius:48%; background:#070707; transform:translate(calc(-50% + var(--eye-x)),calc(-50% + var(--eye-y))); transition:transform .12s ease; }
+    .pupil::after { content:""; position:absolute; left:55%; top:12%; width:28%; aspect-ratio:1; border-radius:50%; background:#fff; }
+    .lid { position:absolute; inset:-2px; z-index:2; background:#ded4c3; transform:scaleY(0); transform-origin:top; }
+    .keeper.blink .lid { animation:blink .19s ease-in-out; }
+    .keeper-note { position:absolute; z-index:11; right:132px; bottom:28px; width:200px; padding:9px 11px; border:1px solid var(--ink); background:#fff; font:10px/1.45 var(--mono); box-shadow:4px 4px 0 var(--signal); }
+    .keeper-note b { display:block; margin-bottom:2px; color:var(--blue); }
 
-    .install { display:grid; grid-template-columns:.85fr 1.15fr; gap:48px; align-items:start; }
-    .install h2 { margin-top:10px; }
-    .steps { border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--white); }
-    .step { display:grid; grid-template-columns:42px 1fr; gap:12px; padding:18px; border-bottom:1px solid var(--line); }
-    .step:last-child { border-bottom:0; }
-    .step .n { width:30px; height:30px; display:grid; place-items:center; border:1px solid var(--line); border-radius:7px; font:600 10px var(--mono); }
-    .step b { display:block; margin:2px 0 6px; font-size:13px; }
-    .step p { margin:0; color:#656660; font-size:12px; line-height:1.5; }
-    pre { margin:9px 0 0; padding:10px; overflow:auto; border:1px solid var(--line); border-radius:7px; background:var(--paper); font:10px/1.5 var(--mono); }
-    .operator { margin-top:14px; padding:16px 18px; border:1px solid var(--line); border-radius:10px; font-size:12px; line-height:1.55; color:#5d5e58; }
-    .operator b { color:var(--ink); }
-    footer { min-height:92px; display:flex; align-items:center; justify-content:space-between; gap:18px; border-top:1px solid var(--ink); font:500 11px var(--mono); color:var(--muted); }
-    footer a { color:var(--ink); }
+    section { padding:84px 0; border-bottom:1px solid var(--ink); }
+    .section-head { display:grid; grid-template-columns:.8fr 1.2fr; gap:50px; align-items:end; margin-bottom:42px; }
+    h2 { max-width:760px; margin:12px 0 0; font-size:clamp(36px,5vw,66px); line-height:.98; letter-spacing:-.07em; }
+    .section-head p { max-width:590px; margin:0; color:#444; font-size:15px; line-height:1.7; letter-spacing:-.025em; }
+    .moves { border-top:1px solid var(--ink); }
+    .move { display:grid; grid-template-columns:160px minmax(230px,.8fr) minmax(320px,1.2fr); gap:28px; align-items:center; min-height:124px; border-bottom:1px solid var(--hair); }
+    .move kbd { width:max-content; padding:8px 11px; border:1px solid var(--ink); background:var(--paper); font-weight:700; }
+    .move h3 { margin:0; font-size:21px; letter-spacing:-.04em; }
+    .move p { margin:0; color:#555; font-size:13px; line-height:1.55; }
+    .move:first-child { box-shadow:inset 7px 0 0 var(--signal); padding-left:18px; }
 
-    @media (max-width:920px) {
-      .hero { grid-template-columns:1fr; min-height:auto; }
-      .product-scene { max-width:700px; }
+    .receipt-panel { display:grid; grid-template-columns:.9fr 1.1fr; border:1px solid var(--ink); }
+    .receipt-copy { padding:34px; background:#000; color:#fff; }
+    .receipt-copy .kicker { color:#888; }
+    .receipt-copy h3 { margin:34px 0 14px; font-size:clamp(28px,3vw,42px); line-height:1.06; letter-spacing:-.06em; }
+    .receipt-copy p { margin:0; color:#aaa; font-size:13px; line-height:1.65; }
+    .receipt-lines { padding:0 28px; }
+    .receipt-line { min-height:72px; display:grid; grid-template-columns:120px 1fr; gap:20px; align-items:center; border-bottom:1px solid var(--hair); font-size:12px; }
+    .receipt-line:last-child { border-bottom:0; }
+    .receipt-line b { font-size:10px; text-transform:uppercase; letter-spacing:.1em; }
+    .receipt-line span { color:#555; }
+    .signal { display:inline-block; width:7px; height:7px; margin-right:8px; background:var(--signal); border:1px solid var(--ink); }
+
+    .install { display:grid; grid-template-columns:.75fr 1.25fr; gap:60px; align-items:start; }
+    .install h2 { margin-top:12px; }
+    .install p { color:#444; line-height:1.7; }
+    .install-steps { border:1px solid var(--ink); }
+    .install-step { display:grid; grid-template-columns:46px 1fr; gap:15px; padding:18px; border-bottom:1px solid var(--hair); }
+    .install-step:last-child { border-bottom:0; }
+    .install-step > b { font-size:10px; }
+    .install-step strong { display:block; margin-bottom:5px; font-size:13px; }
+    .install-step p { margin:0; color:#666; font-size:11px; }
+    pre { margin:9px 0 0; padding:12px; overflow:auto; background:#000; color:#fff; font:11px/1.55 var(--mono); }
+    pre i { color:var(--signal); font-style:normal; }
+    .operator { margin-top:14px; color:#666; font-size:10px; line-height:1.6; }
+    footer { min-height:128px; display:flex; align-items:center; justify-content:space-between; gap:26px; font-size:10px; color:var(--muted); }
+    footer strong { display:block; margin-bottom:4px; color:var(--ink); font-size:15px; }
+    footer .links { display:flex; gap:20px; color:var(--ink); }
+    footer a { border-bottom:1px solid var(--ink); }
+
+    @keyframes favorite-in { from { opacity:0; transform:translateY(14px) scale(.8); } to { opacity:1; transform:none; } }
+    @keyframes keeper-react { 0%,100% { transform:translateY(var(--lift)) rotate(var(--tilt)); } 42% { transform:translateY(-12px) rotate(-4deg); } }
+    @keyframes blink { 0%,100% { transform:scaleY(0); } 45%,55% { transform:scaleY(1); } }
+    @media (max-width:1020px) {
+      .hero-grid { grid-template-columns:1fr; }
+      .hero-copy { max-width:760px; }
+      .demo-wrap { max-width:820px; }
       .section-head,.install { grid-template-columns:1fr; }
-      .state-grid { grid-template-columns:repeat(2,1fr); }
-      .state:nth-child(2) { border-right:0; }
-      .state:nth-child(-n+2) { border-bottom:1px solid var(--line); }
-      .contract { grid-template-columns:repeat(2,1fr); }
-      .tool-grid { grid-template-columns:1fr; }
     }
-    @media (max-width:620px) {
-      .shell { width:min(100% - 24px,1180px); }
-      .top nav a:not(:last-child),.top nav .version { display:none; }
-      .hero { padding-top:36px; }
-      h1 { font-size:48px; }
-      .product-scene { padding-bottom:52px; }
-      .window { min-height:470px; }
-      .review-list { height:330px; }
-      .row { grid-template-columns:20px minmax(0,1fr) auto; }
-      .row .badge:not(.canonical):not(.protected),.row .kind { display:none; }
-      .keeper { width:132px; height:132px; right:-8px; }
-      .keeper-label { right:88px; bottom:4px; width:144px; }
+    @media (max-width:700px) {
+      .top { min-height:58px; }
+      .brand > span:last-child,.topnav a:not(:last-child),.topnav .version { display:none; }
+      .subnav .shell { gap:20px; }
+      .hero { padding-top:44px; }
+      h1 { font-size:47px; }
+      .demo-wrap { margin-left:calc(-1 * var(--gutter)); margin-right:calc(-1 * var(--gutter)); padding-bottom:84px; }
+      .demo-toolbar { margin-left:var(--gutter); }
+      .stage { min-height:500px; border-left:0; border-right:0; box-shadow:none; }
+      .sidebar { width:68%; min-width:0; }
+      .stage-copy { left:68%; }
+      .palette { left:4%; top:88px; width:92%; height:365px; }
+      .palette .result .sub,.palette .result .kind,.desk { display:none; }
+      .keeper { width:152px; height:152px; right:-10px; }
+      .keeper-note { right:92px; bottom:13px; width:168px; }
       section { padding:62px 0; }
-      .state-grid,.contract { grid-template-columns:1fr; }
-      .state,.state:nth-child(2) { border-right:0; border-bottom:1px solid var(--line); }
-      .state:last-child { border-bottom:0; }
-      .contract article { min-height:132px; }
+      .section-head { gap:24px; }
+      .move { grid-template-columns:100px 1fr; gap:16px; padding:20px 0; }
+      .move:first-child { padding-left:14px; }
+      .move p { grid-column:2; }
+      .receipt-panel { grid-template-columns:1fr; }
+      .receipt-lines { padding:0 18px; }
+      .receipt-line { grid-template-columns:92px 1fr; }
       footer { align-items:flex-start; flex-direction:column; justify-content:center; }
     }
-    @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+    @media (prefers-reduced-motion:reduce) {
+      html { scroll-behavior:auto; }
+      *,*::before,*::after { animation:none!important; transition:none!important; }
+    }
   </style>
 </head>
-<body>
+<body id="top">
   <header class="top shell">
-    <a class="brand" href="#top"><span class="brand-mark">AT</span>Aside Tweaks</a>
-    <nav aria-label="Main navigation">
-      <span class="version">v4.18</span>
-      <a href="#states">Review</a>
-      <a href="#install">Install</a>
-      <a href="https://github.com/aPoWall/aside-tweaks">GitHub ↗</a>
+    <a class="brand" href="/" aria-label="AI Mindset Apps home">
+      <span class="mark" aria-hidden="true"><span>ai</span><span>02</span><i></i></span><span>ai mindset apps / aside tweaks</span>
+    </a>
+    <nav class="topnav" aria-label="Main navigation">
+      <span class="version">v4.19</span><a href="#moves">keys</a><a href="#review">review</a><a href="#install">install</a><a href="https://github.com/aPoWall/aside-tweaks">github ↗</a>
     </nav>
   </header>
+  <nav class="subnav" aria-label="Product sections"><div class="shell">
+    <a href="#top">palette</a><a href="#moves">keep a page</a><a href="#review">review before cleanup</a><a href="#install">operator</a><a href="/language-relay/">language relay ↗</a><a href="https://aimindset.org">ai mindset ↗</a>
+  </div></nav>
 
-  <main id="top">
-    <div class="hero shell">
-      <div>
-        <div class="eyebrow">Aside Browser extension · product-aware review</div>
-        <h1>Know what belongs together.</h1>
-        <p class="lead">Aside Tweaks turns a crowded browser into named product families. Choose the canonical page, protect work in progress, bookmark sources, and close only the reviewed tabs.</p>
-        <div class="actions">
-          <a class="button" href="https://github.com/aPoWall/aside-tweaks#install">Install from GitHub ↗</a>
-          <a class="button secondary" href="#states">See the review model ↓</a>
-        </div>
-        <div class="facts">
-          <span><b>⌥⌘D</b>opens review</span>
-          <span><b>⇧⌘K</b>opens the palette</span>
-          <span><b>0 silent batches</b>every close is previewed</span>
-        </div>
-      </div>
-
-      <div class="product-scene" aria-label="Aside Tweaks semantic review preview">
-        <div class="window">
-          <div class="window-top">
-            <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="6.7" cy="6.7" r="4.5"/><path d="m10.1 10.1 3.7 3.7"/></svg>
-            <strong>review tabs</strong><kbd>esc</kbd>
+  <main>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="codefield" id="codefield" aria-hidden="true"></div>
+      <div class="hero-grid shell">
+        <div class="hero-copy">
+          <div class="eyebrow">Aside Browser extension · local first · open source</div>
+          <h1 id="hero-title">aside tweaks. the keys your browser kept for itself.</h1>
+          <p class="lead">Keep the page you need at the top. Search tabs, history, bookmarks, notes and agents from one native-feeling palette. Review a product cluster before anything closes.</p>
+          <div class="actions">
+            <a class="button" href="https://github.com/aPoWall/aside-tweaks#install">get it on github <span>↗</span></a>
+            <button class="demo-button" type="button" data-demo="palette">move the palette <span>↘</span></button>
           </div>
-          <div class="filters" role="group" aria-label="Review state">
-            <button type="button" data-filter="related" aria-pressed="true">related · 4</button>
-            <button type="button" data-filter="exact" aria-pressed="false">exact · 2</button>
-            <button type="button" data-filter="event" aria-pressed="false">event · 3</button>
-            <button type="button" data-filter="source" aria-pressed="false">sources · 5</button>
-            <span class="guard">● guards on</span>
+          <div class="microproof">
+            <span><b>⌘D</b>page → first bookmark</span>
+            <span><b>⇧⌘K</b>one palette for the desk</span>
+            <span><b>0 silent closes</b>every batch gets a preview</span>
           </div>
-          <div class="review-list" id="reviewList" role="listbox" aria-live="polite"></div>
-          <div class="window-foot"><strong id="primaryAction">switch</strong> ↵<span class="push">actions <kbd>⌘K</kbd></span></div>
         </div>
-        <div class="keeper-label"><b>Tab Keeper</b>guards every batch and writes the receipt.</div>
-        <img class="keeper" src="tab-keeper.png" width="720" height="720" alt="Tab Keeper, the Aside Tweaks review custodian">
-      </div>
-    </div>
 
-    <section id="states">
-      <div class="shell">
-        <div class="section-head">
-          <div><span class="section-kicker">01 · review model</span><h2>Four states. Clear ownership.</h2></div>
-          <p>The review surface separates certainty from context. Exact copies can form a batch. Related pages stay a product decision. Events and research keep their own lifecycle.</p>
-        </div>
-        <div class="state-grid">
-          <article class="state"><span class="index">STATE 01</span><h3>Exact duplicate</h3><p>Same normalized address, or the same meaningful title on one site.</p><code>preview batch</code></article>
-          <article class="state"><span class="index">STATE 02</span><h3>Related product</h3><p>Pages from one working thread across apps, local previews and source systems.</p><code>choose canonical</code></article>
-          <article class="state"><span class="index">STATE 03</span><h3>Stale / event</h3><p>Time-bound pages remain visible as a separate review queue.</p><code>explicit close</code></article>
-          <article class="state"><span class="index">STATE 04</span><h3>Research source</h3><p>References can be bookmarked and carried into the product handoff.</p><code>bookmark source</code></article>
+        <div class="demo-wrap">
+          <div class="demo-toolbar" role="group" aria-label="Demo mode">
+            <button type="button" class="on" data-mode="palette">palette</button>
+            <button type="button" data-mode="keep">⌘D keep</button>
+            <button type="button" data-mode="review">review</button>
+          </div>
+          <div class="stage" id="stage">
+            <div class="stage-chrome"><i></i><i></i><i></i><span>aside · live product model</span></div>
+            <div class="sidebar" aria-label="Simulated Aside sidebar">
+              <div class="favorite-strip" id="favorites">
+                <span class="favorite">AI</span><span class="favorite">⌁</span><span class="favorite">◐</span>
+              </div>
+              <div class="side-head"><span>Chats</span><span>⌃</span></div>
+              <div class="aside-tab"><span class="ico">＋</span><span>New Chat</span></div>
+              <div class="aside-tab"><span class="ico">AI</span><span>Product review</span><span class="sleep">●</span></div>
+              <div class="side-head"><span>Tabs</span><span>⌃</span></div>
+              <div class="aside-tab active" id="keepTab"><span class="ico">AT</span><span>Aside Tweaks · product page</span></div>
+              <div class="aside-tab"><span class="ico">GH</span><span>aside-tweaks / source</span></div>
+              <div class="aside-tab"><span class="ico">LR</span><span>Language Relay</span></div>
+              <div class="aside-tab"><span class="ico">S</span><span>Space · working surface</span><span class="sleep">zZ</span></div>
+            </div>
+            <div class="stage-copy">PAGE CONTENT</div>
+
+            <div class="palette" id="palette" aria-label="Interactive command palette">
+              <div class="palette-top" id="paletteHandle">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="6.7" cy="6.7" r="4.4"/><path d="m10 10 3.7 3.7"/></svg>
+                <input id="paletteQuery" aria-label="Search demo palette" placeholder="search tabs, history, bookmarks, notes" autocomplete="off">
+                <kbd>esc</kbd>
+              </div>
+              <div class="scopes" id="scopes"><button class="on" type="button">all</button><button type="button">tabs</button><button type="button">history</button><button type="button">bookmarks</button><button type="button">notes</button><button type="button">commands</button><span class="desk">● desk</span></div>
+              <div class="palette-list" id="paletteList" role="listbox" aria-live="polite"></div>
+              <div class="action-menu" id="actionMenu" role="menu">
+                <small>actions for selected row</small>
+                <div class="action">open <kbd>↵</kbd></div><div class="action">open in block <kbd>⇧↵</kbd></div><div class="action">bookmark ⇄ tab <kbd>⌘B</kbd></div><div class="action">close eligible tab <kbd>⌘⌫</kbd></div>
+              </div>
+              <div class="palette-foot"><strong id="primaryAction">open</strong> ↵<span class="push">actions <kbd>⌘K</kbd></span></div>
+            </div>
+
+            <div class="keeper-note" role="status" aria-live="polite"><b>Tab Keeper</b><span id="keeperText">drag the palette. i’ll keep an eye on it.</span></div>
+            <div class="keeper" id="keeper" aria-label="Tab Keeper follows the active interaction">
+              <img src="tab-keeper.png" width="720" height="720" alt="Tab Keeper, the Aside Tweaks tab custodian">
+              <span class="eye" aria-hidden="true"><i class="pupil"></i><i class="lid"></i></span>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <section id="contract">
+    <section id="moves">
       <div class="shell">
         <div class="section-head">
-          <div><span class="section-kicker">02 · safety contract</span><h2>The browser keeps its memory.</h2></div>
-          <p>Pinned, active, bookmarked, user-marked and unsaved-form tabs are protected. Model grouping stays a proposal. A destructive batch always receives one final preview.</p>
+          <div><span class="kicker">01 · three moves</span><h2>A place for the page. A next step for you.</h2></div>
+          <p>The extension changes the small transitions that make a crowded browser feel unpredictable. The installed settings expose these exact behaviors.</p>
         </div>
-        <div class="contract">
-          <article><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v18M5 9l7-6 7 6"/></svg><h3>Pinned</h3><p>Top-level anchors keep their place.</p></article>
-          <article><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg><h3>Active</h3><p>The page in hand cannot enter a close batch.</p></article>
-          <article><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12v18l-6-4-6 4z"/></svg><h3>Marked</h3><p>Canonical and user-protected pages persist.</p></article>
-          <article><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4zM7 9h10M7 13h7"/></svg><h3>Unsaved</h3><p>Dirty forms report a boolean guard; field values stay private.</p></article>
-          <article><svg viewBox="0 0 24 24" fill="none"><path d="m5 13 4 4L19 7"/></svg><h3>Receipt</h3><p>Canonical page, sources and closed URLs are recorded locally.</p></article>
+        <div class="moves">
+          <article class="move"><kbd>⌘D</kbd><h3>keep the page first</h3><p>The page becomes the first bookmark, its tab closes, and focus moves to the next unpinned tab. Press again on that page to return it to the top of Tabs.</p></article>
+          <article class="move"><kbd>⇧⌘K</kbd><h3>search the whole desk</h3><p>Tabs, history, bookmarks, Obsidian notes, Aside menu items, commands and configured agents share one field.</p></article>
+          <article class="move"><kbd>⌥⌘D</kbd><h3>review before cleanup</h3><p>Exact copies, related products, stale events and research sources stay separate until you choose what to keep, bookmark or close.</p></article>
         </div>
       </div>
     </section>
 
-    <section id="instrument">
+    <section id="review">
       <div class="shell">
         <div class="section-head">
-          <div><span class="section-kicker">03 · the instrument</span><h2>Review sits inside a faster browser.</h2></div>
-          <p>The extension keeps its original strengths: a native-feeling command palette, reliable shortcut ownership and a small local bridge into notes and agents.</p>
+          <div><span class="kicker">02 · cleanup contract</span><h2>The browser keeps its memory.</h2></div>
+          <p>Model grouping can propose names. It never applies them. Destructive actions stay behind a human preview and leave a local source receipt.</p>
         </div>
-        <div class="tool-grid">
-          <article class="tool"><header><span>PALETTE</span><kbd>⇧⌘K</kbd></header><h3>One field for the desk</h3><p>Tabs, history, bookmarks, Obsidian notes, Aside menu items and Orca agents.</p></article>
-          <article class="tool"><header><span>KEYMAP</span><kbd>⌘D</kbd></header><h3>Your shortcuts win</h3><p>Physical key codes keep bindings stable across Latin and Cyrillic layouts.</p></article>
-          <article class="tool"><header><span>DESK BRIDGE</span><kbd>127.0.0.1</kbd></header><h3>Local context, narrow gate</h3><p>A standard-library service exposes configured notes, menus and agent launch points.</p></article>
+        <div class="receipt-panel">
+          <div class="receipt-copy"><span class="kicker">review / receipt</span><h3>one canonical tab per product.</h3><p>Name the working cluster, keep its product surface, bookmark the source and close only the eligible siblings.</p></div>
+          <div class="receipt-lines">
+            <div class="receipt-line"><b><i class="signal"></i>protected</b><span>pinned · active · bookmarked · user-marked · unsaved form</span></div>
+            <div class="receipt-line"><b><i class="signal"></i>separate</b><span>exact · related · event/stale · research source</span></div>
+            <div class="receipt-line"><b><i class="signal"></i>previewed</b><span>every close batch lists the pages before it runs</span></div>
+            <div class="receipt-line"><b><i class="signal"></i>recorded</b><span>canonical URL · source links · closed URLs · local timestamp</span></div>
+          </div>
         </div>
       </div>
     </section>
 
     <section id="install">
       <div class="shell install">
-        <div><span class="section-kicker">04 · operator</span><h2>Install once. Reload safely.</h2><p class="lead">The unpacked extension runs directly from the canonical repository. The optional bridge is a separate LaunchAgent with a local health endpoint.</p></div>
+        <div><span class="kicker">03 · operator</span><h2>Install once. Reload safely.</h2><p>Aside Tweaks runs unpacked from the canonical repository. The optional desk bridge stays on loopback and only exposes configured notes, menus and agent launch points.</p></div>
         <div>
-          <div class="steps">
-            <div class="step"><span class="n">01</span><div><b>Clone the canonical source</b><pre>git clone https://github.com/aPoWall/aside-tweaks.git</pre></div></div>
-            <div class="step"><span class="n">02</span><div><b>Load unpacked in Aside</b><p>Open <code>chrome://extensions</code>, enable Developer mode, choose <strong>Load unpacked</strong>, then select the repository.</p></div></div>
-            <div class="step"><span class="n">03</span><div><b>Optional desk bridge</b><pre>bridge/install.sh
-curl -H 'X-Aside-Tweaks: desk' http://127.0.0.1:49321/health</pre></div></div>
+          <div class="install-steps">
+            <div class="install-step"><b>01</b><div><strong>clone the canonical product</strong><pre>git clone <i>https://github.com/aPoWall/aside-tweaks.git</i></pre></div></div>
+            <div class="install-step"><b>02</b><div><strong>load unpacked in Aside</strong><p>Open <code>chrome://extensions</code> → Developer mode → Load unpacked → choose the repository.</p></div></div>
+            <div class="install-step"><b>03</b><div><strong>optional local desk bridge</strong><pre>bridge/install.sh
+curl -H 'X-Aside-Tweaks: desk' <i>http://127.0.0.1:49321/health</i></pre></div></div>
           </div>
-          <div class="operator"><b>Migration:</b> v4.18 ignores the old auto-dedupe switch and opens review for cleanup shortcuts. Existing keymaps, bookmarks and bridge config remain.<br><b>Rollback:</b> check out the previous tag or commit, then press Reload on the extension card. No browser profile migration is required.</div>
+          <p class="operator"><b>Migration:</b> v4.19 preserves keymaps, bookmarks, review state and bridge config. New ⌘D saves at row one and selects the next unpinned tab. <b>Rollback:</b> check out v4.18, press Reload on the extension card; no browser profile migration is required.</p>
         </div>
       </div>
     </section>
   </main>
 
   <footer class="shell">
-    <span>Aside Tweaks · v4.18 · built by Alex Povaliaev</span>
-    <span><a href="https://github.com/aPoWall/aside-tweaks">source ↗</a> · <a href="#top">top ↑</a></span>
+    <div><strong>ai mindset apps / aside tweaks</strong><span>small instruments for real work · v4.19 · Lisbon</span></div>
+    <div class="links"><a href="/">all apps</a><a href="/language-relay/">language relay</a><a href="https://aimindset.org">ai mindset</a><a href="https://github.com/aPoWall/aside-tweaks">source</a></div>
   </footer>
 
   <script>
-    const data = {
-      related: {
-        title:'Space product', meta:'4 tabs · canonical selected',
-        rows:[
-          ['S','AI Mindset {space} – evolution','space.aimindset.org','canonical','protected'],
-          ['D','Space Dataflow','space-dataflow.aimindset.org','unsaved','protected'],
-          ['L','Space session preview','127.0.0.1:8916','local','tab'],
-          ['G','Space product source','github.com','source','tab']
-        ]
-      },
-      exact: {
-        title:'Aside Tweaks', meta:'2 tabs · 1 available to close',
-        rows:[
-          ['A','Aside Tweaks – review before cleanup','apps.aimindset.org','canonical','protected'],
-          ['A','Aside Tweaks – review before cleanup','apps.aimindset.org/#review','exact','will close']
-        ]
-      },
-      event: {
-        title:'Time-bound pages', meta:'3 pages · explicit review',
-        rows:[
-          ['C','Calendly – 30 minute call','calendly.com','event','tab'],
-          ['M','Marketing sprint slots','marketing-slots.lab.aimindset.org','12d','asleep'],
-          ['H','S26 hackathon live','hackathon-live.aimindset.org','event','asleep']
-        ]
-      },
-      source: {
-        title:'Research references', meta:'5 sources · bookmark available',
-        rows:[
-          ['Y','Wayfinder – planning with agents','youtube.com','source','tab'],
-          ['G','Herdr – agent runtime','herdr.dev','source','asleep'],
-          ['L','LifeOS – current to ideal state','ourlifeos.ai','source','asleep'],
-          ['B','bb – the IDE that builds itself','getbb.app','source','asleep']
-        ]
-      }
+    const paletteData = {
+      palette: [
+        ['Recent'], ['AT','Aside Tweaks · product page','apps.aimindset.org','tab'], ['S','Space · working surface','space.aimindset.org','tab'],
+        ['Notes'], ['◇','aside product map','Obsidian · today','note'], ['Commands'], ['★','bookmark ⇄ tab','first row of the bar','⌘D'], ['◎','review tabs','exact · related · event · source','⌥⌘D']
+      ],
+      review: [
+        ['Related product · Space'], ['S','AI Mindset {space} · evolution','canonical · protected','keep'], ['D','Space Dataflow','unsaved form · protected','keep'], ['L','Space local preview','eligible sibling','close'],
+        ['Sources'], ['G','Space product source','github.com','bookmark']
+      ]
     };
-    const list = document.getElementById('reviewList');
-    const primary = document.getElementById('primaryAction');
-    let current = 'related';
-    let selected = 0;
+    const stage = document.getElementById('stage');
+    const palette = document.getElementById('palette');
+    const list = document.getElementById('paletteList');
+    const query = document.getElementById('paletteQuery');
+    const actionMenu = document.getElementById('actionMenu');
+    const keeper = document.getElementById('keeper');
+    const keeperText = document.getElementById('keeperText');
+    const codefield = document.getElementById('codefield');
+    let mode = 'palette', selected = 0, kept = false;
 
-    function draw() {
-      const item = data[current];
-      list.replaceChildren();
-      const head = document.createElement('div');
-      head.className = 'review-head';
-      head.innerHTML = `<span class="glyph">${current === 'exact' ? '≡' : current === 'related' ? '⌘' : current === 'event' ? '◷' : '◇'}</span><strong>${item.title}</strong><span>${item.meta}</span>`;
-      list.append(head);
-      item.rows.forEach((r,i) => {
-        const row = document.createElement('div');
-        row.className = 'row'; row.role = 'option'; row.tabIndex = -1;
-        row.setAttribute('aria-selected', String(i === selected));
-        row.title = i === selected ? 'Press Enter to switch · ⌘K for actions' : 'Select tab';
-        row.innerHTML = `<span class="dot">${r[0]}</span><span class="copy"><b>${r[1]}</b><small>${r[2]}</small></span><span class="badge ${r[3] === 'canonical' ? 'canonical' : r[4] === 'protected' ? 'protected' : ''}">${r[3]}</span><span class="kind">${r[4]}</span>`;
-        row.addEventListener('click', () => { selected = i; draw(); });
-        list.append(row);
-      });
-      primary.textContent = current === 'exact' && selected === 1 ? 'preview close' : current === 'source' ? 'bookmark source' : 'switch';
+    function buildNoise() {
+      const glyphs=['{','}','#','>','<','~','+','$','=','1','0',';'];
+      const colors=['#000','#c3ff00','#174fd1','#e86f61','#d7aa00'];
+      for(let i=0;i<62;i++){
+        const span=document.createElement('span'); span.textContent=glyphs[(i*7)%glyphs.length];
+        span.style.left=((i*37)%101)+'%'; span.style.top=((i*61)%97)+'%';
+        span.style.color=colors[i%colors.length]; span.style.opacity=String(.08+(i%5)*.035); codefield.append(span);
+      }
     }
-    document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => {
-      current = button.dataset.filter; selected = 0;
-      document.querySelectorAll('[data-filter]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
-      draw();
+    function rowsForMode(){
+      const q=query.value.trim().toLowerCase();
+      return paletteData[mode==='review'?'review':'palette'].filter(row=>row.length===1||!q||row.join(' ').toLowerCase().includes(q));
+    }
+    function draw(){
+      const rows=rowsForMode(), selectable=rows.filter(row=>row.length>1);
+      selected=Math.max(0,Math.min(selected,selectable.length-1)); list.replaceChildren(); let optionIndex=0;
+      rows.forEach(row=>{
+        if(row.length===1){const h=document.createElement('div');h.className='result-head';h.textContent=row[0];list.append(h);return;}
+        const el=document.createElement('div');el.className='result'+(optionIndex===selected?' sel':'');el.role='option';el.setAttribute('aria-selected',String(optionIndex===selected));
+        el.innerHTML=`<span class="glyph">${row[0]}</span><span class="title">${row[1]}</span><span class="sub">${row[2]}</span><span class="kind">${row[3]}</span>`;
+        const own=optionIndex;el.addEventListener('click',()=>{selected=own;draw();});list.append(el);optionIndex++;
+      });
+      document.getElementById('primaryAction').textContent=mode==='review'?'inspect':'open';
+    }
+    function react(text){keeperText.textContent=text;keeper.classList.remove('react');void keeper.offsetWidth;keeper.classList.add('react');}
+    function togglePalette(open=true){
+      palette.classList.toggle('closed',!open);actionMenu.classList.remove('on');
+      if(open){setTimeout(()=>query.focus(),180);react(mode==='review'?'review is a proposal until you confirm.':'arrows move. ⌘K opens actions.');}
+    }
+    function setMode(next){
+      mode=next;selected=0;query.value='';
+      document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('on',b.dataset.mode===next));
+      document.getElementById('scopes').hidden=next==='review';draw();
+      if(next==='keep'){togglePalette(false);setTimeout(keepPage,120);}else togglePalette(true);
+    }
+    function keepPage(){
+      const tab=document.getElementById('keepTab'),favorites=document.getElementById('favorites');
+      if(kept){
+        favorites.querySelector('[data-demo-favorite]')?.remove();
+        document.querySelectorAll('.aside-tab.active').forEach(x=>x.classList.remove('active'));
+        tab.classList.remove('parked');tab.classList.add('active');kept=false;react('returned to the first tab row. selected.');return;
+      }
+      const stageRect=stage.getBoundingClientRect(),tabRect=tab.getBoundingClientRect(),destRect=favorites.getBoundingClientRect();
+      const clone=tab.cloneNode(true);clone.removeAttribute('id');clone.className='aside-tab fly';
+      clone.style.left=(tabRect.left-stageRect.left)+'px';clone.style.top=(tabRect.top-stageRect.top)+'px';clone.style.width=tabRect.width+'px';stage.append(clone);
+      const dx=destRect.left-tabRect.left+6,dy=destRect.top-tabRect.top+4;
+      const anim=clone.animate([{transform:'translate(0,0) scale(1)'},{transform:`translate(${dx*.64}px,${dy*.38}px) scale(.88)`,offset:.55},{transform:`translate(${dx}px,${dy}px) scale(.32)`,opacity:.2}],{duration:520,easing:'cubic-bezier(.2,.8,.2,1)'});
+      anim.onfinish=()=>{
+        clone.remove();tab.classList.add('parked');tab.classList.remove('active');
+        const fav=document.createElement('span');fav.className='favorite new';fav.dataset.demoFavorite='';fav.textContent='AT';favorites.prepend(fav);
+        const next=[...document.querySelectorAll('.aside-tab')].find(x=>x.querySelector('.ico')?.textContent==='GH');next?.classList.add('active');
+        kept=true;react('saved first. next unpinned tab is active.');
+      };
+    }
+    document.querySelectorAll('[data-mode]').forEach(button=>button.addEventListener('click',()=>setMode(button.dataset.mode)));
+    document.querySelectorAll('[data-demo]').forEach(button=>button.addEventListener('click',()=>setMode(button.dataset.demo)));
+    document.querySelectorAll('#scopes button').forEach(button=>button.addEventListener('click',()=>{
+      document.querySelectorAll('#scopes button').forEach(b=>b.classList.toggle('on',b===button));
+      query.value=button.textContent==='all'?'':button.textContent;selected=0;draw();
     }));
-    document.addEventListener('keydown', event => {
-      if (!['ArrowDown','ArrowUp'].includes(event.key)) return;
-      event.preventDefault();
-      const n = data[current].rows.length;
-      selected = (selected + (event.key === 'ArrowDown' ? 1 : -1) + n) % n;
-      draw();
+    query.addEventListener('input',()=>{selected=0;draw();});
+    document.addEventListener('keydown',event=>{
+      const key=event.key.toLowerCase();
+      if(event.metaKey&&event.shiftKey&&key==='k'){event.preventDefault();setMode('palette');return;}
+      if(event.metaKey&&!event.shiftKey&&!event.altKey&&key==='d'&&!['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)){event.preventDefault();setMode('keep');return;}
+      if(event.metaKey&&!event.shiftKey&&key==='k'&&!palette.classList.contains('closed')){event.preventDefault();actionMenu.classList.toggle('on');react(actionMenu.classList.contains('on')?'actions open. choose the explicit verb.':'actions closed.');return;}
+      if(event.key==='Escape'){togglePalette(false);return;}
+      if(!palette.classList.contains('closed')&&['ArrowDown','ArrowUp'].includes(event.key)){
+        event.preventDefault();const count=rowsForMode().filter(row=>row.length>1).length;selected=(selected+(event.key==='ArrowDown'?1:-1)+count)%count;draw();
+      }
+    },true);
+    let drag=null;
+    const handle=document.getElementById('paletteHandle');
+    handle.addEventListener('pointerdown',event=>{
+      if(event.target.closest('input,kbd'))return;
+      drag={x:event.clientX,y:event.clientY,dx:parseFloat(palette.style.getPropertyValue('--dx'))||0,dy:parseFloat(palette.style.getPropertyValue('--dy'))||0};
+      handle.setPointerCapture(event.pointerId);
     });
-    draw();
+    handle.addEventListener('pointermove',event=>{
+      if(!drag)return;
+      const bounds=stage.getBoundingClientRect(),box=palette.getBoundingClientRect();
+      const wantX=drag.dx+event.clientX-drag.x,wantY=drag.dy+event.clientY-drag.y;
+      const dx=Math.max(wantX-(box.left-bounds.left)+6,Math.min(wantX+(bounds.right-box.right)-6,wantX));
+      const dy=Math.max(wantY-(box.top-bounds.top)+48,Math.min(wantY+(bounds.bottom-box.bottom)-6,wantY));
+      palette.style.setProperty('--dx',dx+'px');palette.style.setProperty('--dy',dy+'px');
+    });
+    handle.addEventListener('pointerup',event=>{drag=null;handle.releasePointerCapture(event.pointerId);react('window moved. state stays put.');});
+    stage.addEventListener('pointermove',event=>{
+      const rect=stage.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width*2-1,y=(event.clientY-rect.top)/rect.height*2-1;
+      keeper.style.setProperty('--eye-x',(x*4)+'px');keeper.style.setProperty('--eye-y',(y*3)+'px');keeper.style.setProperty('--tilt',(x*1.7)+'deg');keeper.style.setProperty('--lift',(-y*1.7)+'px');
+      codefield.style.transform=`translate(${x*2}px,${y*2}px)`;
+    });
+    stage.addEventListener('pointerleave',()=>{keeper.style.setProperty('--eye-x','0px');keeper.style.setProperty('--eye-y','0px');keeper.style.setProperty('--tilt','0deg');keeper.style.setProperty('--lift','0px');});
+    setInterval(()=>{keeper.classList.add('blink');setTimeout(()=>keeper.classList.remove('blink'),240);},4300);
+    buildNoise();draw();
   </script>
 </body>
 </html>

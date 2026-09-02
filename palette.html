@@ -48,8 +48,9 @@
     display: flex; align-items: center; gap: 10px;
     height: 34px; padding: 0 10px; border-radius: var(--radius);
     cursor: pointer; white-space: nowrap;
+    transition: background .1s ease, box-shadow .1s ease, transform .1s ease;
   }
-  .item.sel { background: var(--sel); box-shadow: var(--sel-shadow); }
+  .item.sel { background: var(--sel); box-shadow: var(--sel-shadow); transform: translateX(2px); }
   .item img { width: 18px; height: 18px; flex: none; border-radius: 4px; }
   .item .glyph { width: 18px; text-align: center; flex: none; color: var(--dim); font-size: 13px; }
   .item .t { overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 0; font-size: 13px; }
@@ -93,9 +94,12 @@
     position: absolute; right: 12px; bottom: 40px; min-width: 250px;
     background: var(--tile); border: 1px solid var(--line); border-radius: 10px;
     box-shadow: 0 12px 40px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.08);
-    padding: 6px; display: none; flex-direction: column;
+    padding: 6px; display: flex; flex-direction: column;
+    visibility: hidden; opacity: 0; pointer-events: none;
+    transform: translateY(6px) scale(.985); transform-origin: right bottom;
+    transition: opacity .14s ease, transform .14s cubic-bezier(.2,.8,.2,1), visibility 0s linear .14s;
   }
-  #acts.on { display: flex; }
+  #acts.on { visibility: visible; opacity: 1; pointer-events: auto; transform: none; transition-delay: 0s; }
   #acts .ah { font-size: 10.5px; color: var(--muted); padding: 4px 8px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px; }
   #acts .a { display: flex; align-items: center; gap: 10px; height: 28px; padding: 0 8px; border-radius: 6px; cursor: pointer; font-size: 12.5px; }
   #acts .a.sel { background: var(--sel); box-shadow: var(--sel-shadow); }

@@ -120,15 +120,15 @@
     <div class="head"><span class="idx">02</span><span class="ttl">pin vs bookmark</span></div>
     <div class="body">
       <small style="margin-bottom:9px">
-        <b><code>⌘D</code> — bookmark ⇄ tab.</b> the page lands as the last row of the bookmarks bar and the tab stays open and loaded.
-        press it again on the same page: the bookmark goes away and the tab returns to the very top of the list.<br>
+        <b><code>⌘D</code> — bookmark ⇄ tab.</b> the page becomes the first row of the bookmarks bar and, by default, its open tab closes.
+        focus moves to the next unpinned tab; press ⌘D on the page again to remove the bookmark and return its tab to the top.<br>
         <b><code>⇧⌘D</code> — pin.</b> the squares on top of the sidebar, the browser's own pin on a key of its own.
       </small>
       <label class="opt"><input type="checkbox" id="favoriteCloses">
-        <span>after ⌘D the tab closes<small>the page stays as a row of the bookmarks bar and opens again from there; focus returns to the page you came from. off — the tab stays open and moves to the first row (v4.14 behaviour)</small></span>
+        <span>after ⌘D the tab closes<small>the page stays first in the bookmarks bar and opens again from there; focus moves to the next unpinned tab. off — the tab stays open and moves to the first tab row</small></span>
       </label>
       <label class="opt"><input type="checkbox" id="favoriteMovesTab">
-        <span>the tab moves along with the bookmark<small>to the first row of the tabs in both directions. off — only the bookmark changes, the tab never leaves its place</small></span>
+        <span>the open tab moves to the top<small>used when closing is off and when a bookmark is removed. off — only the bookmark changes, the open tab keeps its place</small></span>
       </label>
       <label class="opt"><input type="checkbox" id="favoriteLeavesGroup">
         <span>⌘D takes the tab out of its block<small>Aside's sidebar folds an open tab into the bookmark row with the same address — but only a tab outside any block. inside a block the page would show twice: in the bookmarks and in the block</small></span>

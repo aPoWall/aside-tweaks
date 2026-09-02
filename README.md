@@ -99,6 +99,8 @@ Useful keys:
 
 The page-level keymap uses physical key codes, so Latin and Cyrillic layouts keep the same bindings. Browser-reserved shortcuts still belong to the operating system or Chromium.
 
+`⌘D` inserts the page as the **first** bookmarks-bar row. With the default close option enabled, its open tab closes and the next unpinned tab in the sidebar becomes active; pinned tabs are used only when no working tab remains. With close disabled, the tab stays loaded and moves to the first Tabs row. Aside's native **Chats** section and system-owned `⌘W` / `⌘V` behavior are outside the extension API.
+
 ## Desk bridge
 
 `bridge/desk.py` is a standard-library Python service with a narrow local gate. It can:
@@ -136,15 +138,17 @@ node tests/sw-smoke.mjs
 2. Update `manifest.json`, `CHANGELOG.md` and this README.
 3. Run syntax and smoke tests.
 4. Open `chrome://extensions` and press **Reload** on Aside Tweaks.
-5. Verify `chrome-extension://biahbgkjdbjnidodbpekgoigldpmpjpg/options.html` reports the new version.
+5. Verify `chrome-extension://biahbgkjdbjnidodbpekgoigldpmpjpg/options.html` reports the new version and that `⌘D` saves a QA page first, then selects the next unpinned tab.
 6. Copy `docs/` into the existing `lab-sites/sites/apps/aside-tweaks/` lane.
 7. Run the `lab-sites` preflight, commit only that site path, push `main`, and verify production.
 
 ### Migration and rollback
 
-**v4.17 → v4.18:** existing keymaps, bookmarks, bridge config and theme settings remain. The old auto-dedupe switch stops applying destructive behavior. Cleanup keys open review.
+**v4.18 → v4.19:** existing keymaps, bookmarks, bridge config, review state and theme settings remain. New bookmarks created by `⌘D` go to row one; the default close flow selects the next unpinned tab. Existing bookmark order is untouched.
 
-**Rollback:** check out the previous commit or tag, then press **Reload** on the extension card. The review state lives in `chrome.storage.local`; older versions ignore it. The bridge can be rolled back with the repository or removed with `bridge/install.sh --remove`.
+**v4.17 → v4.18:** the old auto-dedupe switch stops applying destructive behavior. Cleanup keys open review.
+
+**Rollback:** check out v4.18 or the previous commit, then press **Reload** on the extension card. Existing bookmarks remain in their current order; v4.18 resumes appending new `⌘D` bookmarks. The review state lives in `chrome.storage.local`; older versions ignore it. The bridge can be rolled back with the repository or removed with `bridge/install.sh --remove`.
 
 ## Privacy
 

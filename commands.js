@@ -17,8 +17,8 @@ const TWEAK_COMMANDS = [
     words: 'palette search find', group: 'surface', on: ['popup']
   },
   {
-    action: 'favoriteTab', glyph: '★', title: 'bookmark ⇄ tab', short: 'bookmark ⇄ tab', sub: 'last row of the bar', key: '⌘D',
-    hint: 'the page joins the bookmarks bar and the tab closes — focus returns to the page you came from; the bar row opens it again · ⌘D on an open bookmarked page removes the bookmark',
+    action: 'favoriteTab', glyph: '★', title: 'bookmark ⇄ tab', short: 'bookmark ⇄ tab', sub: 'first row of the bar', key: '⌘D',
+    hint: 'the page becomes the first bookmark and the tab closes — focus moves to the next open tab · ⌘D on an open bookmarked page removes the bookmark',
     words: 'bookmark bar keep star', group: 'tab', on: ['palette', 'popup']
   },
   {

@@ -36,9 +36,9 @@ const DEFAULTS = {
   tabPlacement: 'underCurrent',     // underCurrent | end | browser
   placementGuardMs: 2500,           // сколько держим вкладку на месте, если Aside её двигает
   keepPins: true,
-  favoriteMovesTab: true,   // ⌘D двигает и вкладку: вниз при закладке, наверх при возврате
+  favoriteMovesTab: true,   // ⌘D двигает открытую вкладку наверх, если закрытие выключено
   favoriteLeavesGroup: true, // ⌘D выводит вкладку из блока: вне блока сайдбар Aside вплавляет её в строку закладки
-  favoriteCloses: true,      // ⌘D после закладки закрывает вкладку и возвращает на прежнюю — как пин в Arc: строка остаётся в панели
+  favoriteCloses: true,      // ⌘D кладёт страницу первой в панели, закрывает вкладку и выбирает следующую рабочую
   tidyMinGroup: 3,           // блок при уборке собирается от стольких вкладок; пары остаются россыпью
   paletteOverlay: true,     // палитра слоем поверх страницы; выключено — отдельным окном
   keymapEnabled: true,
@@ -1087,6 +1087,18 @@ async function moveTabTo(tab) {
   try { await chrome.tabs.move(tab.id, { index }); return true; } catch { return false; }
 }
 
+// Закрытие не должно будить закреплённый якорь только потому, что он недавно был активен.
+// В сайдбаре предсказуемее идти на следующую незакреплённую строку, затем на предыдущую.
+// Закреплённая вкладка остаётся последним резервом, когда рабочих строк больше нет.
+function nextWorkingTab(tab, others) {
+  const loose = others.filter(t => !t.pinned);
+  const after = loose.filter(t => t.index > tab.index).sort((a, b) => a.index - b.index)[0];
+  if (after) return after;
+  const before = loose.filter(t => t.index < tab.index).sort((a, b) => b.index - a.index)[0];
+  if (before) return before;
+  return others.slice().sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0] || null;
+}
+
 async function favoriteTab(windowId) {
   const wid = await targetWindowId(windowId);
   const [tab] = await chrome.tabs.query(wid != null ? { active: true, windowId: wid } : { active: true, currentWindow: true });
@@ -1106,19 +1118,19 @@ async function favoriteTab(windowId) {
     return -1;
   }
 
-  // последняя строка панели закладок — там, куда смотришь после нажатия;
-  // адрес пишем как есть: сайдбар сличает его с вкладкой буквально
-  const made = await chrome.bookmarks.create({ parentId: BAR, index: kids.length, title: tab.title || tab.url, url: tab.url });
+  // Первая строка панели закладок остаётся видимой рядом с верхом сайдбара.
+  // Адрес пишем как есть: Aside сличает его с открытой вкладкой буквально.
+  const made = await chrome.bookmarks.create({ parentId: BAR, index: 0, title: tab.title || tab.url, url: tab.url });
   await chrome.storage.session.set({ lastFavId: made?.id ?? null, lastFavAt: Date.now() }).catch(() => { });
 
-  // закладка есть — вкладка закрывается, фокус уходит туда, где были до неё;
-  // строка в панели закладок остаётся и открывает страницу заново по клику
+  // Закладка остаётся первой строкой панели. Вкладка закрывается, а фокус идёт
+  // по видимому списку рабочих вкладок, не прыгая в pinned-якорь без необходимости.
   if (settings.favoriteCloses !== false) {
     const others = (await chrome.tabs.query({ windowId: tab.windowId }).catch(() => [])).filter(t => t.id !== tab.id);
-    const prev = others.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0] || null;
-    if (prev) await chrome.tabs.update(prev.id, { active: true }).catch(() => { });
+    const next = nextWorkingTab(tab, others);
+    if (next) await chrome.tabs.update(next.id, { active: true }).catch(() => { });
     if (others.length) await chrome.tabs.remove(tab.id).catch(() => { });
-    flash('BM+', 'in the bookmarks bar ★ · tab closed' + (prev ? '\nback to ' + plainTitle(prev.title).slice(0, 40) : '') + '\nthe bar row opens it again');
+    flash('BM+', 'first in the bookmarks bar ★ · tab closed' + (next ? '\nnext: ' + plainTitle(next.title).slice(0, 40) : '') + '\nthe bar row opens it again');
     return 1;
   }
 

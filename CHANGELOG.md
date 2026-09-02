@@ -1,5 +1,14 @@
 # Changelog
 
+## 4.19.0 – 2026-09-02
+
+- moved new `⌘D` bookmarks to the first row of the bookmarks bar;
+- made post-close focus follow the next unpinned tab, with pinned tabs as fallback only;
+- aligned settings, palette, popup and panel copy with the installed behavior;
+- restored the product page's AI Mindset Apps engineering language and concise first viewport;
+- added a draggable live palette, keyboard demo, animated keep transition and reactive Tab Keeper;
+- kept semantic review as an explicit palette mode instead of presenting it as the whole product.
+
 ## 4.18.0 – 2026-09-01
 
 - added product-aware tab review with exact, related, stale/event and research states;
@@ -19,4 +28,4 @@
 
 ## Rollback
 
-Check out the required version, reload the unpacked extension, and verify the manifest version on `chrome://extensions`. Review storage added in 4.18 is ignored by older versions.
+Check out the required version, reload the unpacked extension, and verify the manifest version on `chrome://extensions`. Rolling back to 4.18 restores append-at-end behavior for future `⌘D` bookmarks; existing bookmark order and review storage remain intact.

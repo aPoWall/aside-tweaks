@@ -105,10 +105,10 @@ function tabRow(tab) {
   t.textContent = tab.title || tab.url || 'untitled';
   d.append(iconFor(tab.url, tab.favIconUrl), t);
 
-  d.append(act('★', 'bookmark ⇄ tab · last row of the bar, the tab stays open', false, async () => {
+  d.append(act('★', 'bookmark ⇄ tab · first row of the bar, then next open tab', false, async () => {
     await chrome.tabs.update(tab.id, { active: true });
     const r = await chrome.runtime.sendMessage({ action: 'favoriteTab', windowId: tab.windowId });
-    say(r?.count === -1 ? 'back in the tabs, at the top' : 'bookmarked ↓ last row');
+    say(r?.count === -1 ? 'back in the tabs, at the top' : 'bookmarked ↑ first row');
   }));
   d.append(act(tab.pinned ? '◆' : '◇', tab.pinned ? 'unpin' : 'pin to the sidebar squares', tab.pinned, async () => {
     await chrome.tabs.update(tab.id, { pinned: !tab.pinned });
