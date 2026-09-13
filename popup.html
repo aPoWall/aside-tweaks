@@ -8,8 +8,13 @@
      ему максимальный размер — окно разъезжается на 800×600 после действия */
   html { width: 320px; overflow-x: hidden; }
   body { width: 320px; }
-  .inst-head { display: flex; align-items: baseline; gap: 8px; padding-bottom: 6px; }
+  .inst-head { display: flex; align-items: center; gap: 9px; padding-bottom: 6px; }
   .inst-head .inst-sub { margin-left: auto; }
+  .inst-head .inst-title { margin-bottom: 0; }
+  /* живой знак: персонаж aside 40 px, реагирует на курсор и клик */
+  .aim-mark { display: inline-flex; align-items: center; height: 40px; flex: none; border-radius: 6px; }
+  .aim-mark .aimv { height: 40px !important; width: auto !important; overflow: visible; }
+  .aim-mark:focus-visible { outline: 1px solid var(--muted); outline-offset: 2px; }
   /* одна строка показаний: считаем только то, что не ноль */
   .readout { display: flex; align-items: baseline; gap: 6px; padding: 6px 9px; margin-bottom: 8px; }
   .readout .big { font-size: 12.5px; }
@@ -29,6 +34,7 @@
 </head>
 <body>
   <div class="inst-head">
+    <span class="aim-mark" data-aim-mark title="aside tweaks · click"></span>
     <div class="inst-title">aside tweaks</div>
     <div class="inst-sub">instrument 01 · <b id="ver">v4</b></div>
   </div>
@@ -47,6 +53,8 @@
   </div>
 
   <script src="theme.js"></script>
+  <script src="vendor/aim-voxel.js"></script>
+  <script src="mark.js"></script>
   <script src="commands.js"></script>
   <script src="popup.js"></script>
 </body>

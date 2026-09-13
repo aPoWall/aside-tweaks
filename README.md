@@ -101,6 +101,12 @@ The page-level keymap uses physical key codes, so Latin and Cyrillic layouts kee
 
 `⌘D` inserts the page as the **first** bookmarks-bar row. With the default close option enabled, its open tab closes and the next unpinned tab in the sidebar becomes active; pinned tabs are used only when no working tab remains. With close disabled, the tab stays loaded and moves to the first Tabs row. Aside's native **Chats** section and system-owned `⌘W` / `⌘V` behavior are outside the extension API.
 
+## Live mark
+
+The panel and popup header carry the aside voxel character from the AI Mindset apps export. It follows the cursor with a small depth parallax; a click, Enter or Space scatters and reassembles it and steps the red cursor to a neighbouring cell. With Reduce Motion only the cursor moves.
+
+`vendor/aim-voxel.js` and `vendor/aim-voxel-aside.json` are byte-for-byte copies of `sites/apps/assets/aim-voxel.js` and the `aside` model from `sites/apps/assets/voxel-models.json` in `ai-mindset-org/lab-sites`; compare them by SHA-256 before a release. `mark.js` renders the character without inline scripts.
+
 ## Desk bridge
 
 `bridge/desk.py` is a standard-library Python service with a narrow local gate. It can:
@@ -143,6 +149,8 @@ node tests/sw-smoke.mjs
 7. Run the `lab-sites` preflight, commit only that site path, push `main`, and verify production.
 
 ### Migration and rollback
+
+**v4.19 → v4.20:** the extension gains `vendor/` and `mark.js`; keymaps, bookmarks, bridge config, review state and theme settings remain untouched.
 
 **v4.18 → v4.19:** existing keymaps, bookmarks, bridge config, review state and theme settings remain. New bookmarks created by `⌘D` go to row one; the default close flow selects the next unpinned tab. Existing bookmark order is untouched.
 

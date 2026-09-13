@@ -11,9 +11,13 @@
   body { display: flex; flex-direction: column; overflow: hidden; font-size: 11px; }
 
   header {
-    display: flex; align-items: baseline; gap: 9px;
-    padding: 10px var(--pad) 8px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px var(--pad) 6px; border-bottom: 1px solid var(--line);
   }
+  /* живой знак: персонаж aside 44 px, реагирует на курсор и клик */
+  header .aim-mark { display: inline-flex; align-items: center; height: 44px; flex: none; border-radius: 6px; }
+  header .aim-mark .aimv { height: 44px !important; width: auto !important; overflow: visible; }
+  header .aim-mark:focus-visible { outline: 1px solid var(--muted); outline-offset: 2px; }
   header .name { font-size: 13px; letter-spacing: -.01em; }
   header .count { margin-left: auto; font-size: 9.5px; color: var(--muted); }
   header .gear { border: none; background: none; color: var(--muted); font: inherit; cursor: pointer; }
@@ -86,6 +90,7 @@
 </head>
 <body>
   <header>
+    <span class="aim-mark" data-aim-mark title="aside tweaks · click"></span>
     <span class="name">tweaks</span>
     <span class="count" id="count">–</span>
     <button class="gear" id="gear" title="settings">⚙</button>
@@ -111,6 +116,8 @@
   </footer>
 
   <script src="theme.js"></script>
+  <script src="vendor/aim-voxel.js"></script>
+  <script src="mark.js"></script>
   <script src="commands.js"></script>
   <script src="panel.js"></script>
 </body>
