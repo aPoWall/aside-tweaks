@@ -1,7 +1,7 @@
-// Aside Tweaks — живой знак продукта в шапке панели и попапа.
+// Aside Tweaks – живой знак продукта в шапке панели и попапа.
 // Персонаж aside из общего экспорта AI Mindset apps (vendor/aim-voxel.js + vendor/aim-voxel-aside.json,
 // байт-в-байт с sites/apps/assets). Наведение даёт параллакс по глубине, клик или Enter/Space
-// рассыпает и собирает фигуру и переносит красный курсор на соседнюю клетку; reduced motion — только курсор.
+// рассыпает и собирает фигуру и переносит красный курсор на соседнюю клетку; reduced motion – только курсор.
 (() => {
   const stage = document.querySelector('[data-aim-mark]');
   if (!stage || !window.AIMVoxel) return;
