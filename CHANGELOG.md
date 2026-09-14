@@ -3,7 +3,7 @@
 ## 4.20.0 – 2026-09-14
 
 - added the live product mark: the aside voxel character sits in the panel and popup header, follows the cursor with a small depth parallax, and scatters and reassembles on click, Enter or Space while its red cursor steps to a neighbouring cell;
-- vendored `vendor/aim-voxel.js` and `vendor/aim-voxel-aside.json` byte for byte from the AI Mindset apps export (`sites/apps/assets`); `mark.js` renders the character without inline scripts;
+- vendored `vendor/aim-voxel.js` byte for byte from the AI Mindset apps export (`sites/apps/assets/aim-voxel.js`, sha-256 `9ed762d5…6eccb`); `vendor/aim-voxel-aside.json` is the aside model extracted from `voxel-models.json` of 2026-09-13 (sha-256 `346273ca…3ce1`); `mark.js` renders the character without inline scripts;
 - reduced motion keeps the character static and only moves the red cursor;
 - rebuilt the product page on the shared N1 structure with English by default and a Russian switch.
 
