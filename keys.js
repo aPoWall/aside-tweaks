@@ -1,4 +1,4 @@
-// Aside Tweaks — своя раскладка клавиш поверх браузерных
+// Aside Tweaks – своя раскладка клавиш поверх браузерных
 //
 // Почему так: chrome.commands нельзя переназначить из расширения (только на
 // системной странице браузера) и нельзя повесить на занятые браузером сочетания.
@@ -11,7 +11,7 @@ const DEFAULT_KEYMAP = {
   pinTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: true },
   tidyDuplicates: { code: 'KeyD', meta: true, ctrl: false, alt: true, shift: false },
   tidyUp: { code: 'KeyT', meta: true, ctrl: false, alt: true, shift: false },
-  togglePanel: null,   // панель просит жест пользователя — надёжно только нативным ⌃⇧S
+  togglePanel: null,   // панель просит жест пользователя – надёжно только нативным ⌃⇧S
   bookmarkTab: null,
   openPalette: { code: 'KeyK', meta: true, ctrl: false, alt: false, shift: true },
   groupByRules: null,
@@ -28,14 +28,14 @@ let keymap = DEFAULT_KEYMAP;
 let blockKeys = true;
 
 // Review защищает страницы с несохранённым вводом. Content script знает об этом
-// раньше service worker'а и отвечает только булевым флагом — значения полей не читает.
+// раньше service worker'а и отвечает только булевым флагом – значения полей не читает.
 let reviewDirty = false;
 const editable = el => !!el?.matches?.('input:not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, select, [contenteditable="true"]');
 document.addEventListener('input', e => { if (editable(e.target)) reviewDirty = true; }, true);
 document.addEventListener('change', e => { if (editable(e.target)) reviewDirty = true; }, true);
 document.addEventListener('submit', () => { reviewDirty = false; }, true);
 
-// цвет рамки палитры до загрузки документа — иначе на тёмной теме мигает серым
+// цвет рамки палитры до загрузки документа – иначе на тёмной теме мигает серым
 let paletteSkin = { bg: '#ececec', line: 'rgba(0,0,0,.14)', dark: false };
 function skinOf(t) {
   const look = t?.look === 'paper' ? 'paper' : 'aside';
@@ -46,7 +46,7 @@ function skinOf(t) {
 }
 
 chrome.storage.sync.get({ keymap: null, keymapEnabled: true, theme: null, blockKeys: true }).then(s => {
-  // поверх дефолтной, а не вместо неё — иначе новые действия остаются без клавиш
+  // поверх дефолтной, а не вместо неё – иначе новые действия остаются без клавиш
   keymap = { ...DEFAULT_KEYMAP, ...(s.keymap || {}) };
   enabled = s.keymapEnabled !== false;
   blockKeys = s.blockKeys !== false;
@@ -71,7 +71,7 @@ const DIGIT = /^Digit([1-9])$/;
 
 window.addEventListener('keydown', (e) => {
   if (!enabled || e.repeat || e.isComposing) return;
-  // без модификаторов не перехватываем — иначе сломаем ввод текста
+  // без модификаторов не перехватываем – иначе сломаем ввод текста
   if (!e.metaKey && !e.ctrlKey && !e.altKey) return;
 
   // ⌘-цифра = блок окна, ⇧⌘-цифра = положить текущую вкладку в этот блок
@@ -156,11 +156,11 @@ function setDim(on) {
 // ---------- палитра слоем поверх страницы ----------
 // Отдельное окно нельзя лишить заголовка и светофора, и тень оно кладёт системную.
 // Слой на странице читается полем: затемнение, размытие, крупная тень, своя анимация.
-// Страница может запретить чужие рамки своей политикой — тогда молча уходим в окно.
+// Страница может запретить чужие рамки своей политикой – тогда молча уходим в окно.
 
 let palette = null;
 let paletteReady = false;
-let signalHost = false;   // палитра стоит на сигнальной странице моста — после закрытия та уходит
+let signalHost = false;   // палитра стоит на сигнальной странице моста – после закрытия та уходит
 
 function closePalette() {
   if (!palette) return;
@@ -175,7 +175,7 @@ function closePalette() {
   }
 }
 
-let paletteQ = '';        // запрос, с которым слой просили — уходит и в запасное окно
+let paletteQ = '';        // запрос, с которым слой просили – уходит и в запасное окно
 let paletteView = '';     // review / review-tidy
 
 function openPaletteLayer({ win, tab, q, view, signal }) {
@@ -241,7 +241,7 @@ function openPaletteLayer({ win, tab, q, view, signal }) {
   requestAnimationFrame(() => host.classList.add('in'));
   setTimeout(() => frame.focus(), 40);
 
-  // рамку могла срезать политика безопасности страницы — тогда пусть открывается окном
+  // рамку могла срезать политика безопасности страницы – тогда пусть открывается окном
   setTimeout(() => {
     if (palette === host && !paletteReady) {
       closePalette();
@@ -257,7 +257,7 @@ window.addEventListener('message', (e) => {
 });
 
 // сигнальная страница моста: сюда приводит `open -a Aside http://127.0.0.1:<port>/aside-tweaks/palette`
-// с глобальной клавиши (Raycast, Hammerspoon) — просим палитру, дальше решает фон
+// с глобальной клавиши (Raycast, Hammerspoon) – просим палитру, дальше решает фон
 const SIGNAL_PAGE = /^127\.0\.0\.1(:\d+)?$/.test(location.host) && location.pathname === '/aside-tweaks/palette';
 if (SIGNAL_PAGE && window.top === window) {
   const fire = () => {

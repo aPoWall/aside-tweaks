@@ -1,7 +1,7 @@
-// Aside Tweaks — предложение по группировке.
+// Aside Tweaks – предложение по группировке.
 //
 // Окно показывает, ЧТО именно произойдёт, до того как что-то произошло.
-// Модель ошибается, и молча переставленные полсотни вкладок — плохая цена
+// Модель ошибается, и молча переставленные полсотни вкладок – плохая цена
 // за её ошибку. Поэтому применяет человек, одной кнопкой.
 
 const listEl = document.getElementById('list');
@@ -16,7 +16,7 @@ function render(plan) {
   if (!plan?.groups?.length) {
     const d = document.createElement('div');
     d.className = 'empty';
-    d.textContent = 'nothing to apply — the proposal expired, run the command again';
+    d.textContent = 'nothing to apply – the proposal expired, run the command again';
     listEl.append(d);
     document.getElementById('apply').disabled = true;
     return;

@@ -1,5 +1,5 @@
-// Aside Tweaks — попап. Плитки собираются из commands.js: одна правка меняет
-// и попап, и панель, и палитру. Секции — по полю group, имена — по short.
+// Aside Tweaks – попап. Плитки собираются из commands.js: одна правка меняет
+// и попап, и панель, и палитру. Секции – по полю group, имена – по short.
 
 const LABELS = {
   tidyDuplicates: () => 'review opened',
@@ -82,7 +82,7 @@ function build() {
 }
 
 async function refreshStats() {
-  // service worker может спать — первый вызов его будит, второй уже отвечает
+  // service worker может спать – первый вызов его будит, второй уже отвечает
   let res = await chrome.runtime.sendMessage({ action: 'getStats' }).catch(() => null);
   if (!res?.ok) res = await chrome.runtime.sendMessage({ action: 'getStats' }).catch(() => null);
   if (!res?.ok) { document.getElementById('statsub').textContent = 'service worker asleep · press again'; return; }
@@ -105,7 +105,7 @@ async function refreshStats() {
 }
 
 async function run(c) {
-  // открыть панель можно только по жесту пользователя — клик в попапе им и является
+  // открыть панель можно только по жесту пользователя – клик в попапе им и является
   if (c.action === 'togglePanel') {
     const w = await chrome.windows.getLastFocused({ windowTypes: ['normal'] }).catch(() => null);
     try { await chrome.sidePanel.open(w ? { windowId: w.id } : {}); window.close(); }

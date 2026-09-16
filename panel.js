@@ -1,10 +1,10 @@
-// Aside Tweaks — панель (chrome.sidePanel)
+// Aside Tweaks – панель (chrome.sidePanel)
 // Три яруса сверху вниз: favorites (страницы, перенесённые наверх), pinned
 // (нативные пины Chromium), tabs (всё остальное, разбитое по блокам).
-// Поиска здесь нет намеренно — он живёт в палитре ⇧⌘K.
+// Поиска здесь нет намеренно – он живёт в палитре ⇧⌘K.
 
 const SECOND_LEVEL = new Set(['co.uk', 'org.uk', 'com.br', 'com.au', 'co.jp', 'com.tr']);
-const BAR = '1';           // Bookmarks Bar — закладки лежат в корне, без папки
+const BAR = '1';           // Bookmarks Bar – закладки лежат в корне, без папки
 const FLASH_WINDOW = 4000; // сколько времени свежий пин/закладка подсвечиваются
 
 let winId = null;
@@ -160,7 +160,7 @@ async function render() {
   if (winId == null) winId = (await chrome.windows.getCurrent().catch(() => null))?.id ?? null;
 
   const all = await chrome.tabs.query(winId != null ? { windowId: winId } : { currentWindow: true }).catch(() => []);
-  // закладка уезжает в конец панели — показываем хвост, свежая внизу, как в сайдбаре
+  // закладка уезжает в конец панели – показываем хвост, свежая внизу, как в сайдбаре
   const marks = (await chrome.bookmarks.getChildren(BAR).catch(() => [])).filter(k => k.url).slice(-14);
   const hi = await chrome.storage.session.get({ lastFavId: null, lastFavAt: 0, lastPinId: null, lastPinAt: 0 }).catch(() => ({}));
   if (my !== renderSeq) return;
@@ -232,7 +232,7 @@ for (const ev of ['onCreated', 'onRemoved', 'onChanged', 'onMoved']) {
 
 document.getElementById('gear').addEventListener('click', () => chrome.runtime.openOptionsPage());
 
-// плитки собираются из общего списка команд — одна правка меняет и панель, и палитру
+// плитки собираются из общего списка команд – одна правка меняет и панель, и палитру
 function renderCmds() {
   const box = document.getElementById('cmds');
   box.replaceChildren();

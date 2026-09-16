@@ -5,17 +5,17 @@ aside tweaks · desk bridge
 A tiny local HTTP server that lets the palette reach two things a browser
 extension cannot touch on its own:
 
-  • recent Obsidian notes  — read from each vault's .obsidian/workspace.json
+  • recent Obsidian notes  – read from each vault's .obsidian/workspace.json
                              (the same list Obsidian shows as «recent files»),
                              plus a filename search over the vault;
-  • agents                 — live Orca terminals to switch to, and a new agent
+  • agents                 – live Orca terminals to switch to, and a new agent
                              (claude / codex) started in a chosen working folder.
 
 Listens on 127.0.0.1 only and answers only to requests carrying the
 `X-Aside-Tweaks: desk` header (a web page cannot add it without a CORS
 preflight, and the preflight is refused); an Origin, when present, must be a
 chrome-extension:// page, optionally pinned to specific ids. Standard library
-only — no pip.
+only – no pip.
 
 Config: ~/.config/aside-tweaks/desk.json  (see bridge/install.sh for a template)
 """
@@ -64,7 +64,7 @@ CFG = load_config()
 # ---------- notes ----------
 
 def recent_of(vault):
-    """lastOpenFiles from workspace.json — Obsidian's own «recent files», MRU order."""
+    """lastOpenFiles from workspace.json – Obsidian's own «recent files», MRU order."""
     ws = os.path.join(vault["path"], ".obsidian", "workspace.json")
     try:
         with open(ws, encoding="utf-8") as fh:
@@ -121,8 +121,8 @@ def index_notes():
 
 
 def notes(q="", limit=30, sort="modified", since=""):
-    """sort: modified — по времени правки файла (индекс имён); opened — порядок «недавних» Obsidian.
-    since=today — только файлы, изменённые с полуночи."""
+    """sort: modified – по времени правки файла (индекс имён); opened – порядок «недавних» Obsidian.
+    since=today – только файлы, изменённые с полуночи."""
     seen = set()
     out = []
     floor = 0
@@ -156,7 +156,7 @@ def open_note(vault_name, rel):
     v = next((x for x in CFG["vaults"] if x["name"] == vault_name), None)
     if not v:
         return False, "unknown vault"
-    # normpath, не realpath: папка team/ в личном волте — симлинк наружу, а «..» он всё равно режет
+    # normpath, не realpath: папка team/ в личном волте – симлинк наружу, а «..» он всё равно режет
     full = os.path.normpath(os.path.join(v["path"], rel))
     if not full.startswith(v["path"] + os.sep) or not os.path.isfile(full):
         return False, "outside the vault"
@@ -233,7 +233,7 @@ def run_agent(prompt, path, name=""):
 
 # ---------- меню приложения: как Raycast → Search Menu Items ----------
 # Два пути к дереву меню. Hammerspoon (`hs -c`) читает его нативно за полсекунды и уже имеет
-# Accessibility — основной путь. System Events через osascript — запасной: 25 секунд на дерево и
+# Accessibility – основной путь. System Events через osascript – запасной: 25 секунд на дерево и
 # Accessibility нужен самому python3 моста. Динамические хвосты (открытые вкладки в Tab, закладки
 # в Bookmarks, история, окна, профили) режутся по опорным пунктам.
 
@@ -401,8 +401,8 @@ tell application "System Events" to tell process "%s"
 end tell
 '''
 
-# хвосты меню, которые меняются с каждой вкладкой: after_first — всё после первого разделителя,
-# after_last — после последнего, middle — между первым и последним, before_first — до первого
+# хвосты меню, которые меняются с каждой вкладкой: after_first – всё после первого разделителя,
+# after_last – после последнего, middle – между первым и последним, before_first – до первого
 MENU_CUTS = {"Tab": "after_first", "Bookmarks": "after_first", "History": "middle", "Window": "after_last", "Profiles": "before_first"}
 
 KEY_CHARS = {"\t": "⇥", " ": "␣", "\r": "↩", "\x1b": "esc", "\x7f": "⌫", "\x08": "⌫"}
@@ -499,7 +499,7 @@ def refresh_menu():
 def menu_click(menu, index, sub=0):
     item = next((i for i in _menu["items"] if i["menu"] == menu and i["index"] == index and i["sub"] == sub), None)
     if not item:
-        return False, "no such menu item in the cache — refresh"
+        return False, "no such menu item in the cache – refresh"
     hs = shutil.which(CFG.get("hs") or "hs")
     if hs and item.get("titles"):
         lua = 'local a = hs.application.get(%s); if not a then return "no app" end; a:activate(); return tostring(a:selectMenuItem(hs.json.decode(%s)))' % (
@@ -526,7 +526,7 @@ def menu_click(menu, index, sub=0):
 # ---------- сигнальная страница: палитра с глобальной клавиши ----------
 # До расширения снаружи не достучаться: chrome-extension:// из системы не открывается,
 # service worker спит. Зато `open -a Aside http://127.0.0.1:<port>/aside-tweaks/palette`
-# открывает обычную вкладку — на ней есть content script расширения, он и просит палитру.
+# открывает обычную вкладку – на ней есть content script расширения, он и просит палитру.
 SIGNAL_PATH = "/aside-tweaks/palette"
 SIGNAL_HTML = """<!doctype html><html><head><meta charset="utf-8"><title>aside tweaks</title>
 <meta name="color-scheme" content="light dark">
@@ -545,7 +545,7 @@ def origin_ok(origin):
     return not ids or origin[len("chrome-extension://"):].rstrip("/") in ids
 
 
-# Chromium не шлёт Origin для запросов расширения с host-permission, поэтому ворота —
+# Chromium не шлёт Origin для запросов расширения с host-permission, поэтому ворота –
 # служебный заголовок: веб-страница поставить его может только через CORS-преддоговор,
 # а преддоговор мы не подтверждаем. Origin, если он всё же пришёл, обязан быть расширением.
 def request_ok(headers):
@@ -581,7 +581,7 @@ class Handler(BaseHTTPRequestHandler):
         return False
 
     def do_OPTIONS(self):
-        # преддоговор подтверждаем только расширению — страницам сайтов ворота закрыты
+        # преддоговор подтверждаем только расширению – страницам сайтов ворота закрыты
         if not origin_ok(self.headers.get("Origin", "")):
             self._send(403, {"ok": False, "error": "origin"})
             return
@@ -589,7 +589,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urllib.parse.urlsplit(self.path)
-        # без ворот: страница для браузера, а не для расширения — и пустая иконка, чтобы не шуметь 403
+        # без ворот: страница для браузера, а не для расширения – и пустая иконка, чтобы не шуметь 403
         if u.path == SIGNAL_PATH:
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -619,7 +619,7 @@ class Handler(BaseHTTPRequestHandler):
         elif u.path == "/agents":
             self._send(200, {"ok": True, **agents()})
         elif u.path == "/menu":
-            # через Hammerspoon дерево читается за полсекунды — обновляем синхронно, если старше 30 с
+            # через Hammerspoon дерево читается за полсекунды – обновляем синхронно, если старше 30 с
             stale = time.time() - _menu["at"] > 30
             if (one("refresh") == "1" or stale) and not _menu["busy"]:
                 if _menu.get("via") == "osascript" or (not _menu["items"] and not shutil.which(CFG.get("hs") or "hs")):
@@ -657,7 +657,7 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     port = int(os.environ.get("ASIDE_DESK_PORT") or CFG["port"])
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    threading.Thread(target=refresh_menu, daemon=True).start()   # дерево меню — в фоне, палитра не ждёт
+    threading.Thread(target=refresh_menu, daemon=True).start()   # дерево меню – в фоне, палитра не ждёт
     sys.stderr.write("aside tweaks desk · 127.0.0.1:%d · vaults: %s · worktrees: %s\n" % (
         port, ", ".join(v["name"] for v in CFG["vaults"]) or "none", ", ".join(w["name"] for w in CFG["worktrees"]) or "none"))
     try:

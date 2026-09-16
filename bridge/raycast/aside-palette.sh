@@ -1,7 +1,7 @@
 #!/bin/bash
 # Raycast script command · aside tweaks palette from anywhere.
 # Put this file in a Raycast script directory, give it a hotkey in Raycast.
-# With an argument the palette opens with that query typed — ↵ runs the top row.
+# With an argument the palette opens with that query typed – ↵ runs the top row.
 #
 # @raycast.schemaVersion 1
 # @raycast.title Aside Palette
@@ -9,9 +9,9 @@
 # @raycast.icon ⌘
 # @raycast.packageName Aside Tweaks
 # @raycast.argument1 { "type": "text", "placeholder": "search · > agent", "optional": true }
-# @raycast.description tabs, history, bookmarks, notes and agents — the aside tweaks palette, from any app
+# @raycast.description tabs, history, bookmarks, notes and agents – the aside tweaks palette, from any app
 
-# порт — из конфига моста, иначе 49321; Raycast не несёт переменных окружения оболочки
+# порт – из конфига моста, иначе 49321; Raycast не несёт переменных окружения оболочки
 CONF="$HOME/.config/aside-tweaks/desk.json"
 PORT="$(python3 -c 'import json,sys
 try: print(json.load(open(sys.argv[1])).get("port", 49321))

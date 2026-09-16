@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Aside Tweaks — re-bind Aside's native menu shortcuts at the macOS level.
+# Aside Tweaks – re-bind Aside's native menu shortcuts at the macOS level.
 #
 # Extensions cannot touch keys the browser owns before the page exists. Those keys
-# are menu commands, and macOS lets any menu command be re-bound per application —
+# are menu commands, and macOS lets any menu command be re-bound per application –
 # the same thing System Settings › Keyboard › Keyboard Shortcuts › App Shortcuts does.
 #
 # Modifier syntax:  @ = ⌘   ^ = ⌃   ~ = ⌥   $ = ⇧
@@ -34,4 +34,4 @@ done
 
 echo
 echo "written to ~/Library/Preferences/$DOMAIN.plist"
-echo "menus build their key equivalents at launch — quit and reopen Aside for this to bite."
+echo "menus build their key equivalents at launch – quit and reopen Aside for this to bite."

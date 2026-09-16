@@ -1,11 +1,11 @@
-// Aside Tweaks — настройки
+// Aside Tweaks – настройки
 
 const DEFAULT_KEYMAP = {
   favoriteTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: false },
   pinTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: true },
   tidyDuplicates: { code: 'KeyD', meta: true, ctrl: false, alt: true, shift: false },
   tidyUp: { code: 'KeyT', meta: true, ctrl: false, alt: true, shift: false },
-  togglePanel: null,   // панель просит жест пользователя — надёжно только нативным ⌃⇧S
+  togglePanel: null,   // панель просит жест пользователя – надёжно только нативным ⌃⇧S
   bookmarkTab: null,
   openPalette: { code: 'KeyK', meta: true, ctrl: false, alt: false, shift: true },
   groupByRules: null,
@@ -28,11 +28,11 @@ const DEFAULTS = {
 const ACTIONS = [
   ['favoriteTab', 'bookmark ⇄ tab', 'first row of the bar · press again and the tab returns to the top'],
   ['pinTab', 'pin / unpin tab', 'the squares on top of the sidebar · native ⌃D'],
-  ['tidyUp', 'tidy up — one sweep', 'clean, group by blocks, sort'],
+  ['tidyUp', 'tidy up – one sweep', 'clean, group by blocks, sort'],
   ['tidyDuplicates', 'review tabs before cleanup', 'native ⌃⇧D'],
   ['togglePanel', 'open tweaks panel', 'native ⌃⇧S is more reliable'],
   ['bookmarkTab', 'bookmark, no dialog', ''],
-  ['openPalette', 'palette', 'the browser also holds ⇧⌘K — see the table below'],
+  ['openPalette', 'palette', 'the browser also holds ⇧⌘K – see the table below'],
   ['groupByRules', 'group by my blocks', ''],
   ['groupByDomain', 'group by site', ''],
   ['ungroupAll', 'ungroup everything', ''],
@@ -40,7 +40,7 @@ const ACTIONS = [
   ['sortByOpened', 'order by when opened', 'tab id is the open order']
 ];
 
-// сочетания, которые macOS/браузер забирают до страницы — перехватить нельзя
+// сочетания, которые macOS/браузер забирают до страницы – перехватить нельзя
 const RESERVED = [
   { code: 'KeyT', meta: true, shift: false }, { code: 'KeyW', meta: true },
   { code: 'KeyN', meta: true }, { code: 'KeyQ', meta: true },
@@ -48,8 +48,8 @@ const RESERVED = [
   { code: 'Tab', ctrl: true }
 ];
 
-// сочетания, которые браузер занимает своими командами. Перехватить их можно —
-// страница видит keydown раньше, — но родное действие при этом теряется, поэтому предупреждаем.
+// сочетания, которые браузер занимает своими командами. Перехватить их можно –
+// страница видит keydown раньше, – но родное действие при этом теряется, поэтому предупреждаем.
 const BROWSER_KEYS = {
   '⌘D': 'bookmark this tab…', '⇧⌘D': 'bookmark all tabs…', '⌘L': 'address bar',
   '⌘F': 'find on page', '⌘G': 'find next', '⇧⌘G': 'find previous',
@@ -100,7 +100,7 @@ function codeLabel(code) {
 }
 
 function comboLabel(c) {
-  if (!c) return '—';
+  if (!c) return '–';
   return (c.ctrl ? '⌃' : '') + (c.alt ? '⌥' : '') + (c.shift ? '⇧' : '') + (c.meta ? '⌘' : '') + codeLabel(c.code);
 }
 
@@ -137,7 +137,7 @@ function renderKeys() {
     b.className = 'combo' + (isReserved(combo) ? ' warn' : '');
     b.textContent = comboLabel(combo);
     b.title = owner
-      ? `the browser uses this for «${owner}» — we take it first, its own action is lost`
+      ? `the browser uses this for «${owner}» – we take it first, its own action is lost`
       : 'click to record · ⌫ clears · esc cancels';
     b.addEventListener('click', () => record(b, action));
     tdB.append(b);
@@ -194,7 +194,7 @@ async function renderCmds() {
     const b = document.createElement('span');
     b.className = 'combo';
     b.style.cursor = 'default';
-    b.textContent = c.shortcut || '—';
+    b.textContent = c.shortcut || '–';
     b.title = c.shortcut ? 'set at chrome://extensions/shortcuts' : 'not set';
     tdB.append(b);
 
@@ -254,7 +254,7 @@ async function onRecordKey(e) {
 
   const combo = { code: e.code, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey };
   const action = recording.action;
-  // одно сочетание — одно действие: снимаем его с прежнего владельца
+  // одно сочетание – одно действие: снимаем его с прежнего владельца
   const map = { ...state.keymap };
   for (const [k, v] of Object.entries(map)) {
     if (v && k !== action && comboLabel(v) === comboLabel(combo)) map[k] = null;
@@ -264,8 +264,8 @@ async function onRecordKey(e) {
   await patch({ keymap: map });
   renderKeys();
   const owner = browserOwner(combo);
-  if (isReserved(combo)) flash('⚠ the browser takes this one before the page — it will not fire');
-  else if (owner) flash(`⚠ the browser uses ${comboLabel(combo)} for «${owner}» — we take it first, that action is lost`);
+  if (isReserved(combo)) flash('⚠ the browser takes this one before the page – it will not fire');
+  else if (owner) flash(`⚠ the browser uses ${comboLabel(combo)} for «${owner}» – we take it first, that action is lost`);
 }
 
 // ---------- блоки ----------
@@ -417,15 +417,15 @@ probe?.addEventListener('keydown', (e) => {
   if (['MetaLeft','MetaRight','ControlLeft','ControlRight','AltLeft','AltRight','ShiftLeft','ShiftRight'].includes(e.code)) return;
   const combo = { code: e.code, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey };
   const shown = comboLabel(combo);
-  if (!e.metaKey && !e.ctrlKey && !e.altKey) { probeout.textContent = shown + ' — no modifier, not intercepted'; return; }
+  if (!e.metaKey && !e.ctrlKey && !e.altKey) { probeout.textContent = shown + ' – no modifier, not intercepted'; return; }
   const hitAction = Object.entries(state.keymap || {}).find(([, v]) => v && comboLabel(v) === shown)?.[0];
   const label = hitAction ? (ACTIONS.find(a => a[0] === hitAction)?.[1] || hitAction) : null;
   const owner = browserOwner(combo);
   probeout.textContent = isReserved(combo)
-    ? shown + ' — the system takes it before the page'
+    ? shown + ' – the system takes it before the page'
     : label
       ? shown + ' → ' + label + (owner ? ' · was the browser\'s «' + owner + '»' : '')
-      : owner ? shown + ' — the browser\'s «' + owner + '», not ours' : shown + ' — nothing bound';
+      : owner ? shown + ' – the browser\'s «' + owner + '», not ours' : shown + ' – nothing bound';
 });
 probe?.addEventListener('focus', () => { probeout.textContent = 'listening…'; });
 
@@ -447,7 +447,7 @@ document.getElementById('resetKeys').addEventListener('click', async () => {
 
 // ---------- ключ OpenRouter ----------
 // Ключ и модель живут в local: sync унёс бы ключ на другие машины профиля.
-// Доступ к сети запрашиваем по кнопке — расширение не должно держать право
+// Доступ к сети запрашиваем по кнопке – расширение не должно держать право
 // ходить на чужой хост, пока человек этой возможностью не пользуется.
 
 const AI_ORIGIN = { origins: ['https://openrouter.ai/*'] };
@@ -461,9 +461,9 @@ async function renderAi() {
   aiModelEl.value = aiModel || '';
   aiModelEl.placeholder = 'anthropic/claude-haiku-4.5';
   const granted = await chrome.permissions.contains(AI_ORIGIN).catch(() => false);
-  aiStateEl.textContent = !aiKey ? 'off — no key'
+  aiStateEl.textContent = !aiKey ? 'off – no key'
     : granted ? 'connected ✓'
-      : 'key saved, network access still missing — press connect';
+      : 'key saved, network access still missing – press connect';
 }
 renderAi();
 
@@ -472,7 +472,7 @@ document.getElementById('aiSave').addEventListener('click', async () => {
   if (!key) { aiStateEl.textContent = 'paste a key first'; return; }
   // запрос права обязан идти из жеста человека, поэтому он живёт на кнопке
   const granted = await chrome.permissions.request(AI_ORIGIN).catch(() => false);
-  if (!granted) { aiStateEl.textContent = 'network access refused — nothing saved'; return; }
+  if (!granted) { aiStateEl.textContent = 'network access refused – nothing saved'; return; }
   await chrome.storage.local.set({ aiKey: key, aiModel: aiModelEl.value.trim() || 'anthropic/claude-haiku-4.5' });
   await renderAi();
   flash('openrouter connected · ✳ blocks by meaning is live');
@@ -504,7 +504,7 @@ document.getElementById('native').addEventListener('click', async () => {
 
 
 // ---------- 09 · desk bridge: заметки Obsidian и агенты Orca ----------
-// адрес локальный и стоит в манифесте, диалога разрешений нет — здесь только порт и проба
+// адрес локальный и стоит в манифесте, диалога разрешений нет – здесь только порт и проба
 
 const deskPortEl = document.getElementById('deskPort');
 const deskStateEl = document.getElementById('deskState');
@@ -517,7 +517,7 @@ async function renderDesk() {
   const h = res?.data;
   deskStateEl.textContent = h?.ok
     ? `live · vaults: ${(h.vaults || []).join(', ') || 'none'} · folders: ${(h.worktrees || []).map(w => w.name).join(', ') || 'none'} · agent: ${h.agent || 'claude'}`
-    : `nothing answers on :${deskPort} — run bridge/install.sh`;
+    : `nothing answers on :${deskPort} – run bridge/install.sh`;
 }
 
 document.getElementById('deskConnect').addEventListener('click', async () => {

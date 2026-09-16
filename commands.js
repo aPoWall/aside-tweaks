@@ -1,9 +1,9 @@
-// Aside Tweaks — единый список команд.
+// Aside Tweaks – единый список команд.
 //
 // Панель, палитра и попап читают отсюда: пока каждый список жил своей жизнью,
 // «очистить дубликаты» была в палитре и отсутствовала в панели, а названия
 // расходились. Поле `on` говорит, на каких поверхностях команда показывается;
-// `short` — имя для плитки попапа, где место дорогое; `group` — секция попапа.
+// `short` – имя для плитки попапа, где место дорогое; `group` – секция попапа.
 
 const TWEAK_COMMANDS = [
   {
@@ -38,7 +38,7 @@ const TWEAK_COMMANDS = [
   },
   {
     action: 'groupBySense', glyph: '✳', title: 'blocks by meaning', short: 'by meaning', sub: 'a model reads the titles', key: '',
-    hint: 'sends titles and hosts of the open tabs to OpenRouter and proposes blocks — you apply them yourself',
+    hint: 'sends titles and hosts of the open tabs to OpenRouter and proposes blocks – you apply them yourself',
     words: 'ai smart sense meaning model openrouter blocks', group: 'order', on: ['panel', 'palette', 'popup']
   },
   {
