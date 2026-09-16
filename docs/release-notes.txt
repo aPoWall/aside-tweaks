@@ -1,9 +1,17 @@
+aside tweaks 4.23.0 – 2026-09-17
+
+- a number key always lands somewhere: ⌘1…⌘9 address the blocks of the window, and a number with no block selects the tab in that position, ⌘9 the last one, the way the same key reads in the browser
+- ⇧⌘ on the next free number opens a new block around the current tab
+- review says what it is on the surface: the first row reads what this window already repeats, with the reason on every row
+- REQUIREMENTS.md in the repository: every requirement of waves 3 to 9 with its status, the declared exceptions and the answers to the two open questions
+
 aside tweaks 4.22.0 – 2026-09-16
 
 - one shell: the popup, the panel and the palette take the header, the bottom line and the product mark from the shared export of the apps design system, vendored byte for byte and checked by sha-256
 - the toolbar icon and the header mark became one drawing from one source; icons rendered at 16, 32, 48 and 128 from the aside glyph
 - the voxel character left the extension surfaces and stays on this page as an illustration
 - the panel closes the same way from ×, esc and ⌘W
+- no browser surface takes a pin: the popup closes itself and cannot survive an outside click, the panel stays open until it is closed; both pin slots stay empty and the header order holds
 - the bottom line has the same three parts everywhere: keys, esc close, version or state
 - the popup lost the duplicate settings link and the separate readout; the counts moved into the header state line and the bottom line
 
