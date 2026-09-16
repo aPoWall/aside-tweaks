@@ -25,11 +25,8 @@ const SECTIONS = [
   { group: 'order', n: '', title: '' }
 ];
 
-// версия берётся из манифеста: подписанная руками разъезжается с установленной
-document.getElementById('ver').textContent = 'v' + chrome.runtime.getManifest().version;
-
-const status = document.getElementById('status');
-const say = t => { status.textContent = t; };
+// шапка, подвал, знак и версия приходят из общей оболочки (shell.js + vendor/aim-app-shell.css);
+// попап объявляет только своё тело – плитки команд
 let stats = null;
 
 function tile(c) {
@@ -85,16 +82,17 @@ async function refreshStats() {
   // service worker может спать – первый вызов его будит, второй уже отвечает
   let res = await chrome.runtime.sendMessage({ action: 'getStats' }).catch(() => null);
   if (!res?.ok) res = await chrome.runtime.sendMessage({ action: 'getStats' }).catch(() => null);
-  if (!res?.ok) { document.getElementById('statsub').textContent = 'service worker asleep · press again'; return; }
+  if (!res?.ok) { document.getElementById('statsub').textContent = 'service worker asleep · press again'; document.getElementById('stats').textContent = '– tabs'; return; }
   stats = res.data || null;
   if (!stats) return;
   const { total, dups, pinned, empties = 0 } = stats;
+  // правая часть подвала – показание, строка под именем – из чего оно состоит
   document.getElementById('stats').textContent = `${total} tabs`;
   const parts = [];
   if (dups) parts.push(`${dups} duplicate${dups === 1 ? '' : 's'}`);
   if (empties) parts.push(`${empties} empty`);
   if (pinned) parts.push(`${pinned} pinned`);
-  document.getElementById('statsub').textContent = parts.length ? '· ' + parts.join(' · ') : '· clean';
+  document.getElementById('statsub').textContent = parts.length ? parts.join(' · ') : 'clean';
   // число на плитке = то, что закроет подтверждение: те же защиты, что и в review
   const d = document.getElementById('dupsub');
   const closable = stats.closable ?? 0;

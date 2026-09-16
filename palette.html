@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <title>aside tweaks</title>
+<link rel="stylesheet" href="vendor/aim-mini-apps.css">
+<link rel="stylesheet" href="vendor/aim-app-shell.css">
 <link rel="stylesheet" href="instrument.css">
 <style>
   /* токены приходят из instrument.css – палитра, попап, панель и настройки красятся одним файлом */
@@ -86,7 +88,8 @@
   }
   #hint b { font-weight: 500; color: var(--dim); }
   #hint .brand { display: flex; align-items: center; gap: 7px; }
-  #hint .brand i { width: 14px; height: 14px; border-radius: 4px; background: var(--fg); display: inline-block; }
+  /* знак продукта в строке итога – тот же спрайт, что на кнопке расширения (правило 39) */
+  #hint .brand .aim-mark { width: 14px; height: 14px; flex: none; }
   #hint .right { margin-left: auto; display: flex; gap: 14px; }
   #hint .primary { color: var(--fg); }
   #hint button { font: inherit; border: none; background: none; color: inherit; padding: 0; cursor: pointer; }
@@ -139,13 +142,15 @@
   <div id="list" class="first" role="listbox" aria-label="Aside Tweaks results"></div>
   <div id="acts" role="menu"></div>
   <div id="hint">
-    <span class="brand"><i></i>aside tweaks</span>
+    <span class="brand"><span class="aim-mark" data-aim-mark="aside" data-aim-mark-size="14"></span>aside tweaks</span>
     <span class="right">
       <span><b class="primary" id="primary">open</b> <b>↵</b></span>
       <button id="actsbtn"><b>actions</b> ⌘K</button>
     </span>
   </div>
   <script src="theme.js"></script>
+  <script src="vendor/aim-app-mark.js"></script>
+  <script src="shell.js"></script>
   <script src="commands.js"></script>
   <script src="palette.js"></script>
 </body>

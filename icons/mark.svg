@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+<!-- Aside Tweaks · иконка расширения = знак продукта aside из vendor/aim-app-marks.svg (правило 39).
+     Единственная добавка к общему символу – белая заливка рамки: кнопка тулбара стоит на хроме
+     браузера любой темы, и без подложки чернильный штрих пропадает на тёмном. -->
+<rect x="5" y="5" width="38" height="38" rx="8" fill="#ffffff"/>
+<rect x="5" y="5" width="38" height="38" rx="8" fill="none" stroke="#202124" stroke-width="2"/>
+<path d="M14 13v22M21 18h14M21 24h9M21 30h12" fill="none" stroke="#202124" stroke-width="2"/>
+<rect x="32" y="5" width="6" height="4" fill="#db303d"/>
+</svg>

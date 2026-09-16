@@ -2,24 +2,17 @@
 <html lang="en" data-look="aside">
 <head>
 <meta charset="utf-8">
+<link rel="stylesheet" href="vendor/aim-mini-apps.css">
+<link rel="stylesheet" href="vendor/aim-app-shell.css">
 <link rel="stylesheet" href="instrument.css">
 <style>
   /* ширину задаём и документу: без неё браузер иногда не измеряет попап и выдаёт
      ему максимальный размер – окно разъезжается на 800×600 после действия */
-  html { width: 320px; overflow-x: hidden; }
-  body { width: 320px; }
-  .inst-head { display: flex; align-items: center; gap: 9px; padding-bottom: 6px; }
-  .inst-head .inst-sub { margin-left: auto; }
-  .inst-head .inst-title { margin-bottom: 0; }
-  /* живой знак: персонаж aside 40 px, реагирует на курсор и клик */
-  .aim-mark { display: inline-flex; align-items: center; height: 40px; flex: none; border-radius: 6px; }
-  .aim-mark .aimv { height: 40px !important; width: auto !important; overflow: visible; }
-  .aim-mark:focus-visible { outline: 1px solid var(--muted); outline-offset: 2px; }
-  /* одна строка показаний: считаем только то, что не ноль */
-  .readout { display: flex; align-items: baseline; gap: 6px; padding: 6px 9px; margin-bottom: 8px; }
-  .readout .big { font-size: 12.5px; }
-  .readout .sub { margin: 0; }
-  .sec { padding-bottom: 7px; }
+  html { width: 360px; overflow-x: hidden; }
+  body { width: 360px; gap: 10px; }
+  /* тело поверхности идёт от края до края, шапка и подвал держат отступ 16 */
+  .aim-shell-body { margin: 0 calc(var(--aim-shell-inset) * -1); }
+  .sec { padding: 0 var(--aim-shell-inset) 9px; }
   .sec-label { margin-bottom: 3px; }
   .tile { padding: 6px 8px; }
   .tiles.three .tile { padding: 5px 7px; }
@@ -27,34 +20,30 @@
   :root[data-look="aside"] .tile-main .k { font-size: 10.5px; }
   :root[data-look="aside"] .tiles.three .tile-main { font-size: 11px; }
   :root[data-look="aside"] .tile-sub { font-size: 10px; }
-  :root[data-density="compact"] { --pad: 11px; }
   /* строка ответа держит высоту заранее: текст не должен переверстывать попап */
-  .sign #status { flex: 1; min-height: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .aim-shell-foot #status { min-height: 12px; }
 </style>
 </head>
-<body>
-  <div class="inst-head">
-    <span class="aim-mark" data-aim-mark title="aside tweaks · click"></span>
-    <div class="inst-title">aside tweaks</div>
-    <div class="inst-sub">instrument 01 · <b id="ver">v4</b></div>
-  </div>
+<body class="aim-shell" data-appear>
+  <header class="aim-shell-head">
+    <span class="aim-shell-mark" data-aim-mark="aside"></span>
+    <span class="aim-shell-title"><b>aside tweaks</b><small id="statsub">counting</small></span>
+    <span class="aim-shell-gap"></span>
+    <span class="aim-shell-version" data-aim-version></span>
+    <button class="aim-shell-btn" id="settings" title="settings of the extension">settings</button>
+  </header>
 
-  <div class="readout">
-    <div class="big" id="stats">–</div>
-    <div class="sub" id="statsub">counting</div>
-  </div>
+  <div class="aim-shell-body" id="secs"></div>
 
-  <div id="secs"></div>
-
-  <div class="sign">
-    <span id="status"></span>
-    <a href="https://github.com/aPoWall/aside-tweaks" target="_blank">github ↗</a>
-    <a href="options.html" target="_blank">settings ↗</a>
-  </div>
+  <footer class="aim-shell-foot">
+    <span id="status">⇧⌘K palette · ⌥⌘D review</span>
+    <span>esc close</span>
+    <span id="stats">counting</span>
+  </footer>
 
   <script src="theme.js"></script>
-  <script src="vendor/aim-voxel.js"></script>
-  <script src="mark.js"></script>
+  <script src="vendor/aim-app-mark.js"></script>
+  <script src="shell.js"></script>
   <script src="commands.js"></script>
   <script src="popup.js"></script>
 </body>

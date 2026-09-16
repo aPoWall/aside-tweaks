@@ -40,14 +40,6 @@ function favicon(u) {
   } catch { return ''; }
 }
 
-function say(text) {
-  const el = document.getElementById('status');
-  if (!el.dataset.base) el.dataset.base = el.textContent;
-  el.textContent = text;
-  clearTimeout(say._t);
-  say._t = setTimeout(() => { el.textContent = el.dataset.base; }, 2600);
-}
-
 // у живой вкладки иконка уже загружена; кэш /_favicon/ знает только то, что видел раньше,
 // и на всё остальное отдаёт серый глобус
 function iconFor(url, live) {
@@ -213,6 +205,7 @@ async function render() {
   document.getElementById('nPins').textContent = String(pins.length);
   document.getElementById('nTabs').textContent = String(rest.length);
   const sleeping = all.filter(t => t.discarded).length;
+  // строка под именем продукта: из чего состоит окно прямо сейчас
   document.getElementById('count').textContent =
     `${all.length} tabs${sleeping ? ` · ${sleeping} asleep` : ''}`;
 }
@@ -230,7 +223,25 @@ for (const ev of ['onCreated', 'onRemoved', 'onChanged', 'onMoved']) {
   chrome.bookmarks[ev]?.addListener(rerender);
 }
 
-document.getElementById('gear').addEventListener('click', () => chrome.runtime.openOptionsPage());
+// Одно закрытие (правило 33): ×, esc и ⌘W приходят сюда. Боковая панель – документ браузера,
+// её закрывает window.close(); если браузер этого не сделал, панель снимается через sidePanel
+// и сразу возвращается в доступные, чтобы кнопка расширения открывала её как раньше.
+async function closePanel() {
+  window.close();
+  await new Promise(r => setTimeout(r, 250));
+  const id = winId ?? (await chrome.windows.getCurrent().catch(() => null))?.id;
+  if (id == null) return;
+  await chrome.sidePanel.setOptions({ windowId: id, enabled: false }).catch(() => { });
+  setTimeout(() => chrome.sidePanel.setOptions({ windowId: id, path: 'panel.html', enabled: true }).catch(() => { }), 300);
+}
+
+document.getElementById('close-panel').addEventListener('click', closePanel);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' || (e.key.toLowerCase() === 'w' && (e.metaKey || e.ctrlKey))) {
+    e.preventDefault();
+    closePanel();
+  }
+});
 
 // плитки собираются из общего списка команд – одна правка меняет и панель, и палитру
 function renderCmds() {
