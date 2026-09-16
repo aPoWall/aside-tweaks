@@ -534,12 +534,32 @@ const gotoBlock = await call('focusBlock', { n: 2, windowId: 1 });
 check('⌘2 разворачивает блок и выбирает его вкладку',
   gotoBlock?.data?.ok && TABS.find(t => t.id === 304)?.active === true && GROUPS.find(g => g.id === 12)?.collapsed === false,
   TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
+// номер без блока не пропадает: он значит вкладку по позиции, как в браузере (⌘9 = последняя)
+const thirdTab = await call('focusBlock', { n: 3, windowId: 1 });
+check('⌘3 без третьего блока выбирает третью вкладку окна',
+  thirdTab?.data?.ok === true && thirdTab?.data?.fallback === 'tab' && TABS.find(t => t.id === 303)?.active === true,
+  JSON.stringify(thirdTab?.data));
+const lastTab = await call('focusBlock', { n: 9, windowId: 1 });
+check('⌘9 без девятого блока выбирает последнюю вкладку окна',
+  lastTab?.data?.ok === true && TABS.find(t => t.id === 304)?.active === true, JSON.stringify(lastTab?.data));
 const missing = await call('focusBlock', { n: 7, windowId: 1 });
-check('⌘7 без седьмого блока говорит об этом и ничего не трогает', missing?.data?.ok === false, JSON.stringify(missing?.data));
+check('⌘7 без седьмого блока и без седьмой вкладки говорит об этом и ничего не трогает',
+  missing?.data?.ok === false && missing?.data?.fallback === 'none', JSON.stringify(missing?.data));
+// проверка про ⇧⌘1 начинается с вкладки 304, как и до появления запасного хода по цифре
+TABS.forEach(t => { t.active = t.id === 304; });
 const put = await call('putInBlock', { n: 1, windowId: 1 });
 check('⇧⌘1 кладёт текущую вкладку в первый блок и оставляет её выбранной',
   put?.data?.ok && TABS.find(t => t.id === 304)?.groupId === 11 && TABS.find(t => t.id === 304)?.active === true,
   TABS.map(t => t.id + ':' + t.groupId).join(' '));
+
+// следующий свободный номер заводит блок: ⇧⌘N всегда кладёт вкладку куда-то
+const nextBlock = await call('putInBlock', { n: 3, windowId: 1 });
+check('⇧⌘3 в окне с двумя блоками заводит третий и кладёт в него вкладку',
+  nextBlock?.data?.ok === true && nextBlock?.data?.created === true &&
+  GROUPS.some(g => g.title === 'block 3'), JSON.stringify(nextBlock?.data));
+const farBlock = await call('putInBlock', { n: 8, windowId: 1 });
+check('⇧⌘8 через номер не заводит блок и говорит про следующий свободный',
+  farBlock?.data?.ok === false, JSON.stringify(farBlock?.data));
 
 // ---------- жест Arc: блок из выбранных вкладок ----------
 GROUPS = [];

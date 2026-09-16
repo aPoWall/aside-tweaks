@@ -274,7 +274,7 @@ async function buildReview(q) {
   out.push({
     kind: 'cmd', section: 'what this is', glyph: '◎',
     title: `review of ${review.summary?.total || 0} tabs in this window`,
-    sub: `${review.summary?.exact || 0} exact copies · ${review.summary?.related || 0} working threads · ${review.summary?.protected || 0} protected · nothing closes without the line below`,
+    sub: `what this window already repeats, with the reason on every row · ${review.summary?.exact || 0} exact copies · ${review.summary?.related || 0} working threads · ${review.summary?.protected || 0} protected · closing waits for the line below`,
     kindLabel: 'review', primary: 'back',
     run: () => { view = null; refresh(); }
   });

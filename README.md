@@ -116,7 +116,7 @@ AIM apps rule 37 fixes `⌘K` as the palette key for the whole family. In a brow
 
 ### Blocks under the number keys
 
-`⌘1`…`⌘9` switch to the blocks of the window, counted from the left by the position of the block's first tab; a folded block opens. `⇧⌘1`…`⇧⌘9` put the current tab into that block. The palette lists the blocks with their numbers, so a number always has a visible owner. The number keys can be given back to the browser in settings (`⌘1…⌘9 address the blocks of the window`).
+`⌘1`…`⌘9` switch to the blocks of the window, counted from the left by the position of the block's first tab; a folded block opens. A number with no block behind it keeps the meaning it has in the browser and selects the tab in that position, `⌘9` the last one, so the key works in a window that has no blocks yet. `⇧⌘1`…`⇧⌘9` put the current tab into that block, and the next free number opens a new block around it. The palette lists the blocks with their numbers, so a number always has a visible owner. The number keys can be given back to the browser in settings (`⌘1…⌘9 address the blocks of the window`).
 
 ### Gestures taken from Arc
 
