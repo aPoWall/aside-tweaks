@@ -134,7 +134,7 @@ Aside Tweaks is the fourth product of the AI Mindset apps system (rule 36), and 
 | panel | mark 40 · name · state · version · `settings` · `×` | keys · `esc close` · version | `×`, `esc`, `⌘W` reach one `closePanel()` |
 | palette | search field, the palette's own contract | mark · primary action · `actions ⌘K` | `esc`, outside click |
 
-Rule 32 keeps the order of the right edge and leaves an empty slot where the surface owns nothing: a browser popup cannot survive an outside click, so it carries no `pin`, and the browser owns its frame, so it carries no `×`.
+Rule 32 keeps the order of the right edge and leaves an empty slot where the surface owns nothing. The popup carries no `pin`, because a browser popup cannot survive an outside click, and no `×`, because the browser owns its frame and closes it on its own. The panel carries no `pin` either: a sidebar stays open until it is closed, so there is no outside click to survive; it keeps `×` and `esc`. No browser surface of the product has a pin button, and a later wave that adds one adds a control without a consequence (rules 38, 41).
 
 The mark comes from one source. `icons/mark.svg` is the `aside` glyph of `vendor/aim-app-marks.svg` on a white plate, `icons/16 · 32 · 48 · 128.png` are rendered from it, and the header draws the same symbol through `vendor/aim-app-mark.js`. The toolbar button and the header are the same picture (rule 39). The voxel character is an illustration and lives on the product page, not in the extension.
 
