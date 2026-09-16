@@ -1353,11 +1353,29 @@ async function listBlocks({ windowId } = {}) {
   return { blocks: blocks.map(b => ({ n: b.n, title: b.title, tabs: b.tabs, collapsed: b.collapsed })) };
 }
 
+// Номер без блока не пропадает: он значит то же, что значит в браузере, вкладку по позиции
+// (⌘9 = последняя). Расширение забирает ⌘1…⌘9 у браузера насовсем, поэтому клавиша обязана
+// работать и в окне без блоков (волна 9, § D, ответ на вопрос про цифровые клавиши).
+async function focusNthTab(num, wid, blocksHere) {
+  const tabs = (await chrome.tabs.query({ windowId: wid }).catch(() => [])).sort((a, b) => a.index - b.index);
+  const target = num === 9 ? tabs[tabs.length - 1] : tabs[num - 1];
+  if (!target) {
+    flash(String(num), `no block ${num} and no tab ${num} in this window`, false);
+    return { ok: false, blocks: blocksHere, fallback: 'none' };
+  }
+  await keepSelected(target.id, wid);
+  flash(String(num), `tab ${num} · ${plainTitle(target.title).slice(0, 40)}\nno block ${num} here`);
+  return { ok: true, blocks: blocksHere, fallback: 'tab', title: target.title || target.url };
+}
+
 async function focusBlock({ n, windowId } = {}) {
   const num = Number(n);
   const { wid, blocks } = await windowBlocks(windowId);
   const block = blocks.find(b => b.n === num);
-  if (!block) { flash(String(num || '?'), `no block ${num} in this window\n${blocks.length} block${blocks.length === 1 ? '' : 's'} here`, false); return { ok: false, blocks: blocks.length }; }
+  if (!block) {
+    if (wid == null || !num) { flash(String(num || '?'), 'no window to address', false); return { ok: false, blocks: blocks.length, fallback: 'none' }; }
+    return focusNthTab(num, wid, blocks.length);
+  }
   if (block.collapsed) await chrome.tabGroups.update(block.id, { collapsed: false }).catch(() => { });
   if (block.recentId != null) await keepSelected(block.recentId, wid);
   flash(String(num), `block ${num} · ${block.title}\n${block.tabs} tab${block.tabs === 1 ? '' : 's'}`);
@@ -1372,7 +1390,16 @@ async function putInBlock({ n, windowId } = {}) {
   if (!tab) return { ok: false };
   if (tab.pinned) { flash(String(num), 'a pinned tab stays out of blocks', false); return { ok: false }; }
   const block = blocks.find(b => b.n === num);
-  if (!block) { flash(String(num), `no block ${num} in this window\n⌘${num} shows what is there`, false); return { ok: false }; }
+  // Следующий свободный номер заводит блок: ⇧⌘N всегда кладёт вкладку куда-то, а не сообщает об отказе.
+  if (!block && num === blocks.length + 1) {
+    const groupId = await chrome.tabs.group({ tabIds: [tab.id] }).catch(() => null);
+    if (groupId == null) { flash(String(num), 'the browser refused a new block', false); return { ok: false }; }
+    await chrome.tabGroups.update(groupId, { title: `block ${num}` }).catch(() => { });
+    await keepSelected(tab.id, wid);
+    flash('+' + num, `new block ${num}\n${plainTitle(tab.title).slice(0, 40)}`);
+    return { ok: true, title: `block ${num}`, created: true };
+  }
+  if (!block) { flash(String(num), `no block ${num} in this window\n⇧⌘${blocks.length + 1} opens the next one`, false); return { ok: false, blocks: blocks.length }; }
   await chrome.tabs.group({ tabIds: [tab.id], groupId: block.id }).catch(() => { });
   await keepSelected(tab.id, wid);
   flash('→' + num, `into block ${num} · ${block.title}\n${plainTitle(tab.title).slice(0, 40)}`);

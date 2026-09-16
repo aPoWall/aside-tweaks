@@ -1,5 +1,22 @@
 # Changelog
 
+## 4.23.0 – 2026-09-17
+
+- a number key always lands somewhere (rule 38): `⌘1`…`⌘9` still address the blocks of the window, and a
+  number with no block behind it selects the tab in that position, `⌘9` the last one, which is what the same
+  key means in the browser. Chrome hands a registered shortcut to the extension for good, so the product
+  carries the browser reading itself instead of leaving the key dead in a window that has no blocks yet;
+- `⇧⌘` on the next free number opens a new block around the current tab and names it `block N`; a number
+  further out says which one is next instead of refusing without a direction;
+- review says what it is on the surface: the first row of the list now reads `what this window already
+  repeats, with the reason on every row`, next to the counts and above the confirmation line. The same
+  sentence is in the command hint of the palette and on the popup tile before the counts arrive;
+- `REQUIREMENTS.md`: every requirement that reached the product from waves 3 to 9 with its status, the
+  declared exceptions (family keys, no pin on browser surfaces) and the answers to the two open questions,
+  the number keys and review tabs;
+- `tests/sw-smoke.mjs` covers the number fallback in both directions: a number with a block, a number with a
+  tab, a number with neither, and the next free number that opens a block.
+
 ## 4.22.0 – 2026-09-16
 
 - one shell for every surface: the popup, the panel and the palette take the header, the bottom line and the product mark from the shared L2 export of AI Mindset apps. `vendor/aim-app-shell.css`, `vendor/aim-app-mark.js`, `vendor/aim-app-marks.svg` and `vendor/aim-mini-apps.css` are vendored byte for byte and verified by sha-256 through `vendored-consumers.json` of the apps system (rules 10, 34, 40);

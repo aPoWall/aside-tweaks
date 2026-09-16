@@ -48,7 +48,7 @@ function tile(c) {
     const s = document.createElement('span');
     s.className = 'tile-sub';
     s.id = 'dupsub';
-    s.textContent = 'protected preview';
+    s.textContent = 'what repeats here · preview';
     b.append(s);
   }
   b.addEventListener('click', () => run(c));

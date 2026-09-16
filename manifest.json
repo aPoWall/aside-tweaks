@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Aside Tweaks",
-  "version": "4.22.0",
+  "version": "4.23.0",
   "description": "A review layer for Aside: product-aware tab families, protected cleanup previews and receipts, plus the palette, keymap, Obsidian and agent bridge.",
   "permissions": [
     "tabs",
