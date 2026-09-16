@@ -63,14 +63,18 @@ For each product family you can:
 - preview a batch that closes reviewed siblings;
 - copy a handoff with the canonical page and every source.
 
-Every confirmed batch writes a local receipt with the canonical URL and closed URLs.
+Review opens with the summary and the confirm line, then the clusters. The first line says what the window holds, the second closes the exact copies and empty tabs of this window, and the third closes them across every window. Nothing closes until one of those lines is pressed, and every confirmed batch writes a local receipt with the canonical URL and closed URLs.
+
+Duplicate cleanup is the same executor everywhere: `⌥⌘D` and the popup tile show the number that the confirmation will actually close, with the same protections applied.
 
 ### Cleanup contract
 
 - Pinned tabs are protected.
 - The active tab is protected.
 - Tabs with unsaved form input are protected. Field values never leave the page; the content script reports one boolean flag.
-- Bookmarked and user-marked tabs are protected.
+- User-marked tabs are protected.
+- A bookmarked page is protected everywhere except inside an exact-duplicate cluster: the bar row holds the address, not each of its copies, and treating it as protection kept every copy of a bookmarked page open.
+- A related cluster wider than 8 tabs offers no batch at all; its rows close one by one.
 - A model may propose groups. Only a person applies them.
 - Every destructive batch has a final preview.
 - Semantic siblings never join an automatic close batch.
@@ -80,7 +84,9 @@ The legacy `auto-dedupe` preference is ignored from v4.18 onward. A newly opened
 
 ## Palette – ⇧⌘K
 
-The palette searches tabs, history, bookmarks, Obsidian notes, Aside menu items and Orca agents. `⌘K` opens actions for the selected row.
+The palette searches tabs, history, bookmarks, Obsidian notes, Aside menu items and Orca agents. `⌘K` opens actions for the selected row, and the panel has the same shape on every row type: the row's own actions first, then `⌘C` copy address or path and `⌥⌘C` copy title.
+
+Ranking is the same rule in every section: exact matches first, then freshness. Notes carry the reason they are on the list (`name starts with the query`, `query in the name`, `edited today`, `12d`), and a row without a favicon shows a monospace letter avatar instead of a dot.
 
 Useful keys:
 
@@ -96,10 +102,23 @@ Useful keys:
 | `⌘⌫` | close one eligible tab |
 | `⌘B` | bookmark source |
 | `⌘C` | copy URL, handoff or receipt |
+| `⌥⌘C` | copy the row title |
+| `⌘1`…`⌘9` | switch to the block with that number |
+| `⇧⌘1`…`⇧⌘9` | put the current tab into that block |
 
 The page-level keymap uses physical key codes, so Latin and Cyrillic layouts keep the same bindings. Browser-reserved shortcuts still belong to the operating system or Chromium.
 
-`⌘D` inserts the page as the **first** bookmarks-bar row. With the default close option enabled, its open tab closes and the next unpinned tab in the sidebar becomes active; pinned tabs are used only when no working tab remains. With close disabled, the tab stays loaded and moves to the first Tabs row. Aside's native **Chats** section and system-owned `⌘W` / `⌘V` behavior are outside the extension API.
+`⌘D` appends the page to the **end** of the bookmarks bar, as Arc appends a pinned row to its section. The tab stays open and keeps the focus, the rows above it do not move, and a second `⌘D` on the same page takes the row out. Closing the tab after `⌘D` is still available as a setting and is off by default since 4.21; with it on, the next unpinned tab becomes active and pinned tabs are used only when no working tab remains. Aside's native **Chats** section and system-owned `⌘W` / `⌘V` behavior are outside the extension API.
+
+### Blocks under the number keys
+
+`⌘1`…`⌘9` switch to the blocks of the window, counted from the left by the position of the block's first tab; a folded block opens. `⇧⌘1`…`⇧⌘9` put the current tab into that block. The palette lists the blocks with their numbers, so a number always has a visible owner. The number keys can be given back to the browser in settings (`⌘1…⌘9 address the blocks of the window`).
+
+### Gestures taken from Arc
+
+- **block from selected tabs** – select several tabs with shift-click or `⌘`-click and run the command; the selection becomes one named block. Arc has the same gesture in its sidebar (multi-select by shift-click, then one group action); it has no lasso rectangle and never had one.
+- **fold / unfold blocks** – one command collapses every block of the window or opens them all back, the way Arc keeps `Collapse Pinned` and `Expand Pinned` as commands.
+- `⌘D` and `⇧⌘D` leave the focus where it was: Arc removed its rename prompt on pin for the same reason.
 
 ## Live mark
 
@@ -136,7 +155,9 @@ node tests/surfaces.mjs
 node tests/sw-smoke.mjs
 ```
 
-`tests/sw-smoke.mjs` executes the real service worker against a small Chromium stub. It covers tab placement, protected review, semantic clusters, receipts, grouping proposals, bookmarks, pins and palette handoff.
+`tests/sw-smoke.mjs` executes the real service worker against a small Chromium stub. It covers tab placement, protected review, semantic clusters, receipts, grouping proposals, bookmarks, pins, palette handoff, the whole duplicate-cleanup chain from the popup number to the receipt, and the block number keys.
+
+`tests/surfaces.mjs` also guards the class of breakage that 4.20 shipped: a cleanup function that no key and no surface could reach. It fails when a function in the service worker has no caller and no place in the action maps.
 
 ## Operator release
 
@@ -149,6 +170,8 @@ node tests/sw-smoke.mjs
 7. Run the `lab-sites` preflight, commit only that site path, push `main`, and verify production.
 
 ### Migration and rollback
+
+**v4.20 → v4.21:** `⌘D` switches to the Arc contract once, under the `favoriteArcRev` key: `after ⌘D the tab closes` and `the open tab moves to the top` are set to off. Both settings stay in the options page and can be switched back on. Existing bookmarks keep their order; new rows go to the end of the bar. `⌘1…⌘9` start addressing blocks, which can be returned to the browser with the `blockKeys` switch. Review state, keymaps, bridge config and theme settings are untouched.
 
 **v4.19 → v4.20:** the extension gains `vendor/` and `mark.js`; keymaps, bookmarks, bridge config, review state and theme settings remain untouched.
 

@@ -40,7 +40,11 @@ globalThis.chrome = {
     remove: id => { MARKS = MARKS.filter(b => b.id !== id); return Promise.resolve(); },
     move: () => Promise.resolve(), search: () => Promise.resolve([]), getRecent: () => Promise.resolve([])
   },
-  tabGroups: { query: () => Promise.resolve([]), update: () => Promise.resolve() },
+  tabGroups: {
+    query: (q = {}) => Promise.resolve(GROUPS.filter(g => q.windowId == null || g.windowId === q.windowId)
+      .filter(g => q.title == null || g.title === q.title)),
+    update: (id, props) => { Object.assign(GROUPS.find(g => g.id === id) || {}, props); return Promise.resolve(); }
+  },
   tabs: {
     onCreated: mkEvent('tabCreated'), onRemoved: mkEvent('tabRemoved'), onUpdated: mkEvent('tabUpdated'),
     onActivated: mkEvent('tabActivated'), onMoved: mkEvent('tabMoved'), onDetached: mkEvent('d'), onAttached: mkEvent('a'), onReplaced: mkEvent('r'),
@@ -48,6 +52,8 @@ globalThis.chrome = {
       (q.windowId == null || t.windowId === q.windowId) &&
       (q.pinned == null || t.pinned === q.pinned) &&
       (q.active == null || t.active === q.active) &&
+      (q.highlighted == null || !!t.highlighted === q.highlighted) &&
+      (q.groupId == null || t.groupId === q.groupId) &&
       (q.discarded == null || !!t.discarded === q.discarded))),
     get: id => { const t = TABS.find(x => x.id === id); return t ? Promise.resolve(t) : Promise.reject(new Error('no tab')); },
     move: (id, { index }) => {
@@ -61,9 +67,30 @@ globalThis.chrome = {
     },
     remove: ids => { const arr = [].concat(ids); TABS = TABS.filter(t => !arr.includes(t.id)); TABS.forEach((x,n)=>x.index=n); log.push('remove ' + arr.join(',')); return Promise.resolve(); },
     create: o => { const t = { id: nextId++, windowId: 1, index: TABS.length, pinned: !!o.pinned, url: o.url, title: o.url }; TABS.push(t); TABS.forEach((x,n)=>x.index=n); return Promise.resolve(t); },
-    update: (id, p) => { Object.assign(TABS.find(t => t.id === id) || {}, p); return Promise.resolve(); },
-    group: ({ tabIds }) => { log.push('group ' + tabIds.join(',')); return Promise.resolve(1); },
-    ungroup: ids => { log.push('ungroup ' + [].concat(ids).length); return Promise.resolve(); },
+    update: (id, p) => {
+      const t = TABS.find(x => x.id === id);
+      // выбор в окне один: браузер снимает активность с прежней вкладки сам
+      if (t && p.active) for (const x of TABS) if (x.windowId === t.windowId) x.active = x.id === id;
+      Object.assign(t || {}, p);
+      return Promise.resolve();
+    },
+    group: ({ tabIds, groupId }) => {
+      log.push('group ' + tabIds.join(',') + (groupId ? ' → ' + groupId : ''));
+      let gid = groupId;
+      if (gid == null) {
+        gid = ++groupSeq;
+        const host = TABS.find(t => t.id === tabIds[0]);
+        GROUPS.push({ id: gid, windowId: host?.windowId ?? 1, title: '', collapsed: false });
+      }
+      for (const id of tabIds) { const t = TABS.find(x => x.id === id); if (t) t.groupId = gid; }
+      return Promise.resolve(gid);
+    },
+    ungroup: ids => {
+      log.push('ungroup ' + [].concat(ids).length);
+      for (const id of [].concat(ids)) { const t = TABS.find(x => x.id === id); if (t) t.groupId = -1; }
+      GROUPS = GROUPS.filter(g => TABS.some(t => t.groupId === g.id));
+      return Promise.resolve();
+    },
     discard: () => Promise.resolve(),
     // content script есть только на страницах из LAYER_OK: ping → pong, палитра → shown
     sendMessage: (id, msg, opts, cb) => {
@@ -89,6 +116,10 @@ let lastFocused = 1;
 
 let MARKS = [];
 let markId = 0;
+
+// блоки окна: ⌘-цифра адресует их по позиции первой вкладки
+let GROUPS = [];
+let groupSeq = 0;
 
 let loadError = null;
 try {
@@ -217,7 +248,7 @@ const fav = await call('favoriteTab', { windowId: 1 });
 check('favoriteTab сделал закладку', fav?.ok && fav.count === 1 && MARKS.length === 1, JSON.stringify(MARKS));
 check('вкладка осталась жива — без закрытия и перезагрузки', TABS.some(t => t.id === 23), TABS.map(t => t.id).join(' '));
 check('⌘D вывел вкладку из блока — сайдбар вплавит её в строку закладки', log.slice(mark).includes('ungroup 1') && TABS.find(t => t.id === 23)?.groupId === -1, log.slice(mark).join(' | '));
-check('вкладка встала первой строкой вкладок, под закреплённой', TABS[1]?.id === 23, TABS.map(t => t.id).join(' '));
+check('порядок вкладок ⌘D не трогает', TABS.map(t => t.id).join(' ') === '21 22 23 24', TABS.map(t => t.id).join(' '));
 
 // адрес уже открыт — переключение вместо второй вкладки, как в Arc
 const before = TABS.length;
@@ -229,7 +260,7 @@ TABS.find(t => t.id === 23).active = true;
 await wait(500);   // защита от двойного срабатывания: повтор в пределах 450 мс глушится
 const unfav = await call('favoriteTab', { windowId: 1 });
 check('второе нажатие сняло закладку', unfav?.ok && unfav.count === -1 && MARKS.length === 0);
-check('вкладка вернулась в самый верх, под закреплённые', TABS[1]?.id === 23, TABS.map(t => t.id).join(' '));
+check('снятие закладки порядок тоже не трогает', TABS.map(t => t.id).join(' ') === '21 22 23 24', TABS.map(t => t.id).join(' '));
 
 const twice = await call('favoriteTab', { windowId: 1 });
 const twiceAgain = await call('favoriteTab', { windowId: 1 });
@@ -394,9 +425,10 @@ TABS.forEach(t => t.active = t.id === 92);   // палитра переключ�
 await callFrom('signalDone', 93);
 check('переключение из палитры сильнее возврата', TABS.find(t => t.id === 92)?.active === true && !TABS.some(t => t.id === 93), TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
 
-// ⌘D по умолчанию: новая закладка первая, вкладка закрыта, фокус идёт по рабочему списку
-store.sync.favoriteCloses = true;
-await fire('storeChanged', { favoriteCloses: { newValue: true } }, 'sync');
+// ⌘D по умолчанию 4.21: закладка уходит в КОНЕЦ панели, вкладка живёт и остаётся выбранной
+store.sync.favoriteCloses = false;
+store.sync.favoriteMovesTab = false;
+await fire('storeChanged', { favoriteCloses: { newValue: false }, favoriteMovesTab: { newValue: false } }, 'sync');
 await wait(20);
 MARKS = [{ id: 'existing', title: 'Existing', url: 'https://existing.example/', index: 0, parentId: '1' }];
 TABS = [
@@ -406,16 +438,125 @@ TABS = [
   { id: 104, windowId: 1, index: 3, pinned: false, url: 'https://next.example/', title: 'Next', lastAccessed: 50 }
 ];
 await wait(500);   // защита от повтора: то же действие в пределах 450 мс глушится
+const favArc = await call('favoriteTab', { windowId: 1 });
+check('⌘D: закладка встаёт в конец панели, строки выше не съезжают',
+  favArc?.count === 1 && MARKS.length === 2 && MARKS[0].id === 'existing' && MARKS[1].url === 'https://keep.example/page',
+  JSON.stringify(MARKS.map(b => b.url)));
+check('⌘D: вкладка осталась открытой и выбранной',
+  TABS.find(t => t.id === 103)?.active === true && TABS.some(t => t.id === 103), TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
+check('⌘D: порядок вкладок не перескочил', TABS.map(t => t.id).join(' ') === '101 102 103 104', TABS.map(t => t.id).join(' '));
+await wait(500);
+const unfavArc = await call('favoriteTab', { windowId: 1 });
+check('⌘D второй раз снимает строку, вкладка на месте',
+  unfavArc?.count === -1 && MARKS.length === 1 && TABS.find(t => t.id === 103)?.active === true, JSON.stringify(MARKS.map(b => b.url)));
+
+// прежнее поведение остаётся настройкой: включили закрытие — вкладка закрывается, фокус идёт дальше
+store.sync.favoriteCloses = true;
+await fire('storeChanged', { favoriteCloses: { newValue: true } }, 'sync');
+await wait(520);
 const favClose = await call('favoriteTab', { windowId: 1 });
-check('⌘D: новая закладка первой строкой панели', favClose?.count === 1 && MARKS.length === 2 && MARKS[0].url === 'https://keep.example/page' && MARKS[0].index === 0, JSON.stringify(MARKS));
-check('⌘D: вкладка закрыта', !TABS.some(t => t.id === 103), TABS.map(t => t.id).join(' '));
-check('⌘D: фокус на следующей незакреплённой, pinned не будится', TABS.find(t => t.id === 104)?.active === true && !TABS.find(t => t.id === 101)?.active, TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
+check('настройка «после ⌘D вкладка закрывается» работает', favClose?.count === 1 && !TABS.some(t => t.id === 103), TABS.map(t => t.id).join(' '));
+check('⌘D с закрытием: фокус на следующей незакреплённой, pinned не будится',
+  TABS.find(t => t.id === 104)?.active === true && !TABS.find(t => t.id === 101)?.active, TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
+store.sync.favoriteCloses = false;
+await fire('storeChanged', { favoriteCloses: { newValue: false } }, 'sync');
+await wait(20);
+
 // единственная вкладка окна не закрывается — иначе закроется окно
 MARKS = [];
 TABS = [{ id: 111, windowId: 1, index: 0, pinned: false, active: true, url: 'https://only.example/', title: 'Only', lastAccessed: 10 }];
 await wait(500);
 await call('favoriteTab', { windowId: 1 });
 check('⌘D на единственной вкладке: закладка есть, вкладка живёт', MARKS.length === 1 && TABS.some(t => t.id === 111));
+
+// ---------- чистка дубликатов: от команды до закрытых вкладок ----------
+//
+// Регрессия 4.20: applyDuplicateCleanup вызывалась только из applyTidyUp, а та не висела
+// ни на клавише, ни на строке интерфейса. Тест держит цепочку целиком: число в попапе,
+// подтверждение, закрытые вкладки, квитанция.
+MARKS = [{ id: 'bm1', title: 'Doc', url: 'https://doc.example/a', index: 0, parentId: '1' }];
+GROUPS = [];
+TABS = [
+  { id: 201, windowId: 1, index: 0, pinned: false, active: true, url: 'https://home.example/', title: 'Home', lastAccessed: 900 },
+  { id: 202, windowId: 1, index: 1, pinned: false, url: 'https://doc.example/a', title: 'Doc', lastAccessed: 800 },
+  { id: 203, windowId: 1, index: 2, pinned: false, url: 'https://www.doc.example/a/', title: 'Doc', lastAccessed: 700 },
+  { id: 204, windowId: 2, index: 0, pinned: false, url: 'https://doc.example/a?utm_source=x', title: 'Doc', lastAccessed: 600 },
+  { id: 205, windowId: 2, index: 1, pinned: false, url: 'chrome://newtab/', title: 'New tab' },
+  { id: 206, windowId: 2, index: 2, pinned: true, url: 'https://doc.example/a', title: 'Doc pinned', lastAccessed: 500 }
+];
+WINS[2] = { id: 2, type: 'normal' };
+
+const sweepPlan = await call('previewDuplicateCleanup');
+check('предпросмотр чистки видит копии во всех окнах',
+  sweepPlan?.data?.closes === 3 && sweepPlan.data.windows === 2, JSON.stringify(sweepPlan?.data?.closes) + ' · окон ' + sweepPlan?.data?.windows);
+const statsClean = await call('getStats');
+check('число в попапе равно тому, что закроет подтверждение',
+  statsClean?.data?.closable === sweepPlan.data.closes, `${statsClean?.data?.closable} vs ${sweepPlan?.data?.closes}`);
+check('закладка не защищает копию внутри точного кластера',
+  sweepPlan.data.blocked.every(b => !b.reasons.includes('bookmarked')), JSON.stringify(sweepPlan.data.blocked));
+
+const swept = await call('applyDuplicateCleanup');
+check('подтверждение действительно закрывает дубли и пустую вкладку',
+  swept?.data?.closed === 3 && !TABS.some(t => [203, 204, 205].includes(t.id)), TABS.map(t => t.id).join(' '));
+check('хранитель, закреплённая и активная остались',
+  TABS.map(t => t.id).sort((a, b) => a - b).join(' ') === '201 202 206', TABS.map(t => t.id).join(' '));
+check('чистка пишет квитанцию с закрытыми и оставленными',
+  swept.data?.receipt?.closed?.length === 3 && swept.data.receipt.keptTabs?.length >= 1, JSON.stringify(swept.data?.receipt?.action));
+const emptyPlan = await call('previewDuplicateCleanup');
+check('после чистки закрывать больше нечего', emptyPlan?.data?.closes === 0, JSON.stringify(emptyPlan?.data?.closes));
+delete WINS[2];
+
+// команда ⌥⌘D остаётся входом в review и сама ничего не закрывает
+const reviewOnly = await call('tidyDuplicates', { windowId: 1 });
+check('⌥⌘D открывает review, не закрывая вкладки', reviewOnly?.ok && TABS.length === 3, JSON.stringify(reviewOnly));
+
+// ---------- ⌘-цифра: блоки окна ----------
+MARKS = [];
+GROUPS = [];
+TABS = [
+  { id: 301, windowId: 1, index: 0, pinned: false, active: true, url: 'https://loose.example/', title: 'Loose', lastAccessed: 900 },
+  { id: 302, windowId: 1, index: 1, pinned: false, url: 'https://work.example/1', title: 'Work one', lastAccessed: 800, groupId: -1 },
+  { id: 303, windowId: 1, index: 2, pinned: false, url: 'https://work.example/2', title: 'Work two', lastAccessed: 700, groupId: -1 },
+  { id: 304, windowId: 1, index: 3, pinned: false, url: 'https://read.example/1', title: 'Read one', lastAccessed: 600, groupId: -1 }
+];
+GROUPS = [
+  { id: 11, windowId: 1, title: 'work', collapsed: false },
+  { id: 12, windowId: 1, title: 'read', collapsed: true }
+];
+TABS.find(t => t.id === 302).groupId = 11;
+TABS.find(t => t.id === 303).groupId = 11;
+TABS.find(t => t.id === 304).groupId = 12;
+
+const blockList = await call('listBlocks', { windowId: 1 });
+check('блоки нумеруются по положению в окне',
+  blockList?.data?.blocks.map(b => b.n + ':' + b.title).join(' ') === '1:work 2:read', JSON.stringify(blockList?.data?.blocks));
+const gotoBlock = await call('focusBlock', { n: 2, windowId: 1 });
+check('⌘2 разворачивает блок и выбирает его вкладку',
+  gotoBlock?.data?.ok && TABS.find(t => t.id === 304)?.active === true && GROUPS.find(g => g.id === 12)?.collapsed === false,
+  TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
+const missing = await call('focusBlock', { n: 7, windowId: 1 });
+check('⌘7 без седьмого блока говорит об этом и ничего не трогает', missing?.data?.ok === false, JSON.stringify(missing?.data));
+const put = await call('putInBlock', { n: 1, windowId: 1 });
+check('⇧⌘1 кладёт текущую вкладку в первый блок и оставляет её выбранной',
+  put?.data?.ok && TABS.find(t => t.id === 304)?.groupId === 11 && TABS.find(t => t.id === 304)?.active === true,
+  TABS.map(t => t.id + ':' + t.groupId).join(' '));
+
+// ---------- жест Arc: блок из выбранных вкладок ----------
+GROUPS = [];
+TABS = [
+  { id: 401, windowId: 1, index: 0, pinned: false, active: true, highlighted: true, url: 'https://lab.example/one', title: 'AI Mindset lab one', groupId: -1 },
+  { id: 402, windowId: 1, index: 1, pinned: false, highlighted: true, url: 'https://lab.example/two', title: 'AI Mindset lab two', groupId: -1 },
+  { id: 403, windowId: 1, index: 2, pinned: false, url: 'https://other.example/', title: 'Other', groupId: -1 }
+];
+const madeBlock = await call('blockSelected', { windowId: 1 });
+check('выбранные вкладки становятся одним именованным блоком',
+  madeBlock?.count === 2 && GROUPS.length === 1 && !!GROUPS[0].title && TABS.filter(t => t.groupId === GROUPS[0].id).length === 2,
+  JSON.stringify(GROUPS));
+TABS.forEach(t => { t.highlighted = t.id === 403; });
+const noBlock = await call('blockSelected', { windowId: 1 });
+check('одна выбранная строка блока не собирает', noBlock?.count === 0, JSON.stringify(noBlock));
+const folded = await call('foldBlocks', { windowId: 1 });
+check('одна команда сворачивает все блоки окна', folded?.count === 1 && GROUPS.every(g => g.collapsed), JSON.stringify(GROUPS));
 
 console.log(fails ? `\n${fails} провалов` : '\nвсе проверки зелёные');
 process.exit(fails ? 1 : 0);

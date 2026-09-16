@@ -36,9 +36,10 @@ const DEFAULTS = {
   tabPlacement: 'underCurrent',     // underCurrent | end | browser
   placementGuardMs: 2500,           // сколько держим вкладку на месте, если Aside её двигает
   keepPins: true,
-  favoriteMovesTab: true,   // ⌘D двигает открытую вкладку наверх, если закрытие выключено
+  favoriteMovesTab: false,  // ⌘D по правилу Arc порядок вкладок не трогает; включённая настройка двигает вкладку наверх
   favoriteLeavesGroup: true, // ⌘D выводит вкладку из блока: вне блока сайдбар Aside вплавляет её в строку закладки
-  favoriteCloses: true,      // ⌘D кладёт страницу первой в панели, закрывает вкладку и выбирает следующую рабочую
+  favoriteCloses: false,     // ⌘D оставляет вкладку открытой и выбранной, как pin в Arc; включённая настройка закрывает её
+  blockKeys: true,           // ⌘1…⌘9 переключают на блок окна, ⇧⌘1…⇧⌘9 кладут вкладку в блок
   tidyMinGroup: 3,           // блок при уборке собирается от стольких вкладок; пары остаются россыпью
   paletteOverlay: true,     // палитра слоем поверх страницы; выключено — отдельным окном
   keymapEnabled: true,
@@ -72,7 +73,7 @@ function upgradeKeymap(stored) {
   return changed ? map : null;
 }
 
-chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0 }).then(s => {
+chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0 }).then(s => {
   // раскладку накладываем поверх дефолтной: иначе действия, добавленные позже,
   // остаются вообще без привязки — в хранилище лежит карта старой версии
   settings = { ...DEFAULTS, ...s, keymap: { ...DEFAULT_KEYMAP, ...(s.keymap || {}) } };
@@ -86,6 +87,15 @@ chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0 }).then(s => {
   if (s.tabPlacement == null && s.nextToCurrent === false) {
     settings.tabPlacement = 'browser';
     chrome.storage.sync.set({ tabPlacement: 'browser' }).catch(() => { });
+  }
+
+  // Один раз переводим ⌘D на поведение Arc: закладка уходит в конец панели,
+  // вкладка остаётся открытой и выбранной, порядок вкладок не меняется.
+  // Ключ миграции держит правку однократной: человек волен включить обе настройки обратно.
+  if (!s.favoriteArcRev) {
+    settings.favoriteCloses = false;
+    settings.favoriteMovesTab = false;
+    chrome.storage.sync.set({ favoriteArcRev: 1, favoriteCloses: false, favoriteMovesTab: false }).catch(() => { });
   }
 });
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -233,22 +243,41 @@ function titleKey(tab) {
     .replace(/[^a-zа-яё0-9]+/gi, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function semanticScore(a, b) {
+// `weak` — слова, которые в этом окне встречаются у трети вкладок и больше. Такое слово
+// именем продукта не бывает: по нему кластер собирал половину окна и предлагал закрыть
+// «27 из 38» одним подтверждением. Через два общих слова или заголовок склейка остаётся.
+function semanticScore(a, b, weak = EMPTY_SET) {
   const at = new Set(reviewTokens(a)), bt = new Set(reviewTokens(b));
   const shared = [...at].filter(x => bt.has(x));
   const exactTitle = titleKey(a) && titleKey(a) === titleKey(b);
   if (exactTitle) return 8;
   if (shared.length >= 2) return 6;
-  if (shared.some(x => /^s\d+$/i.test(x) || x.length >= 5)) return 4;
+  if (shared.some(x => (/^s\d+$/i.test(x) || x.length >= 5) && !weak.has(x))) return 4;
   return 0;
 }
 
+const EMPTY_SET = new Set();
+
+// Слово слабое, когда оно есть у трети окна и не меньше чем у пяти вкладок. В маленьком
+// окне правило молчит: там общее слово у трёх страниц как раз и означает один продукт.
+function weakTokens(tabs) {
+  if (tabs.length < 12) return EMPTY_SET;
+  const counts = new Map();
+  for (const t of tabs) for (const token of reviewTokens(t)) counts.set(token, (counts.get(token) || 0) + 1);
+  const floor = Math.max(5, Math.ceil(tabs.length / 3));
+  return new Set([...counts.entries()].filter(([, n]) => n >= floor).map(([k]) => k));
+}
+
+// шире этого кластер не предлагает батч: «закрыть 27 из 38» человек глазами не проверит
+const RELATED_BATCH_MAX = 8;
+
 function semanticTabClusters(tabs) {
+  const weak = weakTokens(tabs);
   const parent = tabs.map((_, i) => i);
   const find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
   for (let i = 0; i < tabs.length; i++) {
     for (let j = i + 1; j < tabs.length; j++) {
-      if (semanticScore(tabs[i], tabs[j]) >= 4) parent[find(j)] = find(i);
+      if (semanticScore(tabs[i], tabs[j], weak) >= 4) parent[find(j)] = find(i);
     }
   }
   const groups = new Map();
@@ -286,9 +315,17 @@ async function reviewState() {
   return chrome.storage.local.get(REVIEW_STORE_DEFAULTS);
 }
 
+// Спящая страница ввода не держит, а живая может не ответить вовсе: content script
+// бывает выгружен или занят. Ждём ответ ограниченное время, иначе один висящий
+// таб задерживал бы весь review (при 90 вкладках это 90 сообщений на каждую отрисовку).
+const DIRTY_TIMEOUT_MS = 200;
+
 async function dirtyForm(tab) {
   if (!/^https?:/.test(tab.url || '')) return false;
-  const response = await chrome.tabs.sendMessage(tab.id, { type: 'reviewProtection' }, { frameId: 0 }).catch(() => null);
+  if (tab.discarded) return false;
+  const ask = chrome.tabs.sendMessage(tab.id, { type: 'reviewProtection' }, { frameId: 0 }).catch(() => null);
+  const timed = new Promise(resolve => setTimeout(() => resolve(null), DIRTY_TIMEOUT_MS));
+  const response = await Promise.race([ask, timed]);
   return !!response?.dirty;
 }
 
@@ -296,13 +333,16 @@ function bookmarkKeys(list) {
   return new Set((list || []).filter(x => x.url).map(x => normalizeUrl(x.url)).filter(Boolean));
 }
 
-async function protectionFor(tab, state, marks) {
+// `exact` говорит, что вкладка стоит в кластере точных близнецов. Там закладка защитой не
+// работает: строка панели держит адрес, а не каждую его копию, и пока она считалась защитой,
+// три копии одной закладки оставались открытыми и чистка отказывалась их трогать.
+async function protectionFor(tab, state, marks, exact = false) {
   const key = normalizeUrl(tab.url);
   const reasons = [];
   if (tab.pinned) reasons.push('pinned');
   if (tab.active) reasons.push('active');
   if (key && state.reviewProtected[key]) reasons.push('marked');
-  if (key && marks.has(key)) reasons.push('bookmarked');
+  if (!exact && key && marks.has(key)) reasons.push('bookmarked');
   if (await dirtyForm(tab)) reasons.push('unsaved form');
   return reasons;
 }
@@ -342,7 +382,11 @@ async function previewTabReview(windowId) {
   const all = await chrome.tabs.query({ windowId: wid });
   const [state, bar] = await Promise.all([reviewState(), chrome.bookmarks.getChildren(BAR).catch(() => [])]);
   const marks = bookmarkKeys(bar);
-  const protections = new Map(await Promise.all(all.map(async tab => [tab.id, await protectionFor(tab, state, marks)])));
+  // кто стоит в кластере точных близнецов – считаем до защит: там закладка защитой не работает
+  const exactMembers = new Set();
+  for (const twins of twinClusters(all)) if (twins.length >= 2) for (const t of twins) exactMembers.add(t.id);
+  const protections = new Map(await Promise.all(all.map(async tab =>
+    [tab.id, await protectionFor(tab, state, marks, exactMembers.has(tab.id))])));
 
   const exactClusters = [];
   const exactExtra = new Set();
@@ -368,10 +412,12 @@ async function previewTabReview(windowId) {
     const key = reviewClusterKey('related', tabsRaw);
     const keep = chooseCanonical(tabsRaw, key, state);
     const tabs = tabsRaw.map(t => reviewTab(t, protections.get(t.id), t.id === keep.id));
+    const wide = tabs.length > RELATED_BATCH_MAX;
     return {
-      key, kind: 'related', reason: 'same product or working thread',
+      key, kind: 'related', wide,
+      reason: wide ? `same working thread · ${tabs.length} tabs, too wide for one batch` : 'same product or working thread',
       name: state.reviewClusterNames[key] || suggestedClusterName(tabsRaw), canonicalId: keep.id, tabs,
-      closeIds: tabs.filter(t => !t.canonical && t.safeToClose).map(t => t.id)
+      closeIds: wide ? [] : tabs.filter(t => !t.canonical && t.safeToClose).map(t => t.id)
     };
   });
 
@@ -486,13 +532,23 @@ async function applyReviewBatch({ clusterKey, intent = 'review' } = {}, windowId
     keptTabs,
     closed: closedTabs
   });
+  // Порядок как у прежнего одного жеста: чистка по всем окнам, затем группы
+  // расплетаются и окно собирается заново. Расплести надо до перестановок,
+  // иначе перемещения упираются в границы групп.
+  let swept = 0;
   if (intent === 'tidy') {
-    const wid = await targetWindowId(windowId);
-    if (wid != null) { await ungroupAll(wid); await arrangeWindow(wid); }
+    quiet = true;
+    try {
+      swept = (await applyDuplicateCleanup().catch(() => null))?.closed || 0;
+      const wid = await targetWindowId(windowId);
+      if (wid != null) { await ungroupAll(wid); await arrangeWindow(wid); }
+    } finally { quiet = false; }
   }
   flash(intent === 'tidy' ? 'TIDY' : '−' + closedTabs.length,
-    intent === 'tidy' ? `reviewed window tidied\n${closedTabs.length} closed · receipt saved` : `${closedTabs.length} reviewed tab${closedTabs.length === 1 ? '' : 's'} closed\nreceipt saved`);
-  return { closed: closedTabs.length, receipt };
+    intent === 'tidy'
+      ? `reviewed window tidied\n${closedTabs.length + swept} closed · receipt saved`
+      : `${closedTabs.length} reviewed tab${closedTabs.length === 1 ? '' : 's'} closed\nreceipt saved`);
+  return { closed: closedTabs.length + swept, receipt };
 }
 
 // ---------- новые вкладки под текущей ----------
@@ -656,40 +712,88 @@ function keeperOf(a, b) {
   return a.id < b.id ? a : b;
 }
 
-async function applyDuplicateCleanup() {
+// План чистки по всем окнам: точные близнецы и пустые вкладки, с теми же защитами,
+// что и в review. До 4.21 этот расчёт жил внутри applyDuplicateCleanup, а сама функция
+// вызывалась только из applyTidyUp, которая ни к одной клавише и ни к одной строке
+// интерфейса привязана не была – отсюда «чистка перестала работать».
+async function planDuplicateCleanup() {
   const all = await chrome.tabs.query({});
   const loose = all.filter(t => !t.pinned);
-  const toClose = [];
-  const empties = loose.filter(isEmptyTab);
+  const [state, bar] = await Promise.all([reviewState(), chrome.bookmarks.getChildren(BAR).catch(() => [])]);
+  const marks = bookmarkKeys(bar);
 
-  // из каждого кластера близнецов остаётся один хранитель, остальные закрываются
+  const clusters = [];
+  const empties = [];
+  const kept = [];
+  const closeIds = [];
+  const blocked = [];
+
   for (const twins of twinClusters(loose)) {
     if (twins.length < 2) continue;
     const keep = twins.reduce(keeperOf);
-    for (const t of twins) if (t !== keep) toClose.push(t.id);
+    kept.push({ title: plainTitle(keep.title), url: keep.url });
+    const rows = [];
+    for (const t of twins) {
+      if (t.id === keep.id) continue;
+      const reasons = await protectionFor(t, state, marks, true);
+      if (reasons.length) { blocked.push({ title: plainTitle(t.title), url: t.url, reasons }); continue; }
+      closeIds.push(t.id);
+      rows.push({ id: t.id, title: plainTitle(t.title), url: t.url, asleep: !!t.discarded });
+    }
+    if (rows.length) clusters.push({
+      reason: new Set(twins.map(t => normalizeUrl(t.url))).size === 1 ? 'same address' : 'same site and title',
+      windows: new Set(twins.map(t => t.windowId)).size,
+      keep: { id: keep.id, title: plainTitle(keep.title), url: keep.url },
+      close: rows
+    });
   }
 
   // пустые убираем целиком; последнюю вкладку окна не трогаем, иначе окно закроется
   const perWindow = new Map();
   for (const t of all) perWindow.set(t.windowId, (perWindow.get(t.windowId) || 0) + 1);
-  let emptiesClosed = 0;
-  for (const t of empties) {
+  for (const t of loose.filter(isEmptyTab)) {
     const left = perWindow.get(t.windowId) || 0;
     if (left <= 1) continue;
+    if (t.active) { blocked.push({ title: 'empty tab', url: t.url || '', reasons: ['active'] }); continue; }
     perWindow.set(t.windowId, left - 1);
-    toClose.push(t.id);
-    emptiesClosed++;
+    closeIds.push(t.id);
+    empties.push({ id: t.id, title: 'empty tab', url: t.url || '' });
   }
 
-  const closedTitles = toClose.map(id => plainTitle(all.find(t => t.id === id)?.title)).filter(Boolean);
-  if (toClose.length) await chrome.tabs.remove(toClose);
-  const dups = toClose.length - emptiesClosed;
-  const named = closedTitles.slice(0, 3).map(t => t.length > 40 ? t.slice(0, 39) + '…' : t).join(' · ');
-  const note = toClose.length
-    ? `closed ${toClose.length}` + (emptiesClosed ? ` · ${dups} dupes, ${emptiesClosed} empty` : ' duplicates') + (named ? '\n' + named + (closedTitles.length > 3 ? ' …' : '') : '')
-    : 'nothing to clean';
-  flash(toClose.length ? '−' + toClose.length : '0', note);
-  return toClose.length;
+  return {
+    clusters, empties, kept, blocked,
+    closeIds: [...new Set(closeIds)],
+    closes: new Set(closeIds).size,
+    windows: new Set(all.map(t => t.windowId)).size
+  };
+}
+
+// Предпросмотр для палитры и попапа: то же число, что закроет подтверждение.
+async function previewDuplicateCleanup() {
+  return planDuplicateCleanup();
+}
+
+// Исполнение: только после подтверждения в review. Пишет квитанцию, как любая партия.
+async function applyDuplicateCleanup() {
+  const plan = await planDuplicateCleanup();
+  const live = await Promise.all(plan.closeIds.map(id => chrome.tabs.get(id).catch(() => null)));
+  const closedTabs = live.filter(Boolean).map(t => ({ title: plainTitle(t.title), url: t.url }));
+  if (closedTabs.length) await chrome.tabs.remove(live.filter(Boolean).map(t => t.id));
+  const dups = closedTabs.length - plan.empties.length;
+  const receipt = await saveReceipt({
+    action: 'close exact duplicates in every window',
+    clusterKey: 'all-windows',
+    clusterName: 'exact duplicates · every window',
+    kept: plan.kept[0] || null,
+    keptTabs: plan.kept,
+    closed: closedTabs,
+    blocked: plan.blocked.length
+  });
+  const named = closedTabs.slice(0, 3).map(t => t.title.length > 40 ? t.title.slice(0, 39) + '…' : t.title).join(' · ');
+  flash(closedTabs.length ? '−' + closedTabs.length : '0', closedTabs.length
+    ? `closed ${closedTabs.length} · ${Math.max(dups, 0)} dupes, ${plan.empties.length} empty` + (named ? '\n' + named + (closedTabs.length > 3 ? ' …' : '') : '') + '\nreceipt saved'
+    : 'nothing to clean');
+  return { closed: closedTabs.length, receipt };
 }
 
 const SECOND_LEVEL = new Set(['co.uk', 'org.uk', 'com.br', 'com.au', 'co.jp', 'com.tr']);
@@ -823,33 +927,6 @@ async function sortByDomain(windowId) {
 // id вкладки в Chromium растёт монотонно, поэтому он же и есть порядок открытия
 async function sortByOpened(windowId) {
   return reorder(windowId, t => t.id, 'by when opened');
-}
-
-// Один жест вместо четырёх. Порядок важен: группы расплетаются ДО перестановок,
-// иначе перемещения упираются в границы групп и шаг падает целиком.
-//
-// Что остаётся после: сверху россыпь — то, чем занимался последним, по свежести, как «сегодня» в Arc;
-// ниже блоки от tidyMinGroup вкладок — сначала правила из настроек, потом сайты, внутри тоже по свежести.
-// Пары одного сайта блоком не становятся: два github — это ещё не рабочая зона.
-// Вкладки, чей адрес лежит в панели закладок, остаются вне блоков: сайдбар Aside сам
-// вплавляет их в строку закладки, и из списка вкладок они исчезают.
-async function applyTidyUp(windowId) {
-  quiet = true;
-  const step = async (fn) => { try { return await fn(); } catch { return null; } };
-  let closed = 0, loose = 0, blocks = 0, failed = 0;
-  try {
-    closed = await step(() => applyDuplicateCleanup()) ?? (failed++, 0);
-    const wid = await targetWindowId(windowId);
-    if (wid != null) {
-      await step(() => ungroupAll(wid));
-      const r = await step(() => arrangeWindow(wid));
-      if (r) { loose = r.loose; blocks = r.blocks; } else failed++;
-    }
-  } finally {
-    quiet = false;
-  }
-  flash('TIDY', `tidied up\n${closed} closed · ${loose} loose on top · ${blocks} block${blocks === 1 ? '' : 's'}` + (failed ? `\n${failed} steps refused` : ''));
-  return closed + blocks;
 }
 
 // Публичные команды открывают review. Прямые apply-действия доступны только из
@@ -1114,31 +1191,32 @@ async function favoriteTab(windowId) {
     await keepSelected(tab.id, tab.windowId);
     flash('BM−', moved
       ? 'back in the tabs — first row, selected ↑'
-      : 'removed from the bookmarks bar ↑');
+      : 'out of the bookmarks bar · tab stays open and selected');
     return -1;
   }
 
-  // Первая строка панели закладок остаётся видимой рядом с верхом сайдбара.
-  // Адрес пишем как есть: Aside сличает его с открытой вкладкой буквально.
-  const made = await chrome.bookmarks.create({ parentId: BAR, index: 0, title: tab.title || tab.url, url: tab.url });
+  // Как pin в Arc: новая строка встаёт в конец панели закладок, существующие строки не съезжают
+  // и мышечная память по позиции держится. Адрес пишем как есть: Aside сличает его буквально.
+  const made = await chrome.bookmarks.create({ parentId: BAR, title: tab.title || tab.url, url: tab.url });
   await chrome.storage.session.set({ lastFavId: made?.id ?? null, lastFavAt: Date.now() }).catch(() => { });
 
-  // Закладка остаётся первой строкой панели. Вкладка закрывается, а фокус идёт
-  // по видимому списку рабочих вкладок, не прыгая в pinned-якорь без необходимости.
-  if (settings.favoriteCloses !== false) {
+  // Закрытие вкладки после ⌘D осталось настройкой и по умолчанию выключено:
+  // в Arc страница после pin продолжает жить открытой. Когда человек включил закрытие,
+  // фокус идёт по видимому списку рабочих вкладок, не прыгая в pinned-якорь.
+  if (settings.favoriteCloses === true) {
     const others = (await chrome.tabs.query({ windowId: tab.windowId }).catch(() => [])).filter(t => t.id !== tab.id);
     const next = nextWorkingTab(tab, others);
     if (next) await chrome.tabs.update(next.id, { active: true }).catch(() => { });
     if (others.length) await chrome.tabs.remove(tab.id).catch(() => { });
-    flash('BM+', 'first in the bookmarks bar ★ · tab closed' + (next ? '\nnext: ' + plainTitle(next.title).slice(0, 40) : '') + '\nthe bar row opens it again');
+    flash('BM+', 'last in the bookmarks bar ★ · tab closed' + (next ? '\nnext: ' + plainTitle(next.title).slice(0, 40) : '') + '\nthe bar row opens it again');
     return 1;
   }
 
   const left = await leaveGroup(tab);
   const moved = await moveTabTo(tab);
   await keepSelected(tab.id, tab.windowId);
-  flash('BM+', 'in the bookmarks bar ★' +
-    (left ? '\nout of its block — the sidebar folds the tab into that row' : moved ? '\ntab stays open, folded into the bar row' : '') +
+  flash('BM+', 'last in the bookmarks bar ★' +
+    (left ? '\nout of its block — the sidebar folds the tab into that row' : moved ? '\ntab stays open, folded into the bar row' : '\ntab stays open and selected') +
     '\n⌘D again takes it out');
   return 1;
 }
@@ -1202,6 +1280,98 @@ async function joinGroup(tab, groupName) {
   if (gid != null) await chrome.tabGroups.update(gid, { title: groupName, collapsed: false }).catch(() => { });
 }
 
+// ---------- выбор нескольких вкладок ----------
+//
+// В Arc несколько строк боковой панели выбираются shift-кликом, и над выбором работает
+// одно действие (вложенная папка, общая ссылка). Здесь тот же жест: shift-клик или ⌘-клик
+// по вкладкам браузера, потом одна команда – выбранные вкладки становятся блоком.
+// Один выбранный ряд ничего не собирает: это просто активная вкладка.
+async function blockSelected(windowId) {
+  const wid = await targetWindowId(windowId);
+  if (wid == null) return 0;
+  const picked = (await chrome.tabs.query({ windowId: wid, highlighted: true }).catch(() => []))
+    .filter(t => !t.pinned);
+  if (picked.length < 2) {
+    flash('◫', 'select tabs first\nshift-click or ⌘-click the tabs, then run this again', false);
+    return 0;
+  }
+  const name = suggestedClusterName(picked);
+  const gid = await chrome.tabs.group({ tabIds: picked.map(t => t.id) }).catch(() => null);
+  if (gid == null) { flash('◫', 'the browser refused to group these tabs', false); return 0; }
+  await chrome.tabGroups.update(gid, { title: name, collapsed: false }).catch(() => { });
+  const { blocks } = await windowBlocks(wid);
+  const n = blocks.find(b => b.id === gid)?.n;
+  flash('◫' + picked.length, `block “${name}” · ${picked.length} tabs` + (n ? `\n⌘${n} switches to it` : ''));
+  return picked.length;
+}
+
+// Arc держит отдельные команды «Collapse Pinned» и «Expand Pinned»: когда блоков много,
+// свёрнутый список читается целиком. Одна команда-переключатель делает то же самое.
+async function foldBlocks(windowId) {
+  const { wid, blocks } = await windowBlocks(windowId);
+  if (wid == null || !blocks.length) { flash('0', 'no blocks in this window', false); return 0; }
+  const fold = blocks.some(b => !b.collapsed);
+  for (const b of blocks) await chrome.tabGroups.update(b.id, { collapsed: fold }).catch(() => { });
+  flash(fold ? '▸' : '▾', `${blocks.length} block${blocks.length === 1 ? '' : 's'} ${fold ? 'folded' : 'unfolded'}`);
+  return blocks.length;
+}
+
+// ---------- блоки под цифрами ----------
+//
+// В Arc ⌘1…⌘9 адресуют закреплённые строки по позиции сверху вниз. Здесь тем же жестом
+// адресуются блоки окна: позиция считается по первой вкладке блока, поэтому номер держится,
+// пока человек сам не переставит блоки. ⇧⌘-цифра кладёт текущую вкладку в блок с тем же номером.
+
+async function windowBlocks(windowId) {
+  const wid = await targetWindowId(windowId);
+  if (wid == null) return { wid: null, blocks: [] };
+  const [groups, tabs] = await Promise.all([
+    chrome.tabGroups.query({ windowId: wid }).catch(() => []),
+    chrome.tabs.query({ windowId: wid }).catch(() => [])
+  ]);
+  const list = groups.map(g => {
+    const members = tabs.filter(t => t.groupId === g.id).sort((a, b) => a.index - b.index);
+    return {
+      id: g.id, title: g.title || 'block', color: g.color, collapsed: !!g.collapsed,
+      first: members[0]?.index ?? Number.MAX_SAFE_INTEGER, tabs: members.length,
+      recentId: members.slice().sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0]?.id ?? members[0]?.id ?? null
+    };
+  }).sort((a, b) => a.first - b.first);
+  return { wid, blocks: list.map((b, i) => ({ ...b, n: i + 1 })) };
+}
+
+// список для палитры и подсказок: номер, имя, сколько вкладок
+async function listBlocks({ windowId } = {}) {
+  const { blocks } = await windowBlocks(windowId);
+  return { blocks: blocks.map(b => ({ n: b.n, title: b.title, tabs: b.tabs, collapsed: b.collapsed })) };
+}
+
+async function focusBlock({ n, windowId } = {}) {
+  const num = Number(n);
+  const { wid, blocks } = await windowBlocks(windowId);
+  const block = blocks.find(b => b.n === num);
+  if (!block) { flash(String(num || '?'), `no block ${num} in this window\n${blocks.length} block${blocks.length === 1 ? '' : 's'} here`, false); return { ok: false, blocks: blocks.length }; }
+  if (block.collapsed) await chrome.tabGroups.update(block.id, { collapsed: false }).catch(() => { });
+  if (block.recentId != null) await keepSelected(block.recentId, wid);
+  flash(String(num), `block ${num} · ${block.title}\n${block.tabs} tab${block.tabs === 1 ? '' : 's'}`);
+  return { ok: true, title: block.title, tabs: block.tabs };
+}
+
+async function putInBlock({ n, windowId } = {}) {
+  const num = Number(n);
+  const { wid, blocks } = await windowBlocks(windowId);
+  if (wid == null) return { ok: false };
+  const [tab] = await chrome.tabs.query({ active: true, windowId: wid }).catch(() => []);
+  if (!tab) return { ok: false };
+  if (tab.pinned) { flash(String(num), 'a pinned tab stays out of blocks', false); return { ok: false }; }
+  const block = blocks.find(b => b.n === num);
+  if (!block) { flash(String(num), `no block ${num} in this window\n⌘${num} shows what is there`, false); return { ok: false }; }
+  await chrome.tabs.group({ tabIds: [tab.id], groupId: block.id }).catch(() => { });
+  await keepSelected(tab.id, wid);
+  flash('→' + num, `into block ${num} · ${block.title}\n${plainTitle(tab.title).slice(0, 40)}`);
+  return { ok: true, title: block.title };
+}
+
 // открыть адрес: в обычном окне, под текущей вкладкой, при желании сразу в блок или в пин.
 // Адрес уже открыт — переключаемся на ту вкладку, как Arc, вместо второй такой же.
 async function openUrl({ url, windowId, groupName, pinned } = {}) {
@@ -1234,26 +1404,6 @@ async function openUrl({ url, windowId, groupName, pinned } = {}) {
   return 1;
 }
 
-// предпросмотр чистки: кластеры близнецов с хранителем и причиной — палитра показывает список
-// до нажатия, чтобы «6 duplicates» не было числом без лица
-async function previewDuplicates() {
-  const all = await chrome.tabs.query({});
-  const loose = all.filter(t => !t.pinned);
-  const clusters = [];
-  for (const twins of twinClusters(loose)) {
-    if (twins.length < 2) continue;
-    const keep = twins.reduce(keeperOf);
-    const exact = new Set(twins.map(t => normalizeUrl(t.url)));
-    clusters.push({
-      reason: exact.size === 1 ? 'same address' : 'same site and title',
-      keep: { id: keep.id, title: plainTitle(keep.title), url: keep.url },
-      close: twins.filter(t => t !== keep).map(t => ({ id: t.id, title: plainTitle(t.title), url: t.url, asleep: !!t.discarded }))
-    });
-  }
-  const empties = loose.filter(isEmptyTab).map(t => ({ id: t.id, title: 'empty tab', url: t.url || '' }));
-  return { clusters, empties, closes: clusters.reduce((n, c) => n + c.close.length, 0) + empties.length };
-}
-
 // dups — сколько вкладок закроет чистка прямо сейчас; twinOf — у какой вкладки сколько близнецов,
 // палитра рисует по этому «×N» на строке
 async function getStats() {
@@ -1269,7 +1419,13 @@ async function getStats() {
     dups += twins.length - 1;
     for (const t of twins) twinOf[t.id] = twins.length;
   }
-  return { total: all.length, dups, pinned, empties, twinOf };
+  // `closable` – сколько вкладок закроет подтверждение, с теми же защитами.
+  // Попап показывает именно это число, а не «дубли минус хранители».
+  const plan = await planDuplicateCleanup().catch(() => null);
+  return {
+    total: all.length, dups, pinned, empties, twinOf,
+    closable: plan?.closes ?? 0, blocked: plan?.blocked.length ?? 0
+  };
 }
 
 // ---------- omnibox: tw + Tab ----------
@@ -1469,6 +1625,9 @@ async function signalDone(_, sender) {
 
 const SIGNAL = { paletteSignal, signalDone };
 
+// действия с номером блока: аргумент приходит сообщением, окно – от отправителя
+const NUMBERED = { focusBlock, putInBlock, listBlocks };
+
 // ---------- desk bridge: заметки Obsidian и агенты Orca через локальный мост ----------
 // Мост — bridge/desk.py на 127.0.0.1 (manifest: host_permissions на 127.0.0.1, без диалога —
 // адрес локальный, а мост сам отвечает только этому расширению). Нет моста — нет и заметок.
@@ -1518,11 +1677,13 @@ const DESK = { deskHealth, deskNotes, deskAgents, deskOpen, deskSwitch, deskRun,
 
 const ACTIONS = {
   tidyDuplicates, groupByDomain, groupByRules, ungroupAll, sortByDomain,
-  pinTab, favoriteTab, listFavorites, bookmarkTab, tidyUp, sortByOpened, getStats, previewDuplicates, previewTabReview, openPalette, togglePanel,
+  pinTab, favoriteTab, listFavorites, bookmarkTab, tidyUp, sortByOpened, getStats, previewDuplicateCleanup, previewTabReview, openPalette, togglePanel,
+  blockSelected, foldBlocks,
   groupBySense: senseProposal, senseApply
 };
 
 const REVIEW_ACTIONS = {
+  applyDuplicateCleanup,
   setReviewCanonical,
   setReviewProtection,
   renameReviewCluster,
@@ -1555,6 +1716,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.action === 'openPaletteWindow') {
     openPaletteWindow(msg.windowId, typeof msg.q === 'string' ? msg.q : '', typeof msg.view === 'string' ? msg.view : '');
     sendResponse({ ok: true }); return;
+  }
+  if (NUMBERED[msg?.action]) {
+    const wid = msg.windowId ?? sender?.tab?.windowId;
+    NUMBERED[msg.action]({ ...msg, windowId: wid })
+      .then(data => sendResponse({ ok: data?.ok !== false, data }))
+      .catch(e => sendResponse({ ok: false, error: String(e) }));
+    return true;
   }
   if (SIGNAL[msg?.action]) {
     SIGNAL[msg.action](msg, sender).then(r => sendResponse({ ok: true, count: r })).catch(e => sendResponse({ ok: false, error: String(e) }));

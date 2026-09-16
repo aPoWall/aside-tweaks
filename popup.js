@@ -4,7 +4,9 @@
 const LABELS = {
   tidyDuplicates: () => 'review opened',
   pinTab: n => n === 1 ? 'pinned ↑' : 'unpinned',
-  favoriteTab: n => n === 1 ? 'bookmarked ↑ first · tab closed, next tab active' : 'bookmark removed · the tab stays',
+  favoriteTab: n => n === 1 ? 'bookmarked · last row of the bar, tab stays open' : 'bookmark removed · the tab stays',
+  blockSelected: n => n ? `${n} tabs in one block` : 'select tabs first · shift-click',
+  foldBlocks: n => n ? `${n} blocks folded or unfolded` : 'no blocks',
   bookmarkTab: n => n === 1 ? 'bookmarked ✓' : 'bookmark removed',
   groupByRules: n => n ? `${n} blocks` : 'nothing to group',
   groupByDomain: n => n ? `${n} blocks` : 'nothing to group',
@@ -93,8 +95,13 @@ async function refreshStats() {
   if (empties) parts.push(`${empties} empty`);
   if (pinned) parts.push(`${pinned} pinned`);
   document.getElementById('statsub').textContent = parts.length ? '· ' + parts.join(' · ') : '· clean';
+  // число на плитке = то, что закроет подтверждение: те же защиты, что и в review
   const d = document.getElementById('dupsub');
-  if (d) d.textContent = (dups || empties) ? `review ${dups + empties}` : 'review product families';
+  const closable = stats.closable ?? 0;
+  const blocked = stats.blocked ?? 0;
+  if (d) d.textContent = closable
+    ? `${closable} will close` + (blocked ? ` · ${blocked} protected` : '')
+    : (dups || empties) ? 'all copies protected' : 'nothing to close';
 }
 
 async function run(c) {

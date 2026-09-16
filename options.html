@@ -120,18 +120,21 @@
     <div class="head"><span class="idx">02</span><span class="ttl">pin vs bookmark</span></div>
     <div class="body">
       <small style="margin-bottom:9px">
-        <b><code>⌘D</code> — bookmark ⇄ tab.</b> the page becomes the first row of the bookmarks bar and, by default, its open tab closes.
-        focus moves to the next unpinned tab; press ⌘D on the page again to remove the bookmark and return its tab to the top.<br>
-        <b><code>⇧⌘D</code> — pin.</b> the squares on top of the sidebar, the browser's own pin on a key of its own.
+        <b><code>⌘D</code> – bookmark ⇄ tab.</b> as in Arc: the page joins the end of the bookmarks bar, the tab stays open and keeps the focus,
+        and the rows above it do not move. press ⌘D on the page again to take the row out.<br>
+        <b><code>⇧⌘D</code> – pin.</b> the squares on top of the sidebar, the browser's own pin on a key of its own; the tab keeps the focus after pinning.
       </small>
       <label class="opt"><input type="checkbox" id="favoriteCloses">
-        <span>after ⌘D the tab closes<small>the page stays first in the bookmarks bar and opens again from there; focus moves to the next unpinned tab. off — the tab stays open and moves to the first tab row</small></span>
+        <span>after ⌘D the tab closes<small>off by default since 4.21: the tab stays open and selected, as a pinned page does in Arc. on – the page opens again from the bar row and focus moves to the next unpinned tab</small></span>
       </label>
       <label class="opt"><input type="checkbox" id="favoriteMovesTab">
-        <span>the open tab moves to the top<small>used when closing is off and when a bookmark is removed. off — only the bookmark changes, the open tab keeps its place</small></span>
+        <span>the open tab moves to the top<small>off by default since 4.21: ⌘D changes the bookmarks bar and leaves the tab order alone. on – the tab jumps under the pinned squares</small></span>
       </label>
       <label class="opt"><input type="checkbox" id="favoriteLeavesGroup">
         <span>⌘D takes the tab out of its block<small>Aside's sidebar folds an open tab into the bookmark row with the same address — but only a tab outside any block. inside a block the page would show twice: in the bookmarks and in the block</small></span>
+      </label>
+      <label class="opt"><input type="checkbox" id="blockKeys">
+        <span>⌘1…⌘9 address the blocks of the window<small>the number counts blocks from the left, ⇧⌘ with the same number puts the current tab into that block, and the palette lists what each number holds. off – the browser keeps ⌘1…⌘9 for tabs by position</small></span>
       </label>
       <label class="opt"><input type="checkbox" id="keepPins">
         <span>Arc-style pins<small>closing a pinned tab brings the pin back asleep instead of dropping it. to remove it for good: unpin, then close</small></span>

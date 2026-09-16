@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Aside Tweaks",
-  "version": "4.20.0",
+  "version": "4.21.0",
   "description": "A review layer for Aside: product-aware tab families, protected cleanup previews and receipts, plus the palette, keymap, Obsidian and agent bridge.",
   "permissions": [
     "tabs",
@@ -68,7 +68,7 @@
         "default": "Ctrl+Shift+B",
         "mac": "Command+D"
       },
-      "description": "Закладка ⇄ вкладка: первой в панели, затем следующая открытая вкладка"
+      "description": "Закладка ⇄ вкладка: в конец панели закладок, вкладка остаётся открытой"
     },
     "pin-tab": {
       "suggested_key": {
@@ -78,7 +78,7 @@
       "description": "Закрепить / открепить вкладку"
     },
     "tidy-duplicates": {
-      "description": "Открыть review вкладок перед очисткой"
+      "description": "Review вкладок: что закроется и что останется"
     },
     "tidy-up": {
       "description": "Review, затем чистка, порядок и блоки"

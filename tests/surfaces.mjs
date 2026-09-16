@@ -43,6 +43,29 @@ const dedup = TWEAK_COMMANDS.find(c => c.action === 'tidyDuplicates');
 check('чистка дублей есть в панели, палитре и попапе',
   ['panel', 'palette', 'popup'].every(s => dedup.on.includes(s)), dedup.on.join(' '));
 
+// Чистка обязана быть достижимой с поверхности. Регрессия 4.20: applyDuplicateCleanup
+// вызывалась только из applyTidyUp, а та не висела ни на клавише, ни на строке, и «чистка
+// перестала работать» была не багом логики, а недостижимой функцией.
+const reviewActions = (bg.match(/const REVIEW_ACTIONS = \{([\s\S]*?)\};/) || [])[1] || '';
+check('чистка дублей достижима с поверхности',
+  (known + reviewActions).includes('applyDuplicateCleanup') && palette.includes("send('applyDuplicateCleanup')"));
+
+// и в фоне не остаётся функций, которых никто не зовёт — тот же класс поломки
+const surfaceMaps = known + reviewActions +
+  ((bg.match(/const NUMBERED = \{([\s\S]*?)\};/) || [])[1] || '') +
+  ((bg.match(/const SIGNAL = \{([\s\S]*?)\};/) || [])[1] || '') +
+  ((bg.match(/const DESK = \{([\s\S]*?)\};/) || [])[1] || '');
+const orphans = [...bg.matchAll(/^(?:async )?function ([A-Za-z0-9_]+)\(/gm)]
+  .map(m => m[1])
+  .filter(name => !surfaceMaps.includes(name))
+  .filter(name => (bg.match(new RegExp('\\b' + name + '\\b', 'g')) || []).length < 2);
+check('в фоне нет функций, которых никто не зовёт', orphans.length === 0, orphans.join(', '));
+
+// ⌘-цифра живёт в трёх местах сразу: клавиша, фон, подсказка в палитре
+const keys = read('keys.js');
+check('⌘-цифра доходит от клавиши до блока',
+  keys.includes("'putInBlock'") && keys.includes("'focusBlock'") && bg.includes('async function focusBlock') && palette.includes('listBlocks'));
+
 // у каждой команды есть подпись и пояснение
 const thin = TWEAK_COMMANDS.filter(c => !c.title || !c.sub || !c.hint || !c.words);
 check('у каждой команды есть название, подпись, пояснение и слова для поиска',

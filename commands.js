@@ -17,13 +17,13 @@ const TWEAK_COMMANDS = [
     words: 'palette search find', group: 'surface', on: ['popup']
   },
   {
-    action: 'favoriteTab', glyph: '★', title: 'bookmark ⇄ tab', short: 'bookmark ⇄ tab', sub: 'first row of the bar', key: '⌘D',
-    hint: 'the page becomes the first bookmark and the tab closes — focus moves to the next open tab · ⌘D on an open bookmarked page removes the bookmark',
-    words: 'bookmark bar keep star', group: 'tab', on: ['palette', 'popup']
+    action: 'favoriteTab', glyph: '★', title: 'bookmark ⇄ tab', short: 'bookmark ⇄ tab', sub: 'end of the bar', key: '⌘D',
+    hint: 'as in Arc: the page joins the end of the bookmarks bar, the tab stays open and selected, and a second ⌘D takes the row out again',
+    words: 'bookmark bar keep star arc pin', group: 'tab', on: ['palette', 'popup']
   },
   {
     action: 'pinTab', glyph: '◆', title: 'pin / unpin tab', short: 'pin / unpin', sub: 'the squares on top', key: '⇧⌘D',
-    hint: 'unpinning returns the page to the first row of the tabs and keeps it selected',
+    hint: 'the tab keeps the focus after pinning; unpinning returns the page to the first row of the tabs and keeps it selected',
     words: 'pin unpin squares', group: 'tab', on: ['palette', 'popup']
   },
   {
@@ -32,8 +32,8 @@ const TWEAK_COMMANDS = [
     words: 'tidy sweep clean order everything', group: 'window', on: ['panel', 'palette', 'popup']
   },
   {
-    action: 'tidyDuplicates', glyph: '◎', title: 'review tabs', short: 'review tabs', sub: 'exact · related · stale · sources', key: '⌥⌘D',
-    hint: 'review product clusters before closing anything · protected tabs stay protected · every batch gets a receipt',
+    action: 'tidyDuplicates', glyph: '◎', title: 'review tabs', short: 'review tabs', sub: 'what closes, what stays', key: '⌥⌘D',
+    hint: 'the list of tabs that cleanup would close, grouped and with the reason on each row · the first line closes them all · protected tabs stay and every batch gets a receipt',
     words: 'review dd dedup duplicates twins semantic siblings stale event research source cleanup', group: 'window', on: ['panel', 'palette', 'popup']
   },
   {
@@ -65,6 +65,16 @@ const TWEAK_COMMANDS = [
     action: 'sortByOpened', glyph: '↻', title: 'order by when opened', short: 'by opened', sub: 'oldest first', key: '',
     hint: 'tab id is the open order, so this is the order you opened them',
     words: 'opened order time recent age', group: 'order', on: ['panel', 'palette', 'popup']
+  },
+  {
+    action: 'blockSelected', glyph: '◫', title: 'block from selected tabs', short: 'block from selection', sub: 'shift-click the tabs first', key: '',
+    hint: 'select several tabs with shift-click or ⌘-click, then this makes one named block out of them – the Arc multi-select gesture',
+    words: 'select selection multiple shift click block group arc lasso', group: 'order', on: ['panel', 'palette', 'popup']
+  },
+  {
+    action: 'foldBlocks', glyph: '▸', title: 'fold / unfold blocks', short: 'fold blocks', sub: 'all blocks at once', key: '',
+    hint: 'collapses every block of the window, or opens them all back – the Arc collapse pinned gesture',
+    words: 'fold collapse expand blocks groups arc', group: 'order', on: ['panel', 'palette', 'popup']
   },
   {
     action: 'bookmarkTab', glyph: '☆', title: 'bookmark, no dialog', short: 'bookmark', sub: 'toggle', key: '',
