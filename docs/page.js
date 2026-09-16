@@ -57,18 +57,17 @@
     const tab = document.getElementById('keepTab'), favorites = document.getElementById('favorites');
     if (kept) {
       favorites.querySelector('[data-demo-favorite]')?.remove();
-      document.querySelectorAll('.aside-tab.active').forEach(x => x.classList.remove('active'));
-      tab.classList.remove('parked'); tab.classList.add('active'); kept = false; say('returned'); return;
+      tab.classList.remove('parked'); tab.classList.add('active'); kept = false; say('row removed · tab stays'); return;
     }
     const stageRect = stage.getBoundingClientRect(), tabRect = tab.getBoundingClientRect(), destRect = favorites.getBoundingClientRect();
     const clone = tab.cloneNode(true); clone.removeAttribute('id'); clone.className = 'aside-tab fly';
     clone.style.left = (tabRect.left - stageRect.left) + 'px'; clone.style.top = (tabRect.top - stageRect.top) + 'px'; clone.style.width = tabRect.width + 'px'; stage.append(clone);
-    const dx = destRect.left - tabRect.left + 6, dy = destRect.top - tabRect.top + 4;
+    const dx = destRect.right - tabRect.left - 34, dy = destRect.top - tabRect.top + 4;   // как в Arc: новая строка встаёт в конец полосы
     const finish = () => {
-      clone.remove(); tab.classList.add('parked'); tab.classList.remove('active');
-      const fav = document.createElement('span'); fav.className = 'favorite new'; fav.dataset.demoFavorite = ''; fav.textContent = 'AT'; favorites.prepend(fav);
-      const next = [...document.querySelectorAll('.aside-tab')].find(x => x.querySelector('.ico')?.textContent === 'GH'); next?.classList.add('active');
-      kept = true; say('kept');
+      // 4.21: закладка уходит в конец полосы, вкладка остаётся открытой и выбранной
+      clone.remove();
+      const fav = document.createElement('span'); fav.className = 'favorite new'; fav.dataset.demoFavorite = ''; fav.textContent = 'AT'; favorites.append(fav);
+      kept = true; say('kept · tab stays');
     };
     if (matchMedia('(prefers-reduced-motion: reduce)').matches || !clone.animate) { finish(); return; }
     const anim = clone.animate([{ transform: 'translate(0,0) scale(1)' }, { transform: `translate(${dx * .64}px,${dy * .38}px) scale(.88)`, offset: .55 }, { transform: `translate(${dx}px,${dy}px) scale(.32)`, opacity: .2 }], { duration: 520, easing: 'cubic-bezier(.2,.8,.2,1)' });

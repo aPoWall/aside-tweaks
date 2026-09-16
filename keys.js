@@ -23,6 +23,9 @@ const DEFAULT_KEYMAP = {
 
 let enabled = true;
 let keymap = DEFAULT_KEYMAP;
+// ⌘1…⌘9 в браузере переключают на вкладку по счёту; здесь та же цифра адресует блок окна,
+// как в Arc она адресует закреплённую строку. Настройка держит выключатель на виду.
+let blockKeys = true;
 
 // Review защищает страницы с несохранённым вводом. Content script знает об этом
 // раньше service worker'а и отвечает только булевым флагом — значения полей не читает.
@@ -42,10 +45,11 @@ function skinOf(t) {
   return { bg, line: dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.14)', dark };
 }
 
-chrome.storage.sync.get({ keymap: null, keymapEnabled: true, theme: null }).then(s => {
+chrome.storage.sync.get({ keymap: null, keymapEnabled: true, theme: null, blockKeys: true }).then(s => {
   // поверх дефолтной, а не вместо неё — иначе новые действия остаются без клавиш
   keymap = { ...DEFAULT_KEYMAP, ...(s.keymap || {}) };
   enabled = s.keymapEnabled !== false;
+  blockKeys = s.blockKeys !== false;
   paletteSkin = skinOf(s.theme);
 }).catch(() => { });
 
@@ -53,6 +57,7 @@ chrome.storage.onChanged.addListener((ch, area) => {
   if (area !== 'sync') return;
   if (ch.keymap) keymap = { ...DEFAULT_KEYMAP, ...(ch.keymap.newValue || {}) };
   if (ch.keymapEnabled) enabled = ch.keymapEnabled.newValue !== false;
+  if (ch.blockKeys) blockKeys = ch.blockKeys.newValue !== false;
   if (ch.theme) paletteSkin = skinOf(ch.theme.newValue);
 });
 
@@ -62,17 +67,32 @@ function hit(e, c) {
     e.altKey === !!c.alt && e.shiftKey === !!c.shift;
 }
 
+const DIGIT = /^Digit([1-9])$/;
+
 window.addEventListener('keydown', (e) => {
   if (!enabled || e.repeat || e.isComposing) return;
   // без модификаторов не перехватываем — иначе сломаем ввод текста
   if (!e.metaKey && !e.ctrlKey && !e.altKey) return;
+
+  // ⌘-цифра = блок окна, ⇧⌘-цифра = положить текущую вкладку в этот блок
+  const digit = blockKeys && e.metaKey && !e.ctrlKey && !e.altKey ? DIGIT.exec(e.code) : null;
+  if (digit) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    try {
+      chrome.runtime.sendMessage({ action: e.shiftKey ? 'putInBlock' : 'focusBlock', n: Number(digit[1]) },
+        () => void chrome.runtime.lastError);
+    } catch { /* расширение перезагрузили – контекст протух */ }
+    return;
+  }
+
   for (const [action, combo] of Object.entries(keymap)) {
     if (!hit(e, combo)) continue;
     e.preventDefault();
     e.stopImmediatePropagation();
     try {
       chrome.runtime.sendMessage({ action }, () => void chrome.runtime.lastError);
-    } catch { /* расширение перезагрузили — контекст протух */ }
+    } catch { /* расширение перезагрузили – контекст протух */ }
     return;
   }
 }, true);

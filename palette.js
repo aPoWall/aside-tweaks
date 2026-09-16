@@ -251,7 +251,7 @@ function reviewTabItem(tab, cluster = null, section = '') {
   });
   actions.push({ label: 'copy url', key: '⌘C', fn: () => copyStay(tab.url) });
   return {
-    kind: 'review-tab', section, icon: favicon(tab.url), title: tab.title || tab.url, sub: tab.host,
+    kind: 'review-tab', section, icon: favicon(tab.url), url: tab.url, title: tab.title || tab.url, sub: tab.host,
     tags: protectionTags(tab), why: tab.ageDays != null && tab.ageDays > 0 ? `${tab.ageDays}d` : '',
     kindLabel: tab.safeToClose ? (tab.asleep ? 'asleep' : 'tab') : 'protected', primary: 'switch',
     run: switchTo(tab), actions
@@ -259,9 +259,43 @@ function reviewTabItem(tab, cluster = null, section = '') {
 }
 
 async function buildReview(q) {
-  const review = (await send('previewTabReview'))?.data;
+  const [review, sweep] = await Promise.all([
+    send('previewTabReview').then(r => r?.data),
+    send('previewDuplicateCleanup').then(r => r?.data)
+  ]);
   const out = [];
   if (!review) return [{ kind: 'info', glyph: '○', title: 'review is unavailable', sub: 'reload the extension once', kindLabel: '', primary: 'back', run: () => { view = null; refresh(); } }];
+
+  // Итог и подтверждение стоят первой строкой. Пока они лежали в хвосте, до них надо было
+  // проскроллить все кластеры и все вкладки, и партия ни разу не была доведена до конца:
+  // журнал квитанций на рабочем профиле оставался пустым.
+  const closable = review.summary?.exactClosable || 0;
+  const swept = sweep?.closes || 0;
+  out.push({
+    kind: 'cmd', section: 'what this is', glyph: '◎',
+    title: `review of ${review.summary?.total || 0} tabs in this window`,
+    sub: `${review.summary?.exact || 0} exact copies · ${review.summary?.related || 0} working threads · ${review.summary?.protected || 0} protected · nothing closes without the line below`,
+    kindLabel: 'review', primary: 'back',
+    run: () => { view = null; refresh(); }
+  });
+  out.push({
+    kind: 'cmd', section: 'batch', glyph: '✓',
+    title: closable ? `preview and close ${closable} exact / empty tabs here` : 'no exact cleanup waiting in this window',
+    sub: view?.intent === 'tidy' ? 'after confirmation: close → flatten → order → blocks' : 'exact copies and empty tabs only · working threads stay for the list below',
+    kindLabel: 'preview', primary: closable ? 'preview' : 'done',
+    run: () => { if (closable) { view = { kind: 'cluster', clusterKey: 'all-exact', intent: view?.intent || 'review' }; refresh(); } }
+  });
+  if (swept) out.push({
+    kind: 'cmd', section: '', glyph: '≡',
+    title: `close ${swept} exact / empty tabs in every window`,
+    sub: `${sweep.windows} window${sweep.windows === 1 ? '' : 's'} · ${sweep.blocked.length} protected cop${sweep.blocked.length === 1 ? 'y' : 'ies'} stay · receipt saved`,
+    kindLabel: 'cleanup', primary: 'clean',
+    run: async () => {
+      const r = await send('applyDuplicateCleanup');
+      view = r?.data?.receipt ? { kind: 'receipt', receipt: r.data.receipt, back: 'review', intent: view?.intent } : { kind: 'review', intent: view?.intent };
+      refresh();
+    }
+  });
 
   const clusters = review.clusters || [];
   for (const kind of ['exact', 'related']) {
@@ -272,7 +306,7 @@ async function buildReview(q) {
       const section = kind === 'exact' ? `exact duplicates · ${list.length}` : `related products · ${list.length}`;
       out.push({
         kind: 'cluster', section: n === 0 ? section : '', glyph: kind === 'exact' ? '≡' : '⌘',
-        title: c.name, sub: `${c.tabs.length} tabs · ${c.closeIds.length} available to close`,
+        title: c.name, sub: c.wide ? `${c.tabs.length} tabs · too wide for one batch, close rows one by one` : `${c.tabs.length} tabs · ${c.closeIds.length} available to close`,
         tags: [kind], kindLabel: 'cluster', primary: c.closeIds.length ? 'preview' : 'inspect',
         run: () => { view = { kind: 'cluster', clusterKey: c.key, intent: view?.intent || 'review' }; refresh(); },
         actions: [
@@ -305,14 +339,6 @@ async function buildReview(q) {
     });
   }
 
-  const closable = review.summary?.exactClosable || 0;
-  out.push({
-    kind: 'cmd', section: 'batch', glyph: '✓',
-    title: closable ? `preview ${closable} exact / empty tabs` : 'no exact cleanup waiting',
-    sub: view?.intent === 'tidy' ? 'after confirmation: close → flatten → order → blocks' : 'semantic siblings stay for explicit product review',
-    kindLabel: 'preview', primary: closable ? 'preview' : 'done',
-    run: () => { if (closable) { view = { kind: 'cluster', clusterKey: 'all-exact', intent: view?.intent || 'review' }; refresh(); } }
-  });
   return out;
 }
 
@@ -333,6 +359,22 @@ async function buildBatchPreview(q) {
     for (const tab of review.empties || []) (tab.safeToClose ? candidates : protectedTabs).push({ ...tab, cluster: null });
   }
   const out = [];
+  const confirmRow = () => {
+    const canApply = candidates.length > 0 || view.intent === 'tidy';
+    return {
+      kind: 'cmd', section: 'confirm once', glyph: '⊗',
+      title: candidates.length ? `close these ${candidates.length} reviewed tabs` : view.intent === 'tidy' ? 'tidy the reviewed window' : 'nothing is eligible to close',
+      sub: view.intent === 'tidy' ? 'protected tabs stay · then flatten, order and rebuild blocks' : 'protected tabs stay · receipt records the canonical page and every source',
+      kindLabel: 'confirm', primary: canApply ? (view.intent === 'tidy' ? 'tidy' : 'close') : 'back',
+      run: async () => {
+        if (!canApply) { view = { kind: 'review', intent: view.intent }; refresh(); return; }
+        const r = await send('applyReviewBatch', { clusterKey: view.clusterKey, intent: view.intent });
+        view = r?.data?.receipt ? { kind: 'receipt', receipt: r.data.receipt, back: 'review', intent: view.intent } : { kind: 'review', intent: view.intent };
+        refresh();
+      }
+    };
+  };
+  out.push(confirmRow());
   candidates.filter(t => !q || norm(t.title + ' ' + t.url).includes(q)).forEach((tab, i) => {
     const row = reviewTabItem(tab, tab.cluster, i === 0 ? `will close · ${candidates.length}` : '');
     row.kindLabel = 'will close';
@@ -343,19 +385,6 @@ async function buildBatchPreview(q) {
     const row = reviewTabItem(tab, tab.cluster, i === 0 ? `stays · ${protectedTabs.length}` : '');
     row.kindLabel = tab.canonical ? 'canonical' : 'protected';
     out.push(row);
-  });
-  const canApply = candidates.length > 0 || view.intent === 'tidy';
-  out.push({
-    kind: 'cmd', section: 'confirm once', glyph: '⊗',
-    title: candidates.length ? `close these ${candidates.length} reviewed tabs` : view.intent === 'tidy' ? 'tidy the reviewed window' : 'nothing is eligible to close',
-    sub: view.intent === 'tidy' ? 'protected tabs stay · then flatten, order and rebuild blocks' : 'protected tabs stay · receipt records the canonical page and every source',
-    kindLabel: 'confirm', primary: canApply ? (view.intent === 'tidy' ? 'tidy' : 'close') : 'back',
-    run: async () => {
-      if (!canApply) { view = { kind: 'review', intent: view.intent }; refresh(); return; }
-      const r = await send('applyReviewBatch', { clusterKey: view.clusterKey, intent: view.intent });
-      view = r?.data?.receipt ? { kind: 'receipt', receipt: r.data.receipt, back: 'review', intent: view.intent } : { kind: 'review', intent: view.intent };
-      refresh();
-    }
   });
   return out;
 }
@@ -454,7 +483,7 @@ async function build(raw) {
       out.push({
         kind: 'tab', section: q ? 'tabs' : 'recent',
         icon: (t.favIconUrl && /^https?:|^data:/.test(t.favIconUrl)) ? t.favIconUrl : favicon(t.url),
-        title: t.title || t.url, sub: hostOf(t.url),
+        url: t.url, title: t.title || t.url, sub: hostOf(t.url),
         twin: n > 1 ? '×' + n : '',
         kindLabel: t.pinned ? 'pinned' : t.discarded ? 'asleep' : 'tab',
         primary: isCurrent(t) ? 'here' : 'switch',
@@ -486,23 +515,38 @@ async function build(raw) {
     const seenNotes = new Set();
     for (const b of batches) {
     const res = (await send('deskNotes', { q: qRaw, limit: b.limit, sort: order, since: b.since }))?.data;
+    // Причина попадания видна на строке: точное совпадение имени, совпадение слова,
+    // правка сегодня или возраст в днях. До 4.21 список приходил без объяснения,
+    // и «почему именно эти записи» читалось как случайность.
+    const rows = [];
     for (const n of res?.notes || []) {
       if (seenNotes.has(n.path)) continue;
       seenNotes.add(n.path);
       const key = 'note:' + n.vault + '/' + n.file;
       const parsed = notesPrefs.notesClean === false ? { title: n.title, tags: [], date: '' } : parseNote(n.title);
       const folder = (n.folder || '').split('/').filter(Boolean).slice(-1)[0] || '';
-      out.push({
-        kind: 'note', section: b.section, glyph: '◇', title: parsed.title, sub: n.vault + (folder ? ' · ' + folder : ''),
-        tags: parsed.tags, date: notesPrefs.notesDate === false ? '' : parsed.date,
-        kindLabel: 'note', primary: 'open', frec: score(key),
-        run: async () => { bump(key); await send('deskOpen', { vault: n.vault, file: n.file }); closeSelf(); },
-        actions: [
-          { label: 'open in obsidian', key: '↵', fn: null },
-          { label: 'copy path', key: '⌘C', fn: () => copy(n.path || n.file) }
-        ]
+      const m = matchScore(q, n.title, n.path || n.file);
+      // мост отдаёт mtime в секундах; на всякий случай принимаем и миллисекунды
+      const stamp = Number(n.mtime) ? (Number(n.mtime) < 1e12 ? Number(n.mtime) * 1000 : Number(n.mtime)) : 0;
+      const days = stamp ? Math.max(0, Math.floor((Date.now() - stamp) / 86400000)) : null;
+      const fresh = days === 0 ? (order === 'opened' ? 'opened today' : 'edited today')
+        : days != null ? `${days}d` : (b.since === 'today' ? 'today' : 'recent');
+      const why = q ? (m >= 4 ? 'name starts with the query' : m >= 2 ? 'query in the name' : m > 0 ? 'query in the path' : fresh) : fresh;
+      rows.push({
+        m, days: days ?? 9e9,
+        row: {
+          kind: 'note', section: b.section, glyph: '◇', title: parsed.title, sub: n.vault + (folder ? ' · ' + folder : ''),
+          tags: parsed.tags, date: notesPrefs.notesDate === false ? '' : parsed.date, why,
+          copyText: n.path || n.file, copyLabel: 'copy path',
+          kindLabel: 'note', primary: 'open', frec: score(key),
+          run: async () => { bump(key); await send('deskOpen', { vault: n.vault, file: n.file }); closeSelf(); },
+          actions: [{ label: 'open in obsidian', key: '↵', fn: null }]
+        }
       });
     }
+    // сначала точные совпадения, потом свежие: тот же порядок, что и у вкладок
+    rows.sort((a, b2) => (q ? b2.m - a.m : 0) || a.days - b2.days);
+    for (const r of rows) out.push(r.row);
     }
   }
 
@@ -539,6 +583,23 @@ async function build(raw) {
       }
       out.push(row);
     }
+  }
+
+  // блоки окна под цифрами: номер строки = клавиша, как закреплённые ряды в Arc
+  if (wantCmds) {
+    const blocksNow = (await send('listBlocks', { windowId: srcWin }))?.data?.blocks || [];
+    const matching = blocksNow.filter(b => !q || norm('block ' + b.n + ' ' + b.title).includes(q));
+    matching.slice(0, scope === 'commands' ? 9 : 3).forEach((b, i) => out.push({
+      kind: 'cmd', section: i === 0 ? `blocks · ⌘1…⌘${blocksNow.length} switch · ⇧⌘ puts this tab in` : '',
+      glyph: '◫', title: `block ${b.n} · ${b.title}`,
+      sub: `${b.tabs} tab${b.tabs === 1 ? '' : 's'}${b.collapsed ? ' · folded' : ''}`,
+      k: '⌘' + b.n, kindLabel: 'block', primary: 'switch',
+      run: async () => { await send('focusBlock', { n: b.n, windowId: srcWin }); closeSelf(); },
+      actions: [
+        { label: 'switch to block', key: '↵', fn: null },
+        { label: 'put this tab in the block', key: '⇧↵', fn: async () => { await send('putInBlock', { n: b.n, windowId: srcWin }); closeSelf(); } }
+      ]
+    }));
   }
 
   // пункты меню самого Aside — как Raycast → Search Menu Items, но изнутри браузера
@@ -664,6 +725,19 @@ function highlight(el, text, q) {
   if (pos < text.length) el.append(text.slice(pos));
 }
 
+// Строка без иконки получает одну и ту же аватарку во всех типах: моно-буква на подложке,
+// буква берётся от хоста, иначе от заголовка. Раньше на её месте стояла точка, и список
+// вкладок без favicon выглядел как список пустых строк.
+function avatarFor(it) {
+  const source = (it.sub && !it.sub.includes(' ') ? it.sub : '') || hostOf(it.url || '') || it.title || '';
+  const letter = (source.replace(/^[^\p{L}\p{N}]+/u, '')[0] || '·').toUpperCase();
+  const a = document.createElement('span');
+  a.className = 'avatar';
+  a.textContent = letter;
+  a.setAttribute('aria-hidden', 'true');
+  return a;
+}
+
 function rowFor(it, i) {
   const d = document.createElement('div');
   d.className = 'item';
@@ -673,12 +747,7 @@ function rowFor(it, i) {
   if (it.icon) {
     const img = document.createElement('img');
     img.src = it.icon;
-    img.addEventListener('error', () => {
-      const g = document.createElement('span');
-      g.className = 'glyph';
-      g.textContent = '·';
-      img.replaceWith(g);
-    });
+    img.addEventListener('error', () => img.replaceWith(avatarFor(it)));
     d.append(img);
   } else {
     const g = document.createElement('span');
@@ -779,10 +848,24 @@ function renderScopes() {
 
 // ---------- панель действий ⌘K ----------
 
+// Панель ⌘K одинакова у всех типов строк: сверху свои действия строки, ниже общий хвост.
+// Пока хвоста не было, «скопировать адрес» жило у вкладок и закладок и пропадало у заметок,
+// команд и строк review, и человек не знал, чего ждать от ⌘K на незнакомой строке.
+function commonActions(it) {
+  const tail = [];
+  const target = it.url || it.copyText || '';
+  if (target) tail.push({ label: it.copyLabel || 'copy url', key: '⌘C', fn: () => copyStay(target) });
+  if (it.title) tail.push({ label: 'copy title', key: '⌥⌘C', fn: () => copyStay(it.title) });
+  return tail;
+}
+
 function actionsOf(it) {
   if (!it) return [];
   const list = it.actions ? it.actions.slice() : [{ label: it.primary || 'open', key: '↵', fn: null }];
-  // первое действие всегда главное — его выполняет ↵
+  const keys = new Set(list.map(a => a.key));
+  const labels = new Set(list.map(a => a.label));
+  for (const a of commonActions(it)) if (!keys.has(a.key) && !labels.has(a.label)) list.push(a);
+  // первое действие всегда главное – его выполняет ↵
   return list.map(a => ({ ...a, fn: a.fn || it.run }));
 }
 
