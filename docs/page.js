@@ -3,7 +3,7 @@
   const paletteData = {
     palette: [
       ['Recent'], ['AT', 'Aside Tweaks · product page', 'apps.aimindset.org', 'tab'], ['S', 'Space · working surface', 'space.aimindset.org', 'tab'],
-      ['Notes'], ['◇', 'aside product map', 'Obsidian · today', 'note'], ['Commands'], ['★', 'bookmark ⇄ tab', 'first row of the bar', '⌘D'], ['◎', 'review tabs', 'exact · related · event · source', '⌥⌘D']
+      ['Notes'], ['◇', 'aside product map', 'Obsidian · today', 'note'], ['Commands'], ['★', 'bookmark ⇄ tab', 'end of the bar · tab stays selected', '⌘D'], ['◎', 'review tabs', 'exact · related · event · source', '⌥⌘D']
     ],
     review: [
       ['Related product · Space'], ['S', 'AI Mindset {space} · evolution', 'canonical · protected', 'keep'], ['D', 'Space Dataflow', 'unsaved form · protected', 'keep'], ['L', 'Space local preview', 'eligible sibling', 'close'],

@@ -124,11 +124,34 @@ AIM apps rule 37 fixes `⌘K` as the palette key for the whole family. In a brow
 - **fold / unfold blocks** – one command collapses every block of the window or opens them all back, the way Arc keeps `Collapse Pinned` and `Expand Pinned` as commands.
 - `⌘D` and `⇧⌘D` leave the focus where it was: Arc removed its rename prompt on pin for the same reason.
 
-## Live mark
+## Shell and product mark
 
-The panel and popup header carry the aside voxel character from the AI Mindset apps export. It follows the cursor with a small depth parallax; a click, Enter or Space scatters and reassembles it and steps the red cursor to a neighbouring cell. With Reduce Motion only the cursor moves.
+Aside Tweaks is the fourth product of the AI Mindset apps system (rule 36), and since 4.22 its browser surfaces are assembled from the same L2 shell as the three native apps.
 
-`vendor/aim-voxel.js` and `vendor/aim-voxel-aside.json` are byte-for-byte copies of `sites/apps/assets/aim-voxel.js` and the `aside` model from `sites/apps/assets/voxel-models.json` in `ai-mindset-org/lab-sites`; compare them by SHA-256 before a release. `mark.js` renders the character without inline scripts.
+| Surface | Header | Bottom line | Close |
+| --- | --- | --- | --- |
+| popup | mark 40 · name · state · version · `settings` | keys · `esc close` · tab count | the browser closes the popup |
+| panel | mark 40 · name · state · version · `settings` · `×` | keys · `esc close` · version | `×`, `esc`, `⌘W` reach one `closePanel()` |
+| palette | search field, the palette's own contract | mark · primary action · `actions ⌘K` | `esc`, outside click |
+
+Rule 32 keeps the order of the right edge and leaves an empty slot where the surface owns nothing: a browser popup cannot survive an outside click, so it carries no `pin`, and the browser owns its frame, so it carries no `×`.
+
+The mark comes from one source. `icons/mark.svg` is the `aside` glyph of `vendor/aim-app-marks.svg` on a white plate, `icons/16 · 32 · 48 · 128.png` are rendered from it, and the header draws the same symbol through `vendor/aim-app-mark.js`. The toolbar button and the header are the same picture (rule 39). The voxel character is an illustration and lives on the product page, not in the extension.
+
+### Vendored shared files
+
+| File | Source in `ai-mindset-org/lab-sites` |
+| --- | --- |
+| `vendor/aim-mini-apps.css` | `sites/apps/assets/aim-mini-apps.css` |
+| `vendor/aim-app-shell.css` | `sites/apps/assets/aim-app-shell.css` |
+| `vendor/aim-app-mark.js` | `sites/apps/assets/aim-app-mark.js` |
+| `vendor/aim-app-marks.svg` | `sites/apps/assets/aim-app-marks.svg` |
+
+Byte-for-byte copies, no hand edit inside them (rule 10). The judge is `sites/apps/assets/aim-mini-apps.receipt.json`; Aside Tweaks is registered in `internal-sites/aim-product-system/vendored-consumers.json`, and `node internal-sites/aim-product-system/check.mjs` fails on any drift. `shell.js` is the product side: it installs the mark sprite, stamps `[data-aim-version]` from the manifest and holds the shared `say()` of the bottom line.
+
+### Face, declared exception to rule 2
+
+The shared shell reads its face from `--aim-s-font`. The extension keeps the system face of the Aside sidebar there and bridges the token in `instrument.css`, next to the colour tokens, so the header stands on the same field as the rows under it. Geometry, grid, control sizes and the red signal stay the shared ones.
 
 ## Desk bridge
 
@@ -157,11 +180,12 @@ node --check background.js
 node --check palette.js
 node tests/surfaces.mjs
 node tests/sw-smoke.mjs
+node ~/repos/lab-sites/internal-sites/aim-product-system/check.mjs   # vendored copies, SHA-256
 ```
 
 `tests/sw-smoke.mjs` executes the real service worker against a small Chromium stub. It covers tab placement, protected review, semantic clusters, receipts, grouping proposals, bookmarks, pins, palette handoff, the whole duplicate-cleanup chain from the popup number to the receipt, and the block number keys.
 
-`tests/surfaces.mjs` also guards the class of breakage that 4.20 shipped: a cleanup function that no key and no surface could reach. It fails when a function in the service worker has no caller and no place in the action maps.
+`tests/surfaces.mjs` also guards the class of breakage that 4.20 shipped: a cleanup function that no key and no surface could reach. It fails when a function in the service worker has no caller and no place in the action maps, when a static button of a surface has no handler (rule 38), when a surface stops taking the shared shell, when the extension icon drifts from the mark glyph, and when a long dash appears in a text.
 
 ## Operator release
 
@@ -174,6 +198,8 @@ node tests/sw-smoke.mjs
 7. Run the `lab-sites` preflight, commit only that site path, push `main`, and verify production.
 
 ### Migration and rollback
+
+**v4.21 → v4.22:** no stored value changes. Keymaps, bookmarks, review state, receipts, bridge config and theme settings stay as they are. The voxel character disappears from the panel and popup header and is replaced by the product mark; the popup loses the `settings ↗` link, which is now the `settings` button in the header. The extension icon changes to the product mark, so the toolbar button looks different after the reload.
 
 **v4.20 → v4.21:** `⌘D` switches to the Arc contract once, under the `favoriteArcRev` key: `after ⌘D the tab closes` and `the open tab moves to the top` are set to off. Both settings stay in the options page and can be switched back on. Existing bookmarks keep their order; new rows go to the end of the bar. `⌘1…⌘9` start addressing blocks, which can be returned to the browser with the `blockKeys` switch. Review state, keymaps, bridge config and theme settings are untouched.
 

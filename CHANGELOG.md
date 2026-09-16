@@ -1,5 +1,18 @@
 # Changelog
 
+## 4.22.0 – 2026-09-16
+
+- one shell for every surface: the popup, the panel and the palette take the header, the bottom line and the product mark from the shared L2 export of AI Mindset apps. `vendor/aim-app-shell.css`, `vendor/aim-app-mark.js`, `vendor/aim-app-marks.svg` and `vendor/aim-mini-apps.css` are vendored byte for byte and verified by sha-256 through `vendored-consumers.json` of the apps system (rules 10, 34, 40);
+- header, one order everywhere: mark 40 px, product name, the state line under the name, version, `settings`; the panel adds `×`. A slot the surface does not own stays empty and the order holds (rule 32): a browser popup cannot survive an outside click and cannot be pinned, and the browser owns the popup frame;
+- rule 39, one drawing for the icon and the header: the toolbar icon was a half-filled circle while the header carried the voxel character, so the same product looked like two. `icons/mark.svg` is the aside glyph of `vendor/aim-app-marks.svg` with a white plate under it, and `icons/16 · 32 · 48 · 128.png` are rendered from it; the manifest ships the 32 px size for retina toolbars;
+- the voxel character leaves the extension surfaces and stays on the product page as an illustration; `mark.js`, `vendor/aim-voxel.js` and `vendor/aim-voxel-aside.json` are removed. The two voxel copies had drifted from the shared export and no check caught it;
+- panel, one close: `×`, `esc` and `⌘W` reach the same `closePanel()`, which closes the side-panel document and falls back to the `sidePanel` route if the browser keeps it open;
+- bottom line, three parts on every surface: keys · `esc close` · version or state (rule 22);
+- the palette summary line carries the product mark instead of the grey square placeholder;
+- rule 38, controls with a consequence: the popup dropped the second `settings ↗` link that repeated the header button and the separate readout block. The counts moved into the state line under the name and into the right part of the bottom line, where they are read, not just displayed;
+- colour and face come from the surface theme through one bridge block in `instrument.css`: the shared shell keeps the geometry of the native apps, the aside look keeps its grey field, its white pill and the system face on which it is drawn;
+- `tests/surfaces.mjs` grew four checks: a static button with no handler, a surface that does not take the shared shell, an icon that drifts from the mark glyph, and a long dash in a text.
+
 ## 4.21.0 – 2026-09-16
 
 - `⌘D` follows Arc: the bookmark joins the end of the bar, the rows above it keep their places, the tab stays open and selected, and a second `⌘D` takes the row out. Closing the tab remains a setting and is off by default (one-time migration under `favoriteArcRev`);

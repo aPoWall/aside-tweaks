@@ -23,7 +23,10 @@
   :root[data-look="aside"] .head .idx { letter-spacing: 0; font-size: 10.5px; }
   :root[data-look="aside"] .seg button.on { background: var(--sel); color: var(--fg); border-color: var(--line); box-shadow: var(--sel-shadow); }
   :root[data-look="aside"] small, :root[data-look="aside"] .row2 > span, :root[data-look="aside"] #saved { font-size: 11px; }
-  h1 { font-size: 13px; font-weight: 400; margin: 0 0 3px; letter-spacing: .02em; }
+  h1 { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 400; margin: 0 0 3px; letter-spacing: .02em; }
+  /* знак продукта, тот же спрайт, что в шапке попапа и на кнопке расширения (правило 39) */
+  h1 .aim-mark { width: 20px; height: 20px; color: var(--fg); flex: none; }
+  h1 .aim-mark svg { width: 100%; height: 100%; display: block; }
   .sub { color: var(--muted); font-size: 10px; margin: 0 0 26px; }
 
   .card { border: 1px solid var(--fg); padding: 0 0 14px; margin: 0 0 14px; }
@@ -81,8 +84,8 @@
 </style>
 </head>
 <body>
-  <h1>◐ aside tweaks</h1>
-  <p class="sub">v4 · keys, tabs, palette</p>
+  <h1><span class="aim-mark" data-aim-mark="aside" data-aim-mark-size="20"></span> aside tweaks</h1>
+  <p class="sub"><span data-aim-version></span> · keys, tabs, palette</p>
 
   <div class="card">
     <div class="head"><span class="idx">01</span><span class="ttl">keys</span></div>
@@ -347,6 +350,8 @@
   </div>
 
   <script src="theme.js"></script>
+  <script src="vendor/aim-app-mark.js"></script>
+  <script src="shell.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

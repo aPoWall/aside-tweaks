@@ -71,5 +71,64 @@ const thin = TWEAK_COMMANDS.filter(c => !c.title || !c.sub || !c.hint || !c.word
 check('у каждой команды есть название, подпись, пояснение и слова для поиска',
   thin.length === 0, thin.map(c => c.action).join(', '));
 
+// ---------- общая оболочка (правила 38, 39, 40) ----------
+
+// Правило 38: у каждого контрола есть следствие. Претензия 16.09 – «часть элементов ничего
+// не делает и не меняет вид при нажатии». Статическая кнопка поверхности обязана быть названной
+// в её же скрипте или в общей оболочке; кнопка без обработчика проваливает проверку здесь.
+const shell = read('shell.js');
+const SURFACES = [
+  { html: 'popup.html', js: ['popup.js'] },
+  { html: 'panel.html', js: ['panel.js'] },
+  { html: 'palette.html', js: ['palette.js'] }
+];
+const dead = [];
+for (const s of SURFACES) {
+  const markup = read(s.html);
+  const code = s.js.map(read).join('\n') + shell;
+  for (const tag of markup.match(/<button[^>]*>/g) || []) {
+    const id = (tag.match(/id="([^"]+)"/) || [])[1];
+    const data = (tag.match(/data-([a-z-]+)=/) || [])[1];
+    const handle = id ? `'${id}'` : data ? `data-${data}` : null;
+    const found = id ? code.includes(`'${id}'`) || code.includes(`"${id}"`)
+      : data ? code.includes(data) : false;
+    if (!found) dead.push(`${s.html} ${handle || tag}`);
+  }
+}
+check('у каждой статической кнопки поверхности есть обработчик', dead.length === 0, dead.join(', '));
+
+// Правило 40: шапка, подвал и знак приходят из общей оболочки, а не из копии в каждой поверхности
+for (const s of SURFACES) {
+  const markup = read(s.html);
+  check(`${s.html} собран на общей оболочке`,
+    markup.includes('vendor/aim-app-shell.css') && markup.includes('vendor/aim-app-mark.js') &&
+    markup.includes('shell.js') && markup.includes('data-aim-mark="aside"'));
+}
+for (const part of ['aim-shell-head', 'aim-shell-foot', 'aim-shell-version', 'data-aim-version']) {
+  check(`шапка и подвал попапа и панели держат ${part}`,
+    read('popup.html').includes(part) && read('panel.html').includes(part));
+}
+
+// Правило 39: знак в шапке и иконка расширения рисуются из одного источника
+const markSvg = read('vendor/aim-app-marks.svg');
+const iconSvg = read('icons/mark.svg');
+const glyph = 'M14 13v22M21 18h14M21 24h9M21 30h12';
+check('иконка расширения повторяет глиф знака aside', markSvg.includes(glyph) && iconSvg.includes(glyph));
+const manifest = JSON.parse(read('manifest.json'));
+check('манифест отдаёт иконку в четырёх размерах',
+  ['16', '32', '48', '128'].every(k => manifest.icons[k]), Object.keys(manifest.icons).join(' '));
+check('версия манифеста совпадает с верхней записью CHANGELOG',
+  read('CHANGELOG.md').includes(`## ${manifest.version}`), manifest.version);
+
+// Правило 10: общие экспорты вендорятся байт в байт; здесь – что копия на месте и не пустая
+for (const f of ['aim-app-shell.css', 'aim-app-mark.js', 'aim-app-marks.svg', 'aim-mini-apps.css']) {
+  check(`вендоренная копия на месте: ${f}`, read('vendor/' + f).length > 500);
+}
+
+// Правило 18: только короткое тире
+const dashed = ['popup.html', 'panel.html', 'palette.html', 'shell.js', 'popup.js', 'panel.js', 'instrument.css', 'README.md', 'CHANGELOG.md']
+  .filter(f => read(f).includes('\u2014'));
+check('в текстах нет длинного тире', dashed.length === 0, dashed.join(', '));
+
 console.log(fails ? `\n${fails} провалов` : '\nповерхности согласованы');
 process.exit(fails ? 1 : 0);

@@ -118,3 +118,42 @@ body {
 
 /* бумага: прежние размеры моноширинного набора */
 :root[data-look="paper"] body { font-size: 11px; }
+
+/* ---------- общая оболочка AIM apps ---------- */
+
+/* vendor/aim-app-shell.css и vendor/aim-mini-apps.css приходят байт в байт из sites/apps/assets
+   и правкам внутри не подлежат (правило 10). Расширение живёт в чужом хроме и красится темой
+   theme.js, поэтому мост переводит те токены, которые рисует оболочка, на живые переменные
+   поверхности: одна геометрия с нативными приложениями, цвет и гарнитура от облика aside.
+   Гарнитура – объявленное исключение, рядом с исключением правила 37 (README). */
+:root {
+  --aim-s-font: var(--font);
+  --aim-s-canvas: var(--bg);
+  --aim-s-surface: var(--tile);
+  --aim-s-text: var(--fg);
+  --aim-s-text-secondary: var(--muted);
+  --aim-s-text-disabled: var(--muted);
+  --aim-s-divider: var(--line);
+  --aim-s-hover: var(--sel);
+  --aim-s-selection: var(--accent);
+  --aim-s-radius-control: var(--radius);
+  /* оболочка объявляет эти четыре внутри .aim-shell; поверхности без обёртки читают их отсюда */
+  --aim-shell-inset: var(--pad);
+  --aim-shell-gap: 8px;
+  --aim-shell-control: 28px;
+  --aim-shell-mark: 40px;
+}
+
+/* шапка и подвал занимают ту же ширину контента, что и тело поверхности (правило 23) */
+.aim-shell-head, .aim-shell-foot { padding-left: var(--aim-shell-inset); padding-right: var(--aim-shell-inset); }
+.aim-shell-head { padding-top: 10px; padding-bottom: 8px; }
+.aim-shell-foot { padding-top: 7px; padding-bottom: 8px; }
+.aim-shell > .aim-shell-head, .aim-shell > .aim-shell-foot { padding: 0; }
+/* знак берёт цвет чернил поверхности, красный сигнал остаётся красным */
+.aim-shell-mark, .aim-mark { color: var(--fg); }
+
+/* браузерные поверхности узкие: имя продукта берёт размер заголовка списка, не заголовка окна,
+   а строка состояния забирает свободное место шапки – её читают, ей и место */
+.aim-shell-title b { font-size: 15px; }
+.aim-shell-title { flex: 1 1 auto; }
+.aim-shell-gap { flex: 0 1 var(--aim-shell-gap); }

@@ -1,9 +1,19 @@
+aside tweaks 4.22.0 – 2026-09-16
+
+- one shell: the popup, the panel and the palette take the header, the bottom line and the product mark from the shared export of the apps design system, vendored byte for byte and checked by sha-256
+- the toolbar icon and the header mark became one drawing from one source; icons rendered at 16, 32, 48 and 128 from the aside glyph
+- the voxel character left the extension surfaces and stays on this page as an illustration
+- the panel closes the same way from ×, esc and ⌘W
+- the bottom line has the same three parts everywhere: keys, esc close, version or state
+- the popup lost the duplicate settings link and the separate readout; the counts moved into the header state line and the bottom line
+
 aside tweaks 4.21.0 – 2026-09-16
 
 - ⌘D follows Arc: the bookmark joins the end of the bar, the rows above keep their places, the tab stays open and selected, and a second ⌘D takes the row out; closing the tab after ⌘D became a setting and is off by default
 - ⇧⌘D keeps the focus on the tab after pinning and unpinning
 - fixed duplicate cleanup: the function had lost every caller, so no key and no surface could reach it. cleanup now runs from the review confirmation, covers every window and writes a receipt
 - the popup tile and review show the same number, the one the confirmation will actually close
+- cleanup counts what is left in every window: a window whose tabs are all cross-window duplicates keeps one of them, so no batch closes a window
 - a bookmarked page no longer protects each of its own copies inside an exact-duplicate cluster
 - review opens with the summary and the confirm line; a related cluster wider than 8 tabs offers no batch
 - ⌘1…⌘9 switch to the blocks of the window, ⇧⌘1…⇧⌘9 put the current tab into a block, and the palette lists what each number holds
