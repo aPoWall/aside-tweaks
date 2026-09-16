@@ -1,4 +1,4 @@
-// Aside Tweaks v4 — service worker
+// Aside Tweaks v4 – service worker
 
 // ---------- настройки ----------
 
@@ -8,7 +8,7 @@ const DEFAULT_KEYMAP = {
   pinTab: { code: 'KeyD', meta: true, ctrl: false, alt: false, shift: true },
   tidyDuplicates: { code: 'KeyD', meta: true, ctrl: false, alt: true, shift: false },
   tidyUp: { code: 'KeyT', meta: true, ctrl: false, alt: true, shift: false },
-  togglePanel: null,   // панель просит жест пользователя — надёжно только нативным ⌃⇧S
+  togglePanel: null,   // панель просит жест пользователя – надёжно только нативным ⌃⇧S
   bookmarkTab: null,
   openPalette: { code: 'KeyK', meta: true, ctrl: false, alt: false, shift: true },
   groupByRules: null,
@@ -19,10 +19,10 @@ const DEFAULT_KEYMAP = {
 };
 
 const DEFAULT_THEME = {
-  look: 'aside',       // aside | paper — серое поле сайдбара и системный шрифт, либо бумага apowall
-  mode: 'light',       // auto | light | dark — по умолчанию светло, как сам Aside
+  look: 'aside',       // aside | paper – серое поле сайдбара и системный шрифт, либо бумага apowall
+  mode: 'light',       // auto | light | dark – по умолчанию светло, как сам Aside
   accent: '#111111',   // цвет панели, палитры, попапа
-  tint: 0,             // сколько акцента подмешано в фон — свойство бумаги, %
+  tint: 0,             // сколько акцента подмешано в фон – свойство бумаги, %
   density: 'normal'    // normal | compact
 };
 
@@ -41,7 +41,7 @@ const DEFAULTS = {
   favoriteCloses: false,     // ⌘D оставляет вкладку открытой и выбранной, как pin в Arc; включённая настройка закрывает её
   blockKeys: true,           // ⌘1…⌘9 переключают на блок окна, ⇧⌘1…⇧⌘9 кладут вкладку в блок
   tidyMinGroup: 3,           // блок при уборке собирается от стольких вкладок; пары остаются россыпью
-  paletteOverlay: true,     // палитра слоем поверх страницы; выключено — отдельным окном
+  paletteOverlay: true,     // палитра слоем поверх страницы; выключено – отдельным окном
   keymapEnabled: true,
   dimBehindPalette: true,
   keymap: DEFAULT_KEYMAP,
@@ -55,7 +55,7 @@ let settings = { ...DEFAULTS };
 
 // Поднимаем, когда в раскладке появляется действие с новой дефолтной клавишей.
 // Сохранённая карта пишется целиком, вместе с null'ами, и такой null навсегда
-// перекрывает новый дефолт — отсюда «поставил клавишу, а работает старая».
+// перекрывает новый дефолт – отсюда «поставил клавишу, а работает старая».
 const KEYMAP_REV = 2;
 const comboKey = c => c ? [c.code, !!c.meta, !!c.ctrl, !!c.alt, !!c.shift].join('/') : '';
 
@@ -65,7 +65,7 @@ function upgradeKeymap(stored) {
   let changed = false;
   for (const [action, def] of Object.entries(DEFAULT_KEYMAP)) {
     if (!def || map[action]) continue;
-    if (taken.has(comboKey(def))) continue;   // сочетание человек отдал другому действию — не отбираем
+    if (taken.has(comboKey(def))) continue;   // сочетание человек отдал другому действию – не отбираем
     map[action] = def;
     taken.add(comboKey(def));
     changed = true;
@@ -75,7 +75,7 @@ function upgradeKeymap(stored) {
 
 chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0 }).then(s => {
   // раскладку накладываем поверх дефолтной: иначе действия, добавленные позже,
-  // остаются вообще без привязки — в хранилище лежит карта старой версии
+  // остаются вообще без привязки – в хранилище лежит карта старой версии
   settings = { ...DEFAULTS, ...s, keymap: { ...DEFAULT_KEYMAP, ...(s.keymap || {}) } };
 
   if (s.keymapRev !== KEYMAP_REV) {
@@ -145,7 +145,7 @@ function normalizeUrl(raw) {
       for (const k of [...u.searchParams.keys()]) if (TRACKING_PARAMS.test(k)) u.searchParams.delete(k);
     }
     const hash = settings.dedupIgnoreHash ? '' : u.hash;
-    // схема, www, порт по умолчанию, index.html и хвостовой слэш — одна и та же страница:
+    // схема, www, порт по умолчанию, index.html и хвостовой слэш – одна и та же страница:
     // http://site и https://www.site/ открываются как один документ, дубль считаем дублем
     const host = u.hostname.replace(/^www\./, '');
     const port = u.port && !((u.protocol === 'https:' && u.port === '443') || (u.protocol === 'http:' && u.port === '80')) ? ':' + u.port : '';
@@ -155,11 +155,11 @@ function normalizeUrl(raw) {
 }
 
 // ---------- близнецы ----------
-// Точный ключ — нормализованный адрес. Ближний ключ — тот же хост и тот же заголовок:
+// Точный ключ – нормализованный адрес. Ближний ключ – тот же хост и тот же заголовок:
 // четыре вкладки «AIM VISUAL» на visual-team.aimindset.org с разными query-строками для
 // глаза одна страница, а по адресу четыре разных, и «0 duplicates» на них выглядит ложью.
 // Ближний ключ считается только когда заголовок что-то говорит: не пустой, не адрес,
-// не «New Tab». Спящую вкладку Aside помечает 💤 прямо в заголовке — снимаем.
+// не «New Tab». Спящую вкладку Aside помечает 💤 прямо в заголовке – снимаем.
 const GENERIC_TITLES = /^(new tab|untitled|loading…?|blank|about:blank)$/i;
 const plainTitle = s => (s || '').replace(/^\s*💤\s*/, '').trim();
 
@@ -177,8 +177,8 @@ function nearKey(t) {
   return host + '|' + title;
 }
 
-// Раскладывает вкладки по кластерам близнецов: вкладки с одним точным ключом — вместе,
-// кластеры с одним ближним ключом — сливаются (union-find). Возвращает только http(s).
+// Раскладывает вкладки по кластерам близнецов: вкладки с одним точным ключом – вместе,
+// кластеры с одним ближним ключом – сливаются (union-find). Возвращает только http(s).
 function twinClusters(tabs) {
   const items = tabs.map(t => ({ t, exact: normalizeUrl(t.url) })).filter(x => x.exact);
   const parent = items.map((_, i) => i);
@@ -243,7 +243,7 @@ function titleKey(tab) {
     .replace(/[^a-zа-яё0-9]+/gi, ' ').replace(/\s+/g, ' ').trim();
 }
 
-// `weak` — слова, которые в этом окне встречаются у трети вкладок и больше. Такое слово
+// `weak` – слова, которые в этом окне встречаются у трети вкладок и больше. Такое слово
 // именем продукта не бывает: по нему кластер собирал половину окна и предлагал закрыть
 // «27 из 38» одним подтверждением. Через два общих слова или заголовок склейка остаётся.
 function semanticScore(a, b, weak = EMPTY_SET) {
@@ -553,7 +553,7 @@ async function applyReviewBatch({ clusterKey, intent = 'review' } = {}, windowId
 
 // ---------- новые вкладки под текущей ----------
 
-// активные вкладки по окнам — переживает засыпание service worker'а
+// активные вкладки по окнам – переживает засыпание service worker'а
 const currentActive = new Map();
 
 chrome.storage.session.get('activeByWindow').then(({ activeByWindow = {} }) => {
@@ -618,7 +618,7 @@ async function placeTab(tabId, windowId, openerTabId) {
   return false;
 }
 
-// Aside переставляет свежую вкладку уже ПОСЛЕ события onCreated — поэтому не одна
+// Aside переставляет свежую вкладку уже ПОСЛЕ события onCreated – поэтому не одна
 // попытка, а сторож: держим позицию весь placementGuardMs, пока она не перестанет уезжать
 const GUARD_STEPS = [0, 90, 200, 380, 650, 1000, 1500, 2100, 2800, 3600];
 
@@ -635,7 +635,7 @@ chrome.tabs.onCreated.addListener(async (tab) => {
     let ok = false;
     try { ok = await placeTab(tab.id, tab.windowId, opener); } catch { return; }
     stable = ok ? stable + 1 : 0;
-    if (stable >= 3 && step >= 650) return; // три тика подряд не двигалась — отпускаем
+    if (stable >= 3 && step >= 650) return; // три тика подряд не двигалась – отпускаем
   }
 });
 
@@ -694,7 +694,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
 // ---------- тайди-команды ----------
 
-// пустая вкладка: новая вкладка браузера или about:blank — их дедуп по URL не видит,
+// пустая вкладка: новая вкладка браузера или about:blank – их дедуп по URL не видит,
 // потому что normalizeUrl пропускает только http(s)
 const EMPTY_URLS = /^(about:blank|chrome:\/\/newtab\/?|chrome:\/\/new-tab-page\/?|edge:\/\/newtab\/?|aside:\/\/newtab\/?)$/;
 
@@ -728,6 +728,13 @@ async function planDuplicateCleanup() {
   const closeIds = [];
   const blocked = [];
 
+  // сколько вкладок останется в окне: один счётчик на оба прохода, иначе межоконные
+  // близнецы могут опустошить окно целиком и оно закроется вместе с ними
+  const perWindow = new Map();
+  for (const t of all) perWindow.set(t.windowId, (perWindow.get(t.windowId) || 0) + 1);
+  const canClose = (t) => (perWindow.get(t.windowId) || 0) > 1;
+  const takeOne = (t) => perWindow.set(t.windowId, (perWindow.get(t.windowId) || 0) - 1);
+
   for (const twins of twinClusters(loose)) {
     if (twins.length < 2) continue;
     const keep = twins.reduce(keeperOf);
@@ -737,6 +744,8 @@ async function planDuplicateCleanup() {
       if (t.id === keep.id) continue;
       const reasons = await protectionFor(t, state, marks, true);
       if (reasons.length) { blocked.push({ title: plainTitle(t.title), url: t.url, reasons }); continue; }
+      if (!canClose(t)) { blocked.push({ title: plainTitle(t.title), url: t.url, reasons: ['last tab in its window'] }); continue; }
+      takeOne(t);
       closeIds.push(t.id);
       rows.push({ id: t.id, title: plainTitle(t.title), url: t.url, asleep: !!t.discarded });
     }
@@ -749,13 +758,11 @@ async function planDuplicateCleanup() {
   }
 
   // пустые убираем целиком; последнюю вкладку окна не трогаем, иначе окно закроется
-  const perWindow = new Map();
-  for (const t of all) perWindow.set(t.windowId, (perWindow.get(t.windowId) || 0) + 1);
   for (const t of loose.filter(isEmptyTab)) {
-    const left = perWindow.get(t.windowId) || 0;
-    if (left <= 1) continue;
+    if (closeIds.includes(t.id)) continue;
     if (t.active) { blocked.push({ title: 'empty tab', url: t.url || '', reasons: ['active'] }); continue; }
-    perWindow.set(t.windowId, left - 1);
+    if (!canClose(t)) { blocked.push({ title: 'empty tab', url: t.url || '', reasons: ['last tab in its window'] }); continue; }
+    takeOne(t);
     closeIds.push(t.id);
     empties.push({ id: t.id, title: 'empty tab', url: t.url || '' });
   }
@@ -810,7 +817,7 @@ function rootDomain(u) {
   } catch { return null; }
 }
 
-// «текущее окно» из палитры — это окно палитры, а не браузера; поэтому окно
+// «текущее окно» из палитры – это окно палитры, а не браузера; поэтому окно
 // всегда разрешаем явно и popup-окна отсекаем
 // Последнее ОБЫЧНОЕ окно помним сами. windowTypes у getLastFocused помечен устаревшим и
 // местами игнорируется: пока открыта палитра, «последнее окно» указывает на неё, и любой
@@ -860,7 +867,7 @@ async function makeGroups(keyFn, windowId) {
   for (const [name, ids] of buckets) {
     if (ids.length < 2) continue;
     const groupId = await chrome.tabs.group({ tabIds: ids });
-    // группы создаём раскрытыми — свёрнутые прячут вкладки и ломают ориентировку
+    // группы создаём раскрытыми – свёрнутые прячут вкладки и ломают ориентировку
     await chrome.tabGroups.update(groupId, { title: name, collapsed: false });
     groups++;
   }
@@ -873,7 +880,7 @@ async function groupByDomain(windowId) {
   return makeGroups(t => rootDomain(t.url), windowId);
 }
 
-// имя блока по правилам из настроек — общая функция для групп и для панели
+// имя блока по правилам из настроек – общая функция для групп и для панели
 function blockOf(tab) {
   const rules = (settings.groupRules || []).filter(r => r.name && r.patterns?.length);
   const hay = ((tab.url || '') + ' ' + (tab.title || '')).toLowerCase();
@@ -883,7 +890,7 @@ function blockOf(tab) {
   return rootDomain(tab.url);
 }
 
-// по пользовательским правилам; остальное — по корневому домену
+// по пользовательским правилам; остальное – по корневому домену
 async function groupByRules(windowId) {
   return makeGroups(blockOf, windowId);
 }
@@ -907,7 +914,7 @@ async function reorder(windowId, keyFn, label) {
   const startIndex = all.length ? Math.min(...all.map(t => t.index)) : 0;
   let moved = 0;
   for (let i = 0; i < sortable.length; i++) {
-    // сгруппированная вкладка может отказаться уезжать за границу группы —
+    // сгруппированная вкладка может отказаться уезжать за границу группы –
     // это не повод ронять весь проход
     const ok = await chrome.tabs.move(sortable[i].id, { index: startIndex + i }).then(() => true).catch(() => false);
     if (ok) moved++;
@@ -966,7 +973,7 @@ async function arrangeWindow(wid) {
     list.sort((a, b) => recentOf(b) - recentOf(a) || a.index - b.index);
     blockList.push({ name, list, rule: ruleOrder.indexOf(name), fresh: recentOf(list[0]) });
   }
-  // блоки по правилам — в порядке правил; остальные — по тому, где были последней
+  // блоки по правилам – в порядке правил; остальные – по тому, где были последней
   blockList.sort((a, b) => {
     const ra = a.rule < 0 ? 1 : 0, rb = b.rule < 0 ? 1 : 0;
     if (ra !== rb) return ra - rb;
@@ -992,7 +999,7 @@ async function arrangeWindow(wid) {
 
 // ---------- группировка по смыслу: модель через OpenRouter ----------
 //
-// Домен — плохой признак: полтора десятка вкладок на одном github ничего не
+// Домен – плохой признак: полтора десятка вкладок на одном github ничего не
 // говорят о том, чем человек занят. Модель видит только заголовки и хосты,
 // содержимое страниц никуда не уходит. Ключ хранится локально и не синкается.
 // Ничего не применяется молча: сначала окно с предложением, применяет человек.
@@ -1000,7 +1007,7 @@ async function arrangeWindow(wid) {
 const AI_DEFAULTS = { aiKey: '', aiModel: 'anthropic/claude-haiku-4.5' };
 
 const SENSE_PROMPT = [
-  'You sort open browser tabs into working blocks — by what the person is doing, not by website.',
+  'You sort open browser tabs into working blocks – by what the person is doing, not by website.',
   'Answer with JSON only: {"groups":[{"name":"...","tabs":[0,2,5]}]}.',
   'Rules: 3 to 7 groups; name is one or two lowercase words, no emoji, no punctuation;',
   'every group holds at least two tabs; a tab belongs to at most one group;',
@@ -1019,9 +1026,9 @@ async function senseProposal(windowId) {
   if (!aiKey) { flash('KEY', 'grouping by meaning needs an OpenRouter key\nsettings → card 07', false); return 0; }
 
   const tabs = (await chrome.tabs.query({ windowId: wid, pinned: false })).filter(t => /^https?:/.test(t.url || ''));
-  if (tabs.length < 4) { flash('—', 'too few tabs to read a pattern in', false); return 0; }
+  if (tabs.length < 4) { flash('–', 'too few tabs to read a pattern in', false); return 0; }
 
-  const list = tabs.map((t, i) => `${i}. ${clip(t.title, 90)} — ${hostOfTab(t)}`).join('\n');
+  const list = tabs.map((t, i) => `${i}. ${clip(t.title, 90)} – ${hostOfTab(t)}`).join('\n');
   flash('AI', 'reading ' + tabs.length + ' titles…');
 
   let parsed;
@@ -1061,7 +1068,7 @@ async function senseProposal(windowId) {
     }
     if (ids.length > 1) groups.push({ name: clip(String(g.name || 'block'), 24).toLowerCase(), ids, titles });
   }
-  if (!groups.length) { flash('—', 'the model found no blocks here', false); return 0; }
+  if (!groups.length) { flash('–', 'the model found no blocks here', false); return 0; }
 
   await chrome.storage.session.set({
     sensePlan: { windowId: wid, groups, left: tabs.length - seen.size, model: aiModel, at: Date.now() }
@@ -1113,7 +1120,7 @@ async function senseApply() {
 
 // ---------- закладка ⇄ вкладка: одна клавиша в обе стороны ----------
 // Страница ложится ПОСЛЕДНЕЙ строкой панели закладок. Вкладку при этом не закрываем:
-// закрытие будит соседнюю спящую вкладку и та перезагружается — ощущается как «увело
+// закрытие будит соседнюю спящую вкладку и та перезагружается – ощущается как «увело
 // куда-то и перезагрузило». Живая вкладка просто уезжает вниз списка, второе нажатие
 // снимает закладку и поднимает её в самый верх вкладок.
 
@@ -1136,13 +1143,13 @@ async function listFavorites() {
   return { items: kids.filter(k => k.url).map(k => ({ id: k.id, title: k.title, url: k.url })) };
 }
 
-// после переноса боковая панель теряет подсветку строки — возвращаем её на ту же страницу
+// после переноса боковая панель теряет подсветку строки – возвращаем её на ту же страницу
 async function keepSelected(tabId, windowId) {
   await chrome.tabs.update(tabId, { active: true }).catch(() => { });
   if (windowId != null) await chrome.windows.update(windowId, { focused: true }).catch(() => { });
 }
 
-// Сайдбар Aside вплавляет открытую вкладку в строку закладки с тем же адресом — но только
+// Сайдбар Aside вплавляет открытую вкладку в строку закладки с тем же адресом – но только
 // вкладку вне блока. Внутри блока страница показывалась бы дважды: в закладках и в блоке.
 // Поэтому ⌘D сначала выводит её из блока.
 async function leaveGroup(tab) {
@@ -1153,7 +1160,7 @@ async function leaveGroup(tab) {
   return ok;
 }
 
-// Всегда наверх, в обе стороны. Низ списка означает прокрутку боковой панели вниз —
+// Всегда наверх, в обе стороны. Низ списка означает прокрутку боковой панели вниз –
 // у полусотни вкладок это выглядит как «меня куда-то унесло». Пин работает именно так,
 // и закладка должна ощущаться так же.
 async function moveTabTo(tab) {
@@ -1179,7 +1186,7 @@ function nextWorkingTab(tab, others) {
 async function favoriteTab(windowId) {
   const wid = await targetWindowId(windowId);
   const [tab] = await chrome.tabs.query(wid != null ? { active: true, windowId: wid } : { active: true, currentWindow: true });
-  if (!tab?.url || !/^https?:\/\//.test(tab.url)) { flash('—', 'this page cannot be bookmarked', false); return 0; }
+  if (!tab?.url || !/^https?:\/\//.test(tab.url)) { flash('–', 'this page cannot be bookmarked', false); return 0; }
 
   const kids = await chrome.bookmarks.getChildren(BAR).catch(() => []);
   const twin = kids.find(k => k.url && normalizeUrl(k.url) === normalizeUrl(tab.url));
@@ -1190,7 +1197,7 @@ async function favoriteTab(windowId) {
     const moved = await moveTabTo(tab);
     await keepSelected(tab.id, tab.windowId);
     flash('BM−', moved
-      ? 'back in the tabs — first row, selected ↑'
+      ? 'back in the tabs – first row, selected ↑'
       : 'out of the bookmarks bar · tab stays open and selected');
     return -1;
   }
@@ -1216,7 +1223,7 @@ async function favoriteTab(windowId) {
   const moved = await moveTabTo(tab);
   await keepSelected(tab.id, tab.windowId);
   flash('BM+', 'last in the bookmarks bar ★' +
-    (left ? '\nout of its block — the sidebar folds the tab into that row' : moved ? '\ntab stays open, folded into the bar row' : '\ntab stays open and selected') +
+    (left ? '\nout of its block – the sidebar folds the tab into that row' : moved ? '\ntab stays open, folded into the bar row' : '\ntab stays open and selected') +
     '\n⌘D again takes it out');
   return 1;
 }
@@ -1234,7 +1241,7 @@ async function pinTab(windowId, tabId) {
   if (willPin) {
     await chrome.storage.session.set({ lastPinId: tab.id, lastPinAt: Date.now() }).catch(() => { });
   } else {
-    // открепили — страница возвращается первой строкой вкладок, а не в хвост списка
+    // открепили – страница возвращается первой строкой вкладок, а не в хвост списка
     const rest = await chrome.tabs.query({ windowId: tab.windowId }).catch(() => []);
     const firstFree = rest.filter(t => t.pinned && t.id !== tab.id).length;
     await chrome.tabs.move(tab.id, { index: firstFree }).catch(() => { });
@@ -1242,7 +1249,7 @@ async function pinTab(windowId, tabId) {
   await keepSelected(tab.id, tab.windowId);
   flash(willPin ? 'PIN' : 'UN', willPin
     ? 'pinned ↑\nmoved to the pinned squares on top of the sidebar'
-    : 'unpinned — first row of the tabs, still selected ↑');
+    : 'unpinned – first row of the tabs, still selected ↑');
   return willPin ? 1 : -1;
 }
 
@@ -1257,7 +1264,7 @@ async function bookmarkTab(windowId) {
     return -1;
   }
   await chrome.bookmarks.create({ parentId: BAR, title: tab.title || tab.url, url: tab.url });
-  flash('BM+', 'bookmarked ✓ — bookmarks section of the sidebar');
+  flash('BM+', 'bookmarked ✓ – bookmarks section of the sidebar');
   return 1;
 }
 
@@ -1373,7 +1380,7 @@ async function putInBlock({ n, windowId } = {}) {
 }
 
 // открыть адрес: в обычном окне, под текущей вкладкой, при желании сразу в блок или в пин.
-// Адрес уже открыт — переключаемся на ту вкладку, как Arc, вместо второй такой же.
+// Адрес уже открыт – переключаемся на ту вкладку, как Arc, вместо второй такой же.
 async function openUrl({ url, windowId, groupName, pinned } = {}) {
   if (!url) return 0;
   const wid = await targetWindowId(windowId);
@@ -1404,7 +1411,7 @@ async function openUrl({ url, windowId, groupName, pinned } = {}) {
   return 1;
 }
 
-// dups — сколько вкладок закроет чистка прямо сейчас; twinOf — у какой вкладки сколько близнецов,
+// dups – сколько вкладок закроет чистка прямо сейчас; twinOf – у какой вкладки сколько близнецов,
 // палитра рисует по этому «×N» на строке
 async function getStats() {
   const all = await chrome.tabs.query({});
@@ -1431,7 +1438,7 @@ async function getStats() {
 // ---------- omnibox: tw + Tab ----------
 
 const OMNI_COMMANDS = [
-  { keys: ['tidy', 'убрать'], desc: 'Tidy up — clean, group by blocks, sort', run: tidyUp },
+  { keys: ['tidy', 'убрать'], desc: 'Tidy up – clean, group by blocks, sort', run: tidyUp },
   { keys: ['dd', 'dedup', 'дубли'], desc: 'Clean duplicates and empty tabs', run: tidyDuplicates },
   { keys: ['panel', 'панель'], desc: 'Open the tweaks panel', run: () => togglePanel() },
   { keys: ['group', 'группы'], desc: 'Group tabs by site', run: groupByDomain },
@@ -1463,7 +1470,7 @@ chrome.omnibox.onInputChanged.addListener(async (input, suggest) => {
   const out = [];
   for (const c of OMNI_COMMANDS) {
     if (!q || c.keys.some(k => k.startsWith(q)) || c.desc.toLowerCase().includes(q)) {
-      out.push({ content: '!cmd:' + c.keys[0], description: `<match>${c.keys[0]}</match> — ${esc(c.desc)}` });
+      out.push({ content: '!cmd:' + c.keys[0], description: `<match>${c.keys[0]}</match> – ${esc(c.desc)}` });
     }
   }
   const hist = await getHistory();
@@ -1496,7 +1503,7 @@ chrome.omnibox.onInputEntered.addListener(async (input) => {
 // ---------- палитра (⌘K) ----------
 
 
-// пока палитра открыта — гасим страницу под ней
+// пока палитра открыта – гасим страницу под ней
 async function dimPage(on) {
   if (on && settings.dimBehindPalette === false) return;
   try {
@@ -1509,10 +1516,10 @@ async function dimPage(on) {
 }
 
 let paletteWinId = null;
-let paletteOpening = false;   // ⇧⌘K приходит и от страницы, и от команды браузера — окно должно остаться одно
+let paletteOpening = false;   // ⇧⌘K приходит и от страницы, и от команды браузера – окно должно остаться одно
 
 // Палитра живёт прямо на странице: слой поверх сайта, без заголовка окна и светофора,
-// с затемнением и тенью — так она читается полем, а не вторым окном. Там, где страницы
+// с затемнением и тенью – так она читается полем, а не вторым окном. Там, где страницы
 // нет (chrome://, новая вкладка, интерфейс самого Aside), падаем в отдельное окно.
 async function openPalette(windowId, q = '', view = '') {
   if (paletteOpening) return;
@@ -1568,10 +1575,10 @@ chrome.windows.onRemoved.addListener(id => { if (id === paletteWinId) { paletteW
 // ---------- глобальная клавиша: сигнальная страница моста ----------
 // Снаружи до расширения не достучаться: chrome-extension:// из системы не открывается, а
 // service worker спит. Зато `open -a Aside http://127.0.0.1:<port>/aside-tweaks/palette`
-// открывает обычную вкладку с нашим content script — он присылает paletteSignal. Если
-// страница, с которой ушли, умеет слой — сигнальная вкладка закрывается и палитра встаёт
+// открывает обычную вкладку с нашим content script – он присылает paletteSignal. Если
+// страница, с которой ушли, умеет слой – сигнальная вкладка закрывается и палитра встаёт
 // там; иначе палитра встаёт слоем на самой сигнальной странице (серое поле, без
-// светофора), а когда закрывается — та вкладка уходит и возвращается прежняя.
+// светофора), а когда закрывается – та вкладка уходит и возвращается прежняя.
 const signalPrev = new Map();   // сигнальная вкладка → вкладка, где были до неё
 
 const SIGNAL_URL = /^http:\/\/127\.0\.0\.1(:\d+)?\/aside-tweaks\/palette(\?|#|$)/;
@@ -1589,7 +1596,7 @@ async function paletteSignal({ q = '' } = {}, sender) {
     .filter(t => t.id !== sig.id && !SIGNAL_URL.test(t.url || ''));
   const prev = others.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0] || null;
 
-  // прежняя страница умеет слой — уходим туда, сигнальная вкладка больше не нужна
+  // прежняя страница умеет слой – уходим туда, сигнальная вкладка больше не нужна
   if (prev && settings.paletteOverlay !== false && /^https?:\/\//.test(prev.url || '')) {
     const alive = await chrome.tabs.sendMessage(prev.id, { type: 'ping' }, { frameId: 0 }).catch(() => null);
     if (alive?.pong) {
@@ -1601,7 +1608,7 @@ async function paletteSignal({ q = '' } = {}, sender) {
       return 1;
     }
   }
-  // иначе палитра живёт на сигнальной странице; «здесь» для неё — прежняя вкладка
+  // иначе палитра живёт на сигнальной странице; «здесь» для неё – прежняя вкладка
   signalPrev.set(sig.id, prev?.id ?? null);
   const shown = await chrome.tabs.sendMessage(sig.id, { type: 'palette', on: true, win: wid, tab: prev?.id ?? sig.id, q, signal: true }, { frameId: 0 }).catch(() => null);
   if (!shown?.shown) { signalPrev.delete(sig.id); await openPaletteWindow(wid, q); }
@@ -1609,7 +1616,7 @@ async function paletteSignal({ q = '' } = {}, sender) {
   return 2;
 }
 
-// палитра на сигнальной странице закрылась: если выбор ничего не активировал — вернуться на
+// палитра на сигнальной странице закрылась: если выбор ничего не активировал – вернуться на
 // прежнюю вкладку; сигнальную убрать в любом случае
 async function signalDone(_, sender) {
   const sig = sender?.tab;
@@ -1629,8 +1636,8 @@ const SIGNAL = { paletteSignal, signalDone };
 const NUMBERED = { focusBlock, putInBlock, listBlocks };
 
 // ---------- desk bridge: заметки Obsidian и агенты Orca через локальный мост ----------
-// Мост — bridge/desk.py на 127.0.0.1 (manifest: host_permissions на 127.0.0.1, без диалога —
-// адрес локальный, а мост сам отвечает только этому расширению). Нет моста — нет и заметок.
+// Мост – bridge/desk.py на 127.0.0.1 (manifest: host_permissions на 127.0.0.1, без диалога –
+// адрес локальный, а мост сам отвечает только этому расширению). Нет моста – нет и заметок.
 
 const DESK_DEFAULTS = { deskPort: 49321 };
 
@@ -1644,7 +1651,7 @@ async function deskFetch(path, body) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), body ? 25000 : 2500);
   try {
-    // служебный заголовок — ворота моста: Origin из service worker'а браузер не шлёт
+    // служебный заголовок – ворота моста: Origin из service worker'а браузер не шлёт
     const headers = { 'X-Aside-Tweaks': 'desk' };
     const r = await fetch(base + path, body
       ? { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctrl.signal }
@@ -1692,7 +1699,7 @@ const REVIEW_ACTIONS = {
   applyReviewBatch
 };
 
-// Одно и то же сочетание приходит с двух уровней — от страницы и от команды браузера.
+// Одно и то же сочетание приходит с двух уровней – от страницы и от команды браузера.
 // Для тоглов это означало бы «поставил и тут же снял», поэтому повтор в пределах кадра глушим.
 const TOGGLES = new Set(['favoriteTab', 'pinTab', 'bookmarkTab', 'tidyUp', 'tidyDuplicates']);
 const lastRun = new Map();

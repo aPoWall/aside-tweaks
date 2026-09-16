@@ -1,4 +1,4 @@
-// Aside Tweaks — palette (⇧⌘K)
+// Aside Tweaks – palette (⇧⌘K)
 // Слой на странице или окно по центру: вкладки, история, закладки, заметки Obsidian
 // (через локальный мост), агенты Orca (`> prompt`), команды, калькулятор.
 // Всё оконное уходит в фон с явным windowId: сама палитра живёт в popup-окне,
@@ -7,7 +7,7 @@
 // Строение как у Raycast: тип строки справа, главное действие в нижней строке,
 // панель действий на ⌘K, esc сначала чистит запрос и только потом закрывает.
 // Список строится один раз на запрос; выбор строки, наведение и стрелки только
-// переключают класс — без перерисовки, иначе палитра дёргается.
+// переключают класс – без перерисовки, иначе палитра дёргается.
 
 const params = new URLSearchParams(location.search);
 const srcWin = Number(params.get('win')) || null;
@@ -47,12 +47,12 @@ let rows = [];
 let sel = 0;
 let blocks = [];
 let mouseLive = false;   // наведение выбирает строку только после реального движения мыши
-let desk = null;         // мост к машине: { ok, vaults, worktrees } либо null — тогда заметок и агентов нет
-// как показывать заметки — карточка 09 настроек
+let desk = null;         // мост к машине: { ok, vaults, worktrees } либо null – тогда заметок и агентов нет
+// как показывать заметки – карточка 09 настроек
 let notesPrefs = { notesLimit: 3, notesClean: true, notesDate: true, notesOrder: 'modified' };
 let view = view0 ? { kind: view0 === 'review-tidy' ? 'review' : view0, intent: view0 === 'review-tidy' ? 'tidy' : 'review' } : null;
-let menuCache = null;    // пункты меню Aside с моста — один раз на открытие палитры
-let currentQ = '';       // запрос, по которому построен список — для подсветки совпадений
+let menuCache = null;    // пункты меню Aside с моста – один раз на открытие палитры
+let currentQ = '';       // запрос, по которому построен список – для подсветки совпадений
 chrome.storage.sync.get(notesPrefs).then(s => { notesPrefs = { ...notesPrefs, ...s }; });
 let actsOpen = false, actSel = 0, acts = [];
 
@@ -110,10 +110,10 @@ const norm = s => (s || '').toLowerCase();
 const looksLikeUrl = s => /^(https?:\/\/)?[\w-]+(\.[\w-]+)+(:\d+)?([/?#]|$)/.test(s) && !s.includes(' ');
 const toUrl = s => s.startsWith('http') ? s : 'https://' + s;
 
-// Aside помечает спящую вкладку эмодзи 💤 прямо в заголовке — для поиска его снимаем
+// Aside помечает спящую вкладку эмодзи 💤 прямо в заголовке – для поиска его снимаем
 const plainTitle = s => (s || '').replace(/^\s*💤\s*/, '');
 
-// имя заметки в волте: `{project} {type} Описание – YYYY-MM-DD[ HHMM].md` —
+// имя заметки в волте: `{project} {type} Описание – YYYY-MM-DD[ HHMM].md` –
 // фигурные скобки становятся бейджами, дата уходит вправо, остаётся чистый заголовок
 function parseNote(name) {
   let t = (name || '').trim();
@@ -131,7 +131,7 @@ function parseNote(name) {
   return { title: t, tags, date };
 }
 
-// сигнальная страница моста — техническая, в списке вкладок ей не место
+// сигнальная страница моста – техническая, в списке вкладок ей не место
 const SIGNAL_URL = /^http:\/\/127\.0\.0\.1(:\d+)?\/aside-tweaks\/palette(\?|#|$)/;
 
 // насколько строка отвечает запросу: начало заголовка > начало слова > где-то в заголовке > адрес
@@ -163,14 +163,14 @@ async function send(action, extra = {}) {
 
 const copy = async text => { await navigator.clipboard.writeText(text).catch(() => { }); closeSelf(); };
 
-// фон сам переключится на уже открытую вкладку с тем же адресом — дубль не появится
+// фон сам переключится на уже открытую вкладку с тем же адресом – дубль не появится
 async function openUrl(url, { pinned = false, group = null } = {}) {
   bump(normUrl(url));
   await send('openUrl', { url, pinned, groupName: group });
   closeSelf();
 }
 
-// действия «открыть» для адреса: просто, пином, в блоке — одинаковы для закладок, истории и вставленного url
+// действия «открыть» для адреса: просто, пином, в блоке – одинаковы для закладок, истории и вставленного url
 function openActions(url) {
   const a = [
     { label: 'open', key: '↵', fn: () => openUrl(url) },
@@ -396,7 +396,7 @@ async function build(raw) {
   const q = norm(qRaw);
   const out = [];
 
-  // `> prompt` — режим агентов: живые терминалы Orca и запуск агента в рабочей папке
+  // `> prompt` – режим агентов: живые терминалы Orca и запуск агента в рабочей папке
   if (qRaw.startsWith('>')) {
     const prompt = qRaw.slice(1).trim();
     if (!desk?.ok) {
@@ -450,14 +450,14 @@ async function build(raw) {
   const wantNotes = (scope === 'all' || scope === 'notes') && desk?.ok;
   const wantCmds = scope === 'all' || scope === 'commands';
 
-  // открытые вкладки — по свежести, как ⌃⇥ в Arc: последняя, где был, первой;
-  // текущая — в самом низу, с неё и переключаешься
-  // пустые новые вкладки в список не идут — переключаться на них незачем, чистка их и так уберёт
+  // открытые вкладки – по свежести, как ⌃⇥ в Arc: последняя, где был, первой;
+  // текущая – в самом низу, с неё и переключаешься
+  // пустые новые вкладки в список не идут – переключаться на них незачем, чистка их и так уберёт
   const EMPTY = /^(about:blank|chrome:\/\/newtab\/?|chrome:\/\/new-tab-page\/?|aside:\/\/newtab\/?)$/;
   const allTabs = (await chrome.tabs.query({}).catch(() => []))
     .filter(t => t.url && !EMPTY.test(t.url) && !SIGNAL_URL.test(t.url) && !t.url.startsWith('chrome-extension://' + chrome.runtime.id));
   const open = new Set(allTabs.map(t => normUrl(t.url)));
-  // близнецы считает фон — тем же правилом, что и чистка: точный адрес либо тот же хост и заголовок
+  // близнецы считает фон – тем же правилом, что и чистка: точный адрес либо тот же хост и заголовок
   const stats = (await send('getStats'))?.data || null;
   const twinOf = stats?.twinOf || {};
 
@@ -504,7 +504,7 @@ async function build(raw) {
     }
   }
 
-  // заметки Obsidian — недавние из workspace.json обоих волтов, по запросу — поиск по именам
+  // заметки Obsidian – недавние из workspace.json обоих волтов, по запросу – поиск по именам
   const notesLimit = scope === 'notes' ? 40 : (q ? 6 : Number(notesPrefs.notesLimit) || 0);
   if (wantNotes && notesLimit > 0 && (q || scope !== 'commands')) {
     const order = notesPrefs.notesOrder === 'opened' ? 'opened' : 'modified';
@@ -550,7 +550,7 @@ async function build(raw) {
     }
   }
 
-  // команды — с живым счётом того, что чистка сейчас закроет
+  // команды – с живым счётом того, что чистка сейчас закроет
   if (wantCmds) {
     let shown = 0;
     for (const c of CMDS) {
@@ -602,7 +602,7 @@ async function build(raw) {
     }));
   }
 
-  // пункты меню самого Aside — как Raycast → Search Menu Items, но изнутри браузера
+  // пункты меню самого Aside – как Raycast → Search Menu Items, но изнутри браузера
   if (wantCmds && desk?.ok && (q || scope === 'commands')) {
     if (!menuCache) menuCache = (await send('deskMenu'))?.data || null;
     const m = menuCache;
@@ -631,7 +631,7 @@ async function build(raw) {
 
   // закладки
   if (wantMarks && (q || scope === 'bookmarks')) {
-    // пустой поиск: search({}) в Chromium — ошибка, поэтому берём свежие закладки
+    // пустой поиск: search({}) в Chromium – ошибка, поэтому берём свежие закладки
     const marks = q
       ? await chrome.bookmarks.search({ query: qRaw }).catch(() => [])
       : await chrome.bookmarks.getRecent(30).catch(() => []);
@@ -651,7 +651,7 @@ async function build(raw) {
     }
   }
 
-  // история — свёрнутая по нормализованному адресу, иначе один и тот же сайт занимает весь список
+  // история – свёрнутая по нормализованному адресу, иначе один и тот же сайт занимает весь список
   if (wantHist) {
     const hist = await chrome.history.search({ text: qRaw, maxResults: 120, startTime: 0 }).catch(() => []);
     const byKey = new Map();
@@ -677,7 +677,7 @@ async function build(raw) {
     }
   }
 
-  // адрес или поиск — вместе с «открыть в блоке»
+  // адрес или поиск – вместе с «открыть в блоке»
   if (q) {
     const isUrl = looksLikeUrl(qRaw);
     if (isUrl) {
@@ -701,7 +701,7 @@ async function build(raw) {
 
 // ---------- отрисовка ----------
 
-// совпадение с запросом выделяется в заголовке и подписи; слова запроса — каждое отдельно
+// совпадение с запросом выделяется в заголовке и подписи; слова запроса – каждое отдельно
 function highlight(el, text, q) {
   el.replaceChildren();
   const words = (q || '').toLowerCase().split(/\s+/).filter(w => w.length >= 2);
@@ -827,7 +827,7 @@ function render() {
 }
 
 function setSel(i, scroll) {
-  if (!rows.length) { sel = 0; primaryEl.textContent = '—'; return; }
+  if (!rows.length) { sel = 0; primaryEl.textContent = '–'; return; }
   i = Math.max(0, Math.min(i, rows.length - 1));
   if (rows[sel] && sel !== i) rows[sel].classList.remove('sel');
   if (rows[sel] && sel !== i) rows[sel].setAttribute('aria-selected', 'false');
@@ -920,7 +920,7 @@ function stepBack() {
 
 document.getElementById('actsbtn').addEventListener('click', () => { actsOpen ? closeActs() : openActs(); qEl.focus(); });
 
-// быстрые клавиши строки без открытия панели: ⇧↵, ⌘⌫, ⌘C, ⌘B — те же, что подписаны в панели
+// быстрые клавиши строки без открытия панели: ⇧↵, ⌘⌫, ⌘C, ⌘B – те же, что подписаны в панели
 function runByKey(key) {
   const a = actionsOf(items[sel]).find(x => x.key === key);
   if (!a) return false;
@@ -939,7 +939,7 @@ async function refresh() {
   render();
 }
 
-// смена охвата: список гаснет, подменяется невидимым и проявляется — без рывка
+// смена охвата: список гаснет, подменяется невидимым и проявляется – без рывка
 let swapping = false;
 async function softRefresh() {
   if (swapping) { refresh(); return; }
@@ -976,7 +976,7 @@ document.addEventListener('keydown', (e) => {
     closeSelf();
     return;
   }
-  // Backspace на пустом поле — шаг назад из режима, как в Raycast
+  // Backspace на пустом поле – шаг назад из режима, как в Raycast
   if (e.key === 'Backspace' && !qEl.value && view) { e.preventDefault(); stepBack(); return; }
   if (e.key === 'Tab') {
     e.preventDefault();
@@ -1005,7 +1005,7 @@ if (!embed) window.addEventListener('blur', () => setTimeout(() => closeSelf(), 
 if (embed) {
   document.documentElement.classList.add('embed');
   parent.postMessage({ tw: 'palette-ready' }, '*');
-  // рамке фокус отдают снаружи, уже после загрузки — забираем его обратно в поле ввода
+  // рамке фокус отдают снаружи, уже после загрузки – забираем его обратно в поле ввода
   setTimeout(() => qEl.focus(), 80);
   window.addEventListener('focus', () => qEl.focus());
 }

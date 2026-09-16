@@ -108,6 +108,10 @@ Useful keys:
 
 The page-level keymap uses physical key codes, so Latin and Cyrillic layouts keep the same bindings. Browser-reserved shortcuts still belong to the operating system or Chromium.
 
+### Family keys – declared exception to rule 37
+
+AIM apps rule 37 fixes `⌘K` as the palette key for the whole family. In a browser surface `⌘K` belongs to the address bar, so Aside Tweaks declares one exception: the palette opens on `⇧⌘K`, and `⌘K` keeps the single meaning of «actions for the selected row» inside the palette. The exception is printed on the product page (feature 02) and in the palette itself. Every other family key keeps its family meaning: `esc` closes, digits switch blocks, `⌘D` bookmarks.
+
 `⌘D` appends the page to the **end** of the bookmarks bar, as Arc appends a pinned row to its section. The tab stays open and keeps the focus, the rows above it do not move, and a second `⌘D` on the same page takes the row out. Closing the tab after `⌘D` is still available as a setting and is off by default since 4.21; with it on, the next unpinned tab becomes active and pinned tabs are used only when no working tab remains. Aside's native **Chats** section and system-owned `⌘W` / `⌘V` behavior are outside the extension API.
 
 ### Blocks under the number keys

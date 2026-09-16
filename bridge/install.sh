@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# aside tweaks · desk bridge — install as a LaunchAgent (macOS)
+# aside tweaks · desk bridge – install as a LaunchAgent (macOS)
 #
 #   bridge/install.sh            install or update, start now
 #   bridge/install.sh --remove   stop and remove the agent
 #
 # Config lives in ~/.config/aside-tweaks/desk.json; a template is written on
-# first run — edit vaults, worktrees, extension_ids there, then run again.
+# first run – edit vaults, worktrees, extension_ids there, then run again.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -70,5 +70,5 @@ PORT="$($PY -c "import json;print(json.load(open('$CONF')).get('port',49321))")"
 if curl -s -H "X-Aside-Tweaks: desk" "http://127.0.0.1:$PORT/health" >/dev/null; then
   echo "desk bridge is up on 127.0.0.1:$PORT · log: $LOG"
 else
-  echo "started, but /health did not answer yet — check $LOG"
+  echo "started, but /health did not answer yet – check $LOG"
 fi

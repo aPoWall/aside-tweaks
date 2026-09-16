@@ -28,7 +28,7 @@ const known = (bg.match(/const ACTIONS = \{([\s\S]*?)\};/) || [])[1] || '';
 const unknown = TWEAK_COMMANDS.filter(c => !known.includes(c.action));
 check('каждая команда есть в ACTIONS', unknown.length === 0, unknown.map(c => c.action).join(', '));
 
-// попап тоже рендерит из общего списка — и у каждой его команды есть короткое имя и секция
+// попап тоже рендерит из общего списка – и у каждой его команды есть короткое имя и секция
 const popupJs = read('popup.js');
 check('попап рендерит из общего списка', popupJs.includes("commandsFor('popup')") && !popup.includes('data-action='));
 const noShort = commandsFor('popup').filter(c => !c.short || !c.group);
@@ -38,7 +38,7 @@ check('у команд попапа есть short и group', noShort.length ===
 check('панель рендерит из общего списка', panel.includes("commandsFor('panel')"));
 check('палитра рендерит из общего списка', palette.includes("commandsFor('palette')"));
 
-// чистка дублей обязана быть на всех трёх поверхностях — это и была жалоба
+// чистка дублей обязана быть на всех трёх поверхностях – это и была жалоба
 const dedup = TWEAK_COMMANDS.find(c => c.action === 'tidyDuplicates');
 check('чистка дублей есть в панели, палитре и попапе',
   ['panel', 'palette', 'popup'].every(s => dedup.on.includes(s)), dedup.on.join(' '));
@@ -50,7 +50,7 @@ const reviewActions = (bg.match(/const REVIEW_ACTIONS = \{([\s\S]*?)\};/) || [])
 check('чистка дублей достижима с поверхности',
   (known + reviewActions).includes('applyDuplicateCleanup') && palette.includes("send('applyDuplicateCleanup')"));
 
-// и в фоне не остаётся функций, которых никто не зовёт — тот же класс поломки
+// и в фоне не остаётся функций, которых никто не зовёт – тот же класс поломки
 const surfaceMaps = known + reviewActions +
   ((bg.match(/const NUMBERED = \{([\s\S]*?)\};/) || [])[1] || '') +
   ((bg.match(/const SIGNAL = \{([\s\S]*?)\};/) || [])[1] || '') +

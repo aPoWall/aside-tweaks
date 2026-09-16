@@ -1,5 +1,5 @@
 // подставной chrome: гоняем реальный background.js вне браузера и смотрим,
-// что он делает с вкладками — это ловит и ошибки загрузки, и логику
+// что он делает с вкладками – это ловит и ошибки загрузки, и логику
 import fs from 'fs';
 
 const L = {};                       // слушатели событий
@@ -95,7 +95,7 @@ globalThis.chrome = {
     // content script есть только на страницах из LAYER_OK: ping → pong, палитра → shown
     sendMessage: (id, msg, opts, cb) => {
       const callback = typeof opts === 'function' ? opts : cb;
-      if (callback) { callback(); return; }          // тосты и dim идут колбэком — ответ не нужен
+      if (callback) { callback(); return; }          // тосты и dim идут колбэком – ответ не нужен
       const t = TABS.find(x => x.id === id);
       if (msg?.type === 'reviewProtection') return Promise.resolve({ dirty: DIRTY.has(id) });
       if (!t || !LAYER_OK.has(id)) return Promise.reject(new Error('no receiver'));
@@ -110,8 +110,8 @@ const LAYER_OK = new Set();
 const DIRTY = new Set();
 const sent = [];
 
-// окна: обычное рабочее и popup-окно палитры — «последнее в фокусе» бывает вторым
-const WINS = { 1: { id: 1, type: 'normal', focused: true }, 9: { id: 9, type: 'popup' } };
+// окна: обычное рабочее и popup-окно палитры – «последнее в фокусе» бывает вторым
+const WINS = { 1: { id: 1, type: 'normal', focused: true }, 2: { id: 2, type: 'normal' }, 9: { id: 9, type: 'popup' } };
 let lastFocused = 1;
 
 let MARKS = [];
@@ -126,7 +126,7 @@ try {
   const code = fs.readFileSync(new URL('../background.js', import.meta.url), 'utf8');
   new Function(code)();
 } catch (e) { loadError = String(e); }
-console.log('LOAD ERROR:', loadError || 'нет — service worker поднялся');
+console.log('LOAD ERROR:', loadError || 'нет – service worker поднялся');
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const fire = (name, ...args) => Promise.all((L[name] || []).map(f => f(...args)));
@@ -136,7 +136,7 @@ TABS = [1,2,3,4,5].map((n,i) => ({ id: n, windowId: 1, index: i, pinned: false, 
 await fire('tabActivated', { tabId: 3, windowId: 1 });
 await wait(60);
 
-// браузер открыл новую вкладку В КОНЦЕ (как делает Chromium) — ждём переезда под третью
+// браузер открыл новую вкладку В КОНЦЕ (как делает Chromium) – ждём переезда под третью
 const fresh = { id: 9, windowId: 1, index: 5, pinned: false, url: 'https://new.com/', openerTabId: 3 };
 TABS.push(fresh);
 await fire('tabCreated', fresh);
@@ -167,7 +167,7 @@ const callFrom = (action, tabId, extra = {}) => new Promise(res => {
   handler({ action, ...extra }, { tab: TABS.find(t => t.id === tabId) }, res);
 });
 
-// сцена для уборки: дубль, пустая, разные сайты; lastAccessed — где были последней
+// сцена для уборки: дубль, пустая, разные сайты; lastAccessed – где были последней
 TABS = [
   { id: 11, windowId: 1, index: 0, pinned: false, active: true, url: 'https://b.com/x', lastAccessed: 200 },
   { id: 12, windowId: 1, index: 1, pinned: false, url: 'https://a.com/', lastAccessed: 300 },
@@ -188,10 +188,10 @@ const tidyApplied = await call('applyReviewBatch', { clusterKey: 'all-exact', in
 check('tidy применяется только из строки подтверждения', tidyApplied?.ok && tidyApplied.count === 2 && tidyApplied.data?.receipt?.closed?.length === 2, JSON.stringify(tidyApplied));
 check('receipt перечисляет canonical вкладку каждого exact-кластера', tidyApplied.data?.receipt?.keptTabs?.length === 1 && tidyApplied.data.receipt.keptTabs[0].url === 'https://b.com/x', JSON.stringify(tidyApplied.data?.receipt));
 check('дубль и пустая убраны', TABS.length === 3, 'осталось ' + TABS.map(t => t.id).join(' '));
-check('россыпь по свежести: где был последним — сверху', TABS.map(t => t.url).join(' ') === 'https://a.com/ https://b.com/x https://c.com/', TABS.map(t => t.url).join(' '));
+check('россыпь по свежести: где был последним – сверху', TABS.map(t => t.url).join(' ') === 'https://a.com/ https://b.com/x https://c.com/', TABS.map(t => t.url).join(' '));
 check('пары и одиночки блоком не становятся', !log.slice(-12).some(l => l.startsWith('group')), log.slice(-6).join(' | '));
 
-// из двух копий остаётся та, где были последней — не первая попавшаяся
+// из двух копий остаётся та, где были последней – не первая попавшаяся
 TABS = [
   { id: 61, windowId: 1, index: 0, pinned: false, url: 'https://x.com/p', lastAccessed: 100 },
   { id: 62, windowId: 1, index: 1, pinned: false, url: 'http://x.com/p/', lastAccessed: 900 },
@@ -231,7 +231,7 @@ MARKS = [];
 const pin = await call('pinTab', { windowId: 1 });
 check('pinTab закрепил', pin?.ok && pin.count === 1 && TABS.some(t => t.pinned));
 
-// ⌘D — тогл в обе стороны, вкладка при этом жива: закрытие будило бы соседа и он перезагружался
+// ⌘D – тогл в обе стороны, вкладка при этом жива: закрытие будило бы соседа и он перезагружался
 MARKS = [];
 TABS = [
   { id: 21, windowId: 1, index: 0, pinned: true, url: 'https://pinned.com/' },
@@ -240,17 +240,17 @@ TABS = [
   { id: 24, windowId: 1, index: 3, pinned: false, url: 'https://c.com/' }
 ];
 mark = log.length;
-// прежняя механика (v4.14) — при выключенном закрытии
+// прежняя механика (v4.14) – при выключенном закрытии
 store.sync.favoriteCloses = false;
 await fire('storeChanged', { favoriteCloses: { newValue: false } }, 'sync');
 await wait(20);
 const fav = await call('favoriteTab', { windowId: 1 });
 check('favoriteTab сделал закладку', fav?.ok && fav.count === 1 && MARKS.length === 1, JSON.stringify(MARKS));
-check('вкладка осталась жива — без закрытия и перезагрузки', TABS.some(t => t.id === 23), TABS.map(t => t.id).join(' '));
-check('⌘D вывел вкладку из блока — сайдбар вплавит её в строку закладки', log.slice(mark).includes('ungroup 1') && TABS.find(t => t.id === 23)?.groupId === -1, log.slice(mark).join(' | '));
+check('вкладка осталась жива – без закрытия и перезагрузки', TABS.some(t => t.id === 23), TABS.map(t => t.id).join(' '));
+check('⌘D вывел вкладку из блока – сайдбар вплавит её в строку закладки', log.slice(mark).includes('ungroup 1') && TABS.find(t => t.id === 23)?.groupId === -1, log.slice(mark).join(' | '));
 check('порядок вкладок ⌘D не трогает', TABS.map(t => t.id).join(' ') === '21 22 23 24', TABS.map(t => t.id).join(' '));
 
-// адрес уже открыт — переключение вместо второй вкладки, как в Arc
+// адрес уже открыт – переключение вместо второй вкладки, как в Arc
 const before = TABS.length;
 const sw = await call('openUrl', { url: 'http://www.a.com', windowId: 1 });
 check('openUrl переключается на открытую копию, дубля нет', sw?.count === 2 && TABS.length === before && TABS.find(t => t.id === 22)?.active === true, JSON.stringify(sw) + ' · ' + TABS.length);
@@ -327,7 +327,7 @@ check('pinTab открепил', unpin?.ok && unpin.count === -1);
 check('открепленная встала первой строкой вкладок', TABS[0]?.id === 31 && !TABS[0].pinned,
   TABS.map(t => t.id + (t.pinned ? '·pin' : '')).join(' '));
 
-// близнецы по заголовку: четыре «AIM VISUAL» с разными query-строками — одна страница
+// близнецы по заголовку: четыре «AIM VISUAL» с разными query-строками – одна страница
 TABS = [
   { id: 41, windowId: 1, index: 0, pinned: false, active: true, url: 'https://visual-team.aimindset.org/?lab=s26&section=youtube', title: 'AIM VISUAL', lastAccessed: 400 },
   { id: 42, windowId: 1, index: 1, pinned: false, url: 'https://visual-team.aimindset.org/?lab=refpack&section=library', title: '💤 AIM VISUAL', lastAccessed: 300, discarded: true },
@@ -347,7 +347,7 @@ check('review показывает exact-кластер до закрытия', 
 const nearClean = await call('applyReviewBatch', { clusterKey: 'all-exact', intent: 'review', windowId: 1 });
 check('подтверждённая чистка закрыла трёх близнецов и оставила активную', nearClean?.count === 3 && TABS.some(t => t.id === 41) && ![42, 43, 44].some(id => TABS.some(t => t.id === id)), TABS.map(t => t.id).join(' '));
 
-// тумблер выключен — те же вкладки чистка не трогает
+// тумблер выключен – те же вкладки чистка не трогает
 await fire('storeChanged', { dedupByTitle: { newValue: false } }, 'sync');
 store.sync.dedupByTitle = false;
 await wait(30);
@@ -356,7 +356,7 @@ TABS = [
   { id: 42, windowId: 1, index: 1, pinned: false, url: 'https://visual-team.aimindset.org/?lab=refpack', title: 'AIM VISUAL', lastAccessed: 300 }
 ];
 const strict = await call('getStats');
-check('dedupByTitle выключен — только точный адрес', strict?.data?.dups === 0, JSON.stringify(strict?.data));
+check('dedupByTitle выключен – только точный адрес', strict?.data?.dups === 0, JSON.stringify(strict?.data));
 store.sync.dedupByTitle = true;
 await fire('storeChanged', { dedupByTitle: { newValue: true } }, 'sync');
 
@@ -387,7 +387,7 @@ check('batch закрывает только безопасного sibling, can
 check('batch пишет source receipt', closedSpace?.data?.receipt?.action === 'close reviewed siblings' && closedSpace.data.receipt.closed.length === 1, JSON.stringify(closedSpace?.data?.receipt));
 DIRTY.clear();
 
-// сигнальная страница моста, путь 1: прежняя вкладка умеет слой — сигнальная закрывается, палитра там
+// сигнальная страница моста, путь 1: прежняя вкладка умеет слой – сигнальная закрывается, палитра там
 TABS = [
   { id: 71, windowId: 1, index: 0, pinned: false, url: 'https://docs.example/page', title: 'Docs', lastAccessed: 500 },
   { id: 72, windowId: 1, index: 1, pinned: false, url: 'https://old.example/', title: 'Old', lastAccessed: 100 },
@@ -400,7 +400,7 @@ check('сигнал: прежняя вкладка по свежести, не �
 check('сигнал: запрос доехал до палитры', pal1?.q === 'mini' && !pal1?.signal);
 check('сигнал: сигнальная вкладка закрыта, прежняя активна', sig1?.count === 1 && !TABS.some(t => t.id === 73) && TABS.find(t => t.id === 71)?.active === true, TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
 
-// путь 2: прежняя без content script — палитра на сигнальной странице, после закрытия та уходит
+// путь 2: прежняя без content script – палитра на сигнальной странице, после закрытия та уходит
 TABS = [
   { id: 81, windowId: 1, index: 0, pinned: false, url: 'about:blank', title: '', lastAccessed: 500 },
   { id: 82, windowId: 1, index: 1, pinned: false, active: true, url: 'http://127.0.0.1:49321/aside-tweaks/palette', title: 'aside tweaks' }
@@ -413,7 +413,7 @@ check('сигнальная вкладка пока жива', TABS.some(t => t.
 const done2 = await callFrom('signalDone', 82);
 check('после закрытия: сигнальная ушла, прежняя вернулась', done2?.count === 1 && !TABS.some(t => t.id === 82) && TABS.find(t => t.id === 81)?.active === true, TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
 
-// выбор из палитры уже активировал другую вкладку — назад на прежнюю не возвращаемся
+// выбор из палитры уже активировал другую вкладку – назад на прежнюю не возвращаемся
 TABS = [
   { id: 91, windowId: 1, index: 0, pinned: false, url: 'about:blank', lastAccessed: 500 },
   { id: 92, windowId: 1, index: 1, pinned: false, url: 'https://target.example/', title: 'Target', lastAccessed: 50 },
@@ -450,7 +450,7 @@ const unfavArc = await call('favoriteTab', { windowId: 1 });
 check('⌘D второй раз снимает строку, вкладка на месте',
   unfavArc?.count === -1 && MARKS.length === 1 && TABS.find(t => t.id === 103)?.active === true, JSON.stringify(MARKS.map(b => b.url)));
 
-// прежнее поведение остаётся настройкой: включили закрытие — вкладка закрывается, фокус идёт дальше
+// прежнее поведение остаётся настройкой: включили закрытие – вкладка закрывается, фокус идёт дальше
 store.sync.favoriteCloses = true;
 await fire('storeChanged', { favoriteCloses: { newValue: true } }, 'sync');
 await wait(520);
@@ -462,7 +462,7 @@ store.sync.favoriteCloses = false;
 await fire('storeChanged', { favoriteCloses: { newValue: false } }, 'sync');
 await wait(20);
 
-// единственная вкладка окна не закрывается — иначе закроется окно
+// единственная вкладка окна не закрывается – иначе закроется окно
 MARKS = [];
 TABS = [{ id: 111, windowId: 1, index: 0, pinned: false, active: true, url: 'https://only.example/', title: 'Only', lastAccessed: 10 }];
 await wait(500);
@@ -557,6 +557,45 @@ const noBlock = await call('blockSelected', { windowId: 1 });
 check('одна выбранная строка блока не собирает', noBlock?.count === 0, JSON.stringify(noBlock));
 const folded = await call('foldBlocks', { windowId: 1 });
 check('одна команда сворачивает все блоки окна', folded?.count === 1 && GROUPS.every(g => g.collapsed), JSON.stringify(GROUPS));
+
+
+// ---------- чистка не закрывает окно целиком ----------
+// второе окно целиком состоит из межоконных дублей: план обязан оставить в нём вкладку
+TABS = [
+  { id: 71, windowId: 1, index: 0, pinned: false, active: true, url: 'https://a.com/x', lastAccessed: 900 },
+  { id: 72, windowId: 1, index: 1, pinned: false, url: 'https://b.com/y', lastAccessed: 800 },
+  { id: 73, windowId: 2, index: 0, pinned: false, url: 'https://a.com/x', lastAccessed: 100 },
+  { id: 74, windowId: 2, index: 1, pinned: false, url: 'https://b.com/y', lastAccessed: 100 }
+];
+const crossPlan = await call('previewDuplicateCleanup');
+const leftIn = (wid, ids) => TABS.filter(t => t.windowId === wid && !ids.includes(t.id)).length;
+check('план чистки оставляет вкладку в каждом окне',
+  leftIn(2, crossPlan?.data?.closeIds || []) >= 1 && (crossPlan?.data?.closeIds || []).length === 1,
+  JSON.stringify(crossPlan?.data?.closeIds));
+check('последняя вкладка окна попадает в blocked с причиной',
+  (crossPlan?.data?.blocked || []).some(b => b.reasons.includes('last tab in its window')),
+  JSON.stringify(crossPlan?.data?.blocked));
+
+// дубль плюс пустая в том же окне: тоже не опустошать
+TABS = [
+  { id: 81, windowId: 1, index: 0, pinned: false, active: true, url: 'https://a.com/x', lastAccessed: 900 },
+  { id: 82, windowId: 2, index: 0, pinned: false, url: 'https://a.com/x', lastAccessed: 100 },
+  { id: 83, windowId: 2, index: 1, pinned: false, url: 'chrome://newtab/' }
+];
+const mixedPlan = await call('previewDuplicateCleanup');
+check('дубль и пустая в одном окне не закрываются обе',
+  leftIn(2, mixedPlan?.data?.closeIds || []) >= 1, JSON.stringify(mixedPlan?.data?.closeIds));
+
+// обычный случай не изменился: дубль и пустая внутри одного окна уходят
+TABS = [
+  { id: 91, windowId: 1, index: 0, pinned: false, active: true, url: 'https://a.com/x', lastAccessed: 900 },
+  { id: 92, windowId: 1, index: 1, pinned: false, url: 'https://a.com/x/', lastAccessed: 100 },
+  { id: 93, windowId: 1, index: 2, pinned: false, url: 'chrome://newtab/' },
+  { id: 94, windowId: 1, index: 3, pinned: false, url: 'https://c.com/' }
+];
+const plainPlan = await call('previewDuplicateCleanup');
+check('обычная чистка в одном окне закрывает дубль и пустую',
+  (plainPlan?.data?.closeIds || []).sort().join(',') === '92,93', JSON.stringify(plainPlan?.data?.closeIds));
 
 console.log(fails ? `\n${fails} провалов` : '\nвсе проверки зелёные');
 process.exit(fails ? 1 : 0);

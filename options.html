@@ -16,7 +16,7 @@
     background: var(--bg); color: var(--fg);
     -webkit-font-smoothing: antialiased;
   }
-  /* облик aside: карточки на сером поле, заголовки без разрядки, выбранный сегмент — белая пилюля */
+  /* облик aside: карточки на сером поле, заголовки без разрядки, выбранный сегмент – белая пилюля */
   :root[data-look="aside"] body { font-size: 12.5px; }
   :root[data-look="aside"] .card { border: 1px solid var(--line); border-radius: 10px; background: var(--bg-soft); }
   :root[data-look="aside"] .head .ttl { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600; }
@@ -95,13 +95,13 @@
         <div style="font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">held by the browser itself</div>
         <table class="keys" id="cmds"></table>
         <small style="margin-top:7px">
-          these live one level above the page: the browser fires them even where a page cannot listen — on <code>chrome://</code>,
+          these live one level above the page: the browser fires them even where a page cannot listen – on <code>chrome://</code>,
           on a new tab, inside Aside's own interface. an extension may <b>suggest</b> them but never rebind them, so a key that
           still fires the old action is set here, not above. change or clear them on <code>chrome://extensions/shortcuts</code>.
         </small>
       </div>
       <small style="margin-top:11px">
-        ⚠ <code>⌘T</code> <code>⌘W</code> <code>⌘N</code> <code>⌘Q</code> <code>⌘M</code> <code>⇧⌘W</code> stay with the system — the browser takes them before the page.
+        ⚠ <code>⌘T</code> <code>⌘W</code> <code>⌘N</code> <code>⌘Q</code> <code>⌘M</code> <code>⇧⌘W</code> stay with the system – the browser takes them before the page.
         on <code>chrome://</code> pages, the new tab and inside Aside's own interface there is no page at all: only native shortcuts work there.
       </small>
       <div class="row2" style="margin-top:9px">
@@ -111,7 +111,7 @@
       <div id="probe" tabindex="0" style="margin-top:11px;padding:13px 14px;border:1px dashed var(--line);cursor:text;outline:none">
         <div style="font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:5px">test a combination</div>
         <div id="probeout" style="font-size:14px">click here and press any combination</div>
-        <small style="margin-top:5px">it reports which action that combination fires — and whether the browser would take it first</small>
+        <small style="margin-top:5px">it reports which action that combination fires – and whether the browser would take it first</small>
       </div>
     </div>
   </div>
@@ -131,7 +131,7 @@
         <span>the open tab moves to the top<small>off by default since 4.21: ⌘D changes the bookmarks bar and leaves the tab order alone. on – the tab jumps under the pinned squares</small></span>
       </label>
       <label class="opt"><input type="checkbox" id="favoriteLeavesGroup">
-        <span>⌘D takes the tab out of its block<small>Aside's sidebar folds an open tab into the bookmark row with the same address — but only a tab outside any block. inside a block the page would show twice: in the bookmarks and in the block</small></span>
+        <span>⌘D takes the tab out of its block<small>Aside's sidebar folds an open tab into the bookmark row with the same address – but only a tab outside any block. inside a block the page would show twice: in the bookmarks and in the block</small></span>
       </label>
       <label class="opt"><input type="checkbox" id="blockKeys">
         <span>⌘1…⌘9 address the blocks of the window<small>the number counts blocks from the left, ⇧⌘ with the same number puts the current tab into that block, and the palette lists what each number holds. off – the browser keeps ⌘1…⌘9 for tabs by position</small></span>
@@ -161,7 +161,7 @@
     <div class="head"><span class="idx">04</span><span class="ttl">cleanup</span></div>
     <div class="body">
       <label class="opt"><input type="checkbox" id="dedupNotice">
-        <span>say when a page is already open<small>a quiet note on the page, nothing is closed — you decide</small></span>
+        <span>say when a page is already open<small>a quiet note on the page, nothing is closed – you decide</small></span>
       </label>
       <label class="opt"><input type="checkbox" id="dedupIgnoreHash">
         <span>ignore #anchors</span>
@@ -198,9 +198,9 @@
     <div class="head"><span class="idx">06</span><span class="ttl">appearance</span></div>
     <div class="body">
       <small style="margin-bottom:11px">
-        Aside's own sidebar is native browser chrome — an extension cannot repaint it, so the default look
+        Aside's own sidebar is native browser chrome – an extension cannot repaint it, so the default look
         is lifted from it instead: the same grey field, a white pill on the selected row, the system font.
-        <b>paper</b> is the older apowall instrument look — warm sheet, monospace lowercase.
+        <b>paper</b> is the older apowall instrument look – warm sheet, monospace lowercase.
         both drive every surface of ours: palette <code>⇧⌘K</code>, popup, settings, tweaks panel.
       </small>
       <div class="row2" style="margin-bottom:9px">
@@ -224,7 +224,7 @@
         </div>
       </div>
       <label class="opt" style="margin:0 0 11px"><input type="checkbox" id="paletteOverlay">
-        <span>palette as a layer on the page<small>no window title, no traffic lights: the page darkens and blurs behind it, the palette casts a real shadow. where no page exists — <code>chrome://</code>, a new tab, Aside's own interface — it opens as a window instead</small></span>
+        <span>palette as a layer on the page<small>no window title, no traffic lights: the page darkens and blurs behind it, the palette casts a real shadow. where no page exists – <code>chrome://</code>, a new tab, Aside's own interface – it opens as a window instead</small></span>
       </label>
       <label class="opt" style="margin:0 0 11px"><input type="checkbox" id="dimBehindPalette">
         <span>dim the page behind the window palette<small>only matters when the palette falls back to a separate window</small></span>
@@ -242,7 +242,7 @@
     <div class="head"><span class="idx">08</span><span class="ttl">native shortcuts</span></div>
     <div class="body">
       <small style="margin-bottom:10px">
-        keys the browser owns before any page exists — <code>⌘T</code>, <code>⌘W</code>, the bookmark dialog —
+        keys the browser owns before any page exists – <code>⌘T</code>, <code>⌘W</code>, the bookmark dialog –
         are menu commands. no extension reaches them, but macOS re-binds any menu command per app,
         which is exactly what System&nbsp;Settings → Keyboard → Keyboard Shortcuts → App&nbsp;Shortcuts does by hand.
       </small>
@@ -253,13 +253,13 @@
       </table>
       <small style="margin-bottom:10px">
         already written to <code>~/Library/Preferences/at.studio.AsideBrowser.plist</code>.
-        menus build their key equivalents at launch, so this bites only after Aside is quit and reopened —
+        menus build their key equivalents at launch, so this bites only after Aside is quit and reopened –
         until then the menu still shows the old keys. the App&nbsp;Shortcuts list also reads that file,
         so «Aside» shows up there once System&nbsp;Settings is reopened.
       </small>
       <small style="margin-bottom:10px">
         modifiers in the syntax: <code>@</code> ⌘ · <code>^</code> ⌃ · <code>~</code> ⌥ · <code>$</code> ⇧.
-        the repo ships <code>scripts/native-shortcuts.sh</code> — run it to apply the table, <code>--reset</code> to undo.
+        the repo ships <code>scripts/native-shortcuts.sh</code> – run it to apply the table, <code>--reset</code> to undo.
       </small>
       <button id="copyDefaults">copy the terminal commands</button>
     </div>
@@ -272,7 +272,7 @@
         a site is a weak signal: fifteen tabs on one <code>github.com</code> say nothing about what you are doing.
         this hands the <b>titles and hosts</b> of the open tabs to a model through OpenRouter and asks it for working
         blocks. page contents, cookies and full addresses are never sent. the answer arrives as a proposal in a small
-        window — <b>nothing is regrouped until you press apply</b>.
+        window – <b>nothing is regrouped until you press apply</b>.
       </small>
       <small style="margin-bottom:11px">
         ⚠ titles are private text: a tab called «offer for &lt;client&gt;» leaves your machine as that sentence.
@@ -300,7 +300,7 @@
       <small style="margin-bottom:11px">
         two things a browser extension cannot reach on its own live behind a tiny local server:
         <b>recent notes</b> from Obsidian (the vault's own «recent files» list, plus a filename search) and
-        <b>agents</b> — live Orca terminals to switch to, and a new <code>claude</code> started in a working folder
+        <b>agents</b> – live Orca terminals to switch to, and a new <code>claude</code> started in a working folder
         from <code>&gt; prompt</code> in the palette. it listens on <code>127.0.0.1</code> only and answers only
         to this extension; nothing runs until you install it. install: <code>bridge/install.sh</code>, config in <code>~/.config/aside-tweaks/desk.json</code>.
       </small>
@@ -332,8 +332,8 @@
       <small style="margin-top:9px">
         <b>from anywhere.</b> a global key cannot reach an extension, but it can open a page: the bridge serves
         <code>/aside-tweaks/palette</code>, and the extension turns that tab into the palette on the page you came from
-        (or on a grey field where no page exists). bind <code>bridge/raycast/aside-palette.sh</code> in Raycast — with an
-        argument the palette opens with the query typed — or paste <code>bridge/hammerspoon.lua</code> for ⌥⌘K.
+        (or on a grey field where no page exists). bind <code>bridge/raycast/aside-palette.sh</code> in Raycast – with an
+        argument the palette opens with the query typed – or paste <code>bridge/hammerspoon.lua</code> for ⌥⌘K.
       </small>
     </div>
   </div>
