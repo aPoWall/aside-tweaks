@@ -92,6 +92,7 @@ Useful keys:
 
 | Key | Action |
 | --- | --- |
+| `⌥⇧A` | open or close the surface of the product |
 | `⇧⌘K` | open palette |
 | `⌥⌘D` | review tabs |
 | `⌥⌘T` | review, then tidy the window |
@@ -130,13 +131,32 @@ Aside Tweaks is the fourth product of the AI Mindset apps system (rule 36), and 
 
 | Surface | Header | Bottom line | Close |
 | --- | --- | --- | --- |
-| popup | mark 40 · name · state · version · `settings` | keys · `esc close` · tab count | the browser closes the popup |
-| panel | mark 40 · name · state · version · `settings` · `×` | keys · `esc close` · version | `×`, `esc`, `⌘W` reach one `closePanel()` |
+| popup | character 40 · name · state · version · `settings` | keys · `esc close` · tab count | the browser closes the popup |
+| panel | character 40 · name · state · version · `settings` · `×` | keys · `esc close` · version | `×`, `esc`, `⌘W` reach one `closePanel()` |
 | palette | search field, the palette's own contract | mark · primary action · `actions ⌘K` | `esc`, outside click |
 
 Rule 32 keeps the order of the right edge and leaves an empty slot where the surface owns nothing. The popup carries no `pin`, because a browser popup cannot survive an outside click, and no `×`, because the browser owns its frame and closes it on its own. The panel carries no `pin` either: a sidebar stays open until it is closed, so there is no outside click to survive; it keeps `×` and `esc`. No browser surface of the product has a pin button, and a later wave that adds one adds a control without a consequence (rules 38, 41).
 
-The mark comes from one source. `icons/mark.svg` is the `aside` glyph of `vendor/aim-app-marks.svg` on a white plate, `icons/16 · 32 · 48 · 128.png` are rendered from it, and the header draws the same symbol through `vendor/aim-app-mark.js`. The toolbar button and the header are the same picture (rule 39). The voxel character is an illustration and lives on the product page, not in the extension.
+The mark comes from one source. `icons/mark.svg` is the `aside` glyph of `vendor/aim-app-marks.svg` on a white plate, `icons/16 · 32 · 48 · 128.png` are rendered from it, and the header draws the same symbol through `vendor/aim-app-mark.js`. The toolbar button, the settings page, the palette line and the favicons are the same picture (rule 39). Since 4.24 the header of the popup and the panel draws the voxel character instead (rule 48): 40 px, assembled in 700 ms with the finished figure as the first frame, lifting under the cursor and stepping its red cursor on a click, with reduced motion keeping the gesture alone.
+
+### The menu bar contract in a browser (rule 47)
+
+The toolbar button is this product's menu bar item. One click opens the surface, the next click closes it, and `⌥⇧A` does the same from any window. The mode of the button is one list in settings card `00 menu bar`, with a live preview of the button next to it:
+
+| Mode | What the button draws |
+| --- | --- |
+| `mark` | the product mark alone, the default |
+| `mark + value` | the mark with the tab count of this window in the badge |
+| `value` | the count drawn as the button, a white plate with the red signal in its corner |
+| `hidden` | an empty square, chosen through a confirmation |
+
+`hidden` is a declared exception. Chrome gives an extension no way to remove its own button from the toolbar, so the mode empties the drawing and the button title says the square is unpinned by hand from its own menu and that the surface still opens with the combination. The count follows tab creation, closing, a move between windows and window focus; nothing polls on a timer.
+
+### One combination, and where ⌥⌘A went
+
+The family default of rule 49 is `⌥⌘A`. Chromium refuses that combination for an extension command at manifest load: `Invalid value for 'commands[8].mac': Alt+Command+A`, and the extension is disabled until it is changed. The shipped default is therefore `⌥⇧A`. The product never prints a combination from its own manifest: `shell.js` fills `[data-aim-key]` and the service worker builds the button title from `chrome.commands.getAll()`, so setting `⌥⌘A` by hand on `chrome://extensions/shortcuts` moves every line of the product onto it, and a combination the browser refuses to register comes back empty, turns the settings row red and is never stored.
+
+The command is `toggle-surface`. It opens the popup through `chrome.action.openPopup()` and falls back to the side panel where that route is missing; each surface holds a port while it lives, so the same key closes what is open. Chrome allows four suggested keys per extension, so `open-panel` kept its command and any custom binding a person already set, and gave up its suggested `⌃⇧S`.
 
 ### Vendored shared files
 
@@ -146,8 +166,10 @@ The mark comes from one source. `icons/mark.svg` is the `aside` glyph of `vendor
 | `vendor/aim-app-shell.css` | `sites/apps/assets/aim-app-shell.css` |
 | `vendor/aim-app-mark.js` | `sites/apps/assets/aim-app-mark.js` |
 | `vendor/aim-app-marks.svg` | `sites/apps/assets/aim-app-marks.svg` |
+| `vendor/aim-voxel.js` | `sites/apps/assets/aim-voxel.js` |
+| `vendor/aim-voxel-models.json` | `sites/apps/assets/voxel-models.json` |
 
-Byte-for-byte copies, no hand edit inside them (rule 10). The judge is `sites/apps/assets/aim-mini-apps.receipt.json`; Aside Tweaks is registered in `internal-sites/aim-product-system/vendored-consumers.json`, and `node internal-sites/aim-product-system/check.mjs` fails on any drift. `shell.js` is the product side: it installs the mark sprite, stamps `[data-aim-version]` from the manifest and holds the shared `say()` of the bottom line.
+Byte-for-byte copies, no hand edit inside them (rule 10). The judge is `sites/apps/assets/aim-mini-apps.receipt.json`; Aside Tweaks is registered in `internal-sites/aim-product-system/vendored-consumers.json`, and `node internal-sites/aim-product-system/check.mjs` fails on any drift. The two voxel files of 4.24 are not in that registry yet, so `tests/surfaces.mjs` carries their sha-256 and compares the copy both with the recorded digest and with the live export when `lab-sites` is checked out next to the repository. `shell.js` is the product side: it installs the mark sprite, stamps `[data-aim-version]` from the manifest and holds the shared `say()` of the bottom line.
 
 ### Face, declared exception to rule 2
 

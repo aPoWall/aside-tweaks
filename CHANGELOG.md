@@ -1,5 +1,33 @@
 # Changelog
 
+## 4.24.0 – 2026-09-17
+
+- the toolbar button reads as a menu bar item (rule 47): it is visible by default, one click opens the
+  surface of the product and the next click closes it, and the mode of the button is one list in settings
+  card `00 menu bar`: `mark` (the product mark alone, the default), `mark + value` (the mark with the tab
+  count of this window), `value` (the count drawn as the button itself, with the red signal in its corner)
+  and `hidden`. The row carries a live preview of the button in the chosen mode and the count is read from
+  the window, not from a timer: it follows tab creation, closing, a move between windows and window focus;
+- `hidden` asks first and says what it can and cannot do: the browser keeps the square in the toolbar and
+  only a person can unpin it from the button's own menu, so the mode empties the drawing and the title
+  points at `⌥⌘A` and at the unpin step. Declared as an exception in `REQUIREMENTS.md`;
+- one global combination, `⌥⌘A` (rule 49): `toggle-surface` opens the popup through `chrome.action.openPopup`
+  and falls back to the side panel where the browser has no popup route; the same key closes what is open,
+  because each surface holds a port while it lives and closes itself on the message. Chrome allows four
+  suggested keys per extension, so `open-panel` keeps its command and its custom binding and gives up the
+  suggested `⌃⇧S`. A combination the browser refuses to register arrives empty in `chrome.commands.getAll`,
+  and the settings row turns red and says it is not stored;
+- the voxel character comes back into the header of the popup and the panel at 40 px (rule 48), assembles in
+  700 ms with the finished figure as the first frame, lifts under the cursor and answers a click with the
+  aside gesture: the red cursor steps down the list. The flat mark stays where 18 px turns a voxel body into
+  a block: the toolbar button, the settings page, the palette line and the favicons. `vendor/aim-voxel.js`
+  and `vendor/aim-voxel-models.json` are vendored byte for byte from `sites/apps/assets` and both digests are
+  asserted by `tests/surfaces.mjs`, which is what the 4.22 removal was missing;
+- the bottom line of both surfaces names its own combination first: `⌥⌘A panel · ⇧⌘K palette · ⌥⌘D review`;
+- tests: `sw-smoke` drives the four bar modes against a stubbed toolbar, watches the count follow a new tab
+  and presses `toggle-surface` twice, once with a connected surface and once without; `surfaces` checks the
+  four modes in the service worker, the suggested-key budget, the vendored digests and the settings row.
+
 ## 4.23.0 – 2026-09-17
 
 - a number key always lands somewhere (rule 38): `⌘1`…`⌘9` still address the blocks of the window, and a

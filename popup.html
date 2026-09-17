@@ -24,9 +24,9 @@
   .aim-shell-foot #status { min-height: 12px; }
 </style>
 </head>
-<body class="aim-shell" data-appear>
+<body class="aim-shell" data-appear data-aim-surface="popup">
   <header class="aim-shell-head">
-    <span class="aim-shell-mark" data-aim-mark="aside"></span>
+    <span class="aim-shell-mark" data-aim-mark="aside" data-aim-voxel="aside" title="aside character · click for its gesture"></span>
     <span class="aim-shell-title"><b>aside tweaks</b><small id="statsub">counting</small></span>
     <span class="aim-shell-gap"></span>
     <span class="aim-shell-version" data-aim-version></span>
@@ -36,13 +36,14 @@
   <div class="aim-shell-body" id="secs"></div>
 
   <footer class="aim-shell-foot">
-    <span id="status">⇧⌘K palette · ⌥⌘D review</span>
+    <span id="status"><b data-aim-key="toggle-surface">⌥⇧A</b> panel · ⇧⌘K palette</span>
     <span>esc close</span>
     <span id="stats">counting</span>
   </footer>
 
   <script src="theme.js"></script>
   <script src="vendor/aim-app-mark.js"></script>
+  <script src="vendor/aim-voxel.js"></script>
   <script src="shell.js"></script>
   <script src="commands.js"></script>
   <script src="popup.js"></script>

@@ -5,6 +5,7 @@
 // расхождение было делом одного коммита.
 
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -126,9 +127,84 @@ for (const f of ['aim-app-shell.css', 'aim-app-mark.js', 'aim-app-marks.svg', 'a
 }
 
 // Правило 18: только короткое тире
-const dashed = ['popup.html', 'panel.html', 'palette.html', 'shell.js', 'popup.js', 'panel.js', 'instrument.css', 'README.md', 'CHANGELOG.md']
-  .filter(f => read(f).includes('\u2014'));
+// длинное тире ищем в строках, которые читает человек: внутри символьного класса регулярки
+// тот же знак – это данные (нормализация чужих заголовков), а не текст продукта
+const longDash = f => read(f).split('\n').some(line => line.includes('\u2014') && !/\.replace\(\//.test(line));
+const dashed = ['popup.html', 'panel.html', 'palette.html', 'shell.js', 'popup.js', 'panel.js', 'options.html', 'options.js', 'background.js', 'instrument.css', 'README.md', 'CHANGELOG.md', 'REQUIREMENTS.md']
+  .filter(longDash);
 check('в текстах нет длинного тире', dashed.length === 0, dashed.join(', '));
+
+
+// ---------- строка меню, персонаж и комбинация (правила 47, 48, 49) ----------
+
+// Правило 47: четыре режима кнопки и ни одного лишнего; snapshot smart снят и мигрирует один раз.
+check('фон знает четыре режима кнопки и не знает smart',
+  /const BAR_MODES = \['mark', 'mark \+ value', 'value', 'hidden'\]/.test(bg) && !/'smart'/.test(bg));
+check('сохранённый режим мигрирует один раз по ключу', bg.includes('barModeRev') && bg.includes("settings.barMode = 'mark + value'"));
+check('режим value рисует число иконкой, mark + value – бейджем',
+  bg.includes('function valueIcon') && bg.includes("mode === 'mark + value' ? String"));
+check('кнопка перерисовывается на событиях окна, а не по таймеру',
+  ['chrome.tabs.onCreated.addListener(scheduleBar)', 'chrome.tabs.onRemoved.addListener(scheduleBar)',
+   'chrome.windows.onFocusChanged.addListener(scheduleBar)'].every(l => bg.includes(l)) && !/setInterval/.test(bg));
+
+// Правило 49: одна комбинация на открытие и закрытие, и в манифесте не больше четырёх предложенных
+const suggested = Object.values(manifest.commands).filter(c => c.suggested_key);
+check('манифест предлагает не больше четырёх сочетаний', suggested.length <= 4, String(suggested.length));
+// Браузер отказывает расширению в ⌥⌘A на уровне манифеста («Invalid value for 'commands[8].mac':
+// Alt+Command+A»), поэтому предложено то, что он принимает, а строки продукта читают живую комбинацию.
+check('комбинация предложена командой toggle-surface и принимается браузером',
+  manifest.commands['toggle-surface']?.suggested_key?.mac === 'Alt+Shift+A', JSON.stringify(manifest.commands['toggle-surface']?.suggested_key));
+check('строки продукта читают комбинацию у браузера, а не у манифеста',
+  shell.includes("chrome.commands.getAll()") && shell.includes('data-aim-key') && bg.includes('async function surfaceKey'));
+check('команда доходит до действия', bg.includes("'toggle-surface': 'toggleSurface'") && bg.includes('async function toggleSurface'));
+check('поверхность держит порт и закрывает себя сама',
+  shell.includes("chrome.runtime.connect({ name: surface })") && shell.includes('window.close()') &&
+  bg.includes("port.name !== 'popup' && port.name !== 'panel'"));
+for (const f of ['popup.html', 'panel.html']) {
+  check(`подвал ${f} называет свою комбинацию`, read(f).includes('data-aim-key="toggle-surface"'));
+  check(`${f} объявляет свою поверхность`, /data-aim-surface="(popup|panel)"/.test(read(f)));
+}
+
+// Правило 48: персонаж в шапке, плоский знак остаётся кнопке расширения и настройкам
+for (const f of ['popup.html', 'panel.html']) {
+  const markup = read(f);
+  check(`${f} ставит в шапку воксельного персонажа`,
+    markup.includes('data-aim-voxel="aside"') && markup.includes('vendor/aim-voxel.js'));
+  check(`${f} держит плоский знак запасным вариантом`, markup.includes('data-aim-mark="aside"'));
+}
+check('оболочка собирает персонажа из общей модели',
+  shell.includes('vendor/aim-voxel-models.json') && shell.includes("animate: 'assemble'") && shell.includes('interactive: true'));
+check('настройки и палитра остаются с плоским знаком',
+  read('options.html').includes('data-aim-mark="aside"') && !read('options.html').includes('data-aim-voxel') &&
+  read('palette.html').includes('data-aim-mark="aside"') && !read('palette.html').includes('data-aim-voxel'));
+
+// Правило 10 для двух новых копий: байт в байт с общим экспортом, судья – sha-256.
+// Цифры записаны здесь, а когда lab-sites лежит рядом, копия сверяется и с живым файлом.
+const VENDORED = {
+  'aim-voxel.js': '3b82eb53545533e41cf3ed272109a916586ad1637ad907923004af41f461fcb8',
+  'aim-voxel-models.json': 'caa520ddc9aa37fedd8ccc5c9f1de773e7fa3b2fc005d506b2ea03bcf9762ca3'
+};
+const EXPORTS = { 'aim-voxel.js': 'aim-voxel.js', 'aim-voxel-models.json': 'voxel-models.json' };
+const appsAssets = new URL('file://' + (process.env.HOME || '') + '/repos/lab-sites/sites/apps/assets/');
+for (const [name, digest] of Object.entries(VENDORED)) {
+  const sha = createHash('sha256').update(fs.readFileSync(new URL('../vendor/' + name, import.meta.url))).digest('hex');
+  check(`вендоренная копия совпадает с экспортом: ${name}`, sha === digest, sha.slice(0, 12));
+  const live = new URL(EXPORTS[name], appsAssets);
+  if (!fs.existsSync(live)) { console.log(`SKIP  живой экспорт не подключён: ${name}`); continue; }
+  const liveSha = createHash('sha256').update(fs.readFileSync(live)).digest('hex');
+  check(`живой экспорт не ушёл вперёд: ${name}`, liveSha === digest, liveSha.slice(0, 12));
+}
+check('модель aside лежит в вендоренном файле',
+  !!JSON.parse(read('vendor/aim-voxel-models.json')).models?.aside?.voxels?.length);
+
+// Правило 47 в настройках: строка menu bar с живым предпросмотром и строкой комбинации
+const optionsHtml = read('options.html'), optionsJs = read('options.js');
+check('настройки держат строку menu bar с предпросмотром',
+  optionsHtml.includes('<span class="ttl">menu bar</span>') && optionsHtml.includes('id="barPrev"') && optionsHtml.includes('id="barMode"'));
+check('предпросмотр рисует выбранный режим', optionsJs.includes('function renderBar') && optionsJs.includes("AIMAppMark.el('aside'"));
+check('hidden выбирается через подтверждение', optionsJs.includes("v === 'hidden' && !confirm("));
+check('конфликт комбинации показан красной строкой и не сохраняется',
+  optionsJs.includes("chrome.commands.getAll") && optionsJs.includes("classList.toggle('bad'") && optionsJs.includes('conflict:'));
 
 console.log(fails ? `\n${fails} провалов` : '\nповерхности согласованы');
 process.exit(fails ? 1 : 0);

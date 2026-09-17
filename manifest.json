@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Aside Tweaks",
-  "version": "4.23.0",
+  "version": "4.24.0",
   "description": "A review layer for Aside: product-aware tab families, protected cleanup previews and receipts, plus the palette, keymap, Obsidian and agent bridge.",
   "permissions": [
     "tabs",
@@ -51,12 +51,15 @@
     "keyword": "tw"
   },
   "commands": {
-    "open-panel": {
+    "toggle-surface": {
       "suggested_key": {
-        "default": "Ctrl+Shift+S",
-        "mac": "MacCtrl+Shift+S"
+        "default": "Alt+Shift+A",
+        "mac": "Alt+Shift+A"
       },
-      "description": "Открыть боковую панель твиков"
+      "description": "Открыть или закрыть панель твиков"
+    },
+    "open-panel": {
+      "description": "Боковая панель твиков (клавиша задаётся вручную)"
     },
     "open-palette": {
       "suggested_key": {

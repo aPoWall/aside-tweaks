@@ -157,3 +157,22 @@ body {
 .aim-shell-title b { font-size: 15px; }
 .aim-shell-title { flex: 1 1 auto; }
 .aim-shell-gap { flex: 0 1 var(--aim-shell-gap); }
+
+/* правило 48: в шапке стоит воксельный персонаж 40 px, плоский знак остаётся кнопке расширения,
+   странице настроек и фавиконам. Слот держит высоту знака и отдаёт ширину фигуре: воксельная
+   фигура шире квадрата, и зажатая в 40 × 40 она теряет строки. Библиотека ставит свои размеры
+   инлайном на svg, поэтому правило перебивает их явно. */
+.aim-shell-mark.has-voxel {
+  flex: 0 0 auto;
+  width: auto;
+  height: var(--aim-shell-mark);
+  align-items: center;
+  cursor: pointer;
+}
+.aim-shell-mark.has-voxel svg {
+  height: 100% !important;
+  width: auto !important;
+  max-width: none !important;
+  display: block;
+}
+.aim-shell-mark.has-voxel:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

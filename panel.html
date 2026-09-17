@@ -72,9 +72,9 @@
   :root[data-look="aside"] .empty { font-size: 10.5px; }
 </style>
 </head>
-<body>
+<body data-aim-surface="panel">
   <header class="aim-shell-head">
-    <span class="aim-shell-mark" data-aim-mark="aside"></span>
+    <span class="aim-shell-mark" data-aim-mark="aside" data-aim-voxel="aside" title="aside character · click for its gesture"></span>
     <span class="aim-shell-title"><b>aside tweaks</b><small id="count">counting</small></span>
     <span class="aim-shell-gap"></span>
     <span class="aim-shell-version" data-aim-version></span>
@@ -97,13 +97,14 @@
   </main>
 
   <footer class="aim-shell-foot">
-    <span id="status">★ bar · ◆ pin · × close · ⇧⌘K palette</span>
+    <span id="status"><b data-aim-key="toggle-surface">⌥⇧A</b> panel · ★ bar · ◆ pin</span>
     <span>esc close</span>
     <span data-aim-version></span>
   </footer>
 
   <script src="theme.js"></script>
   <script src="vendor/aim-app-mark.js"></script>
+  <script src="vendor/aim-voxel.js"></script>
   <script src="shell.js"></script>
   <script src="commands.js"></script>
   <script src="panel.js"></script>

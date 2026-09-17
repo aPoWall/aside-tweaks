@@ -65,6 +65,24 @@
   .combo.warn { border-color: #d4761d; }
   .keys .note { font-size: 9px; color: var(--muted); }
 
+  /* правило 47: строка menu bar с живым предпросмотром кнопки в выбранном режиме */
+  .barprev {
+    width: 30px; height: 30px; flex: none; position: relative;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line); border-radius: 7px; background: var(--bg);
+  }
+  .barprev .aim-mark { width: 20px; height: 20px; color: var(--fg); }
+  .barprev .aim-mark svg { width: 100%; height: 100%; display: block; }
+  .barprev .val { font-size: 13px; font-weight: 600; letter-spacing: -.02em; }
+  .barprev .sig { position: absolute; top: 3px; right: 3px; width: 5px; height: 3px; background: #db303d; }
+  .barprev .badge {
+    position: absolute; right: -3px; bottom: -3px; padding: 1px 3px; border-radius: 4px;
+    background: #202124; color: #ffffff; font-size: 8px; line-height: 1.2;
+  }
+  .barprev.off { border-style: dashed; color: var(--muted); }
+  .combo.bad { border-color: #b00020; color: #b00020; }
+  .bad { color: #b00020; }
+
   .swatches { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; margin-bottom: 11px; }
   .sw { width: 22px; height: 22px; cursor: pointer; border: 1px solid var(--line); padding: 0; }
   .sw.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--fg); }
@@ -86,6 +104,42 @@
 <body>
   <h1><span class="aim-mark" data-aim-mark="aside" data-aim-mark-size="20"></span> aside tweaks</h1>
   <p class="sub"><span data-aim-version></span> · keys, tabs, palette</p>
+
+  <div class="card">
+    <div class="head"><span class="idx">00</span><span class="ttl">menu bar</span></div>
+    <div class="body">
+      <small style="margin-bottom:11px">
+        the toolbar button is this product's menu bar item (rule 47 of the apps system): one click opens the panel,
+        the next click closes it, and the combination below does the same from any window. the button is visible by
+        default; the mode says what it draws.
+      </small>
+      <div class="row2" style="margin-bottom:10px">
+        <span style="width:62px">icon</span>
+        <div class="seg" id="barMode" style="flex:1">
+          <button data-v="mark">mark</button><button data-v="mark + value">mark + tabs</button><button data-v="value">tabs</button><button data-v="hidden">hidden</button>
+        </div>
+      </div>
+      <div class="row2" style="margin-bottom:10px">
+        <span style="width:62px">preview</span>
+        <span class="barprev" id="barPrev"></span>
+        <small id="barNote" style="margin:0"></small>
+      </div>
+      <div class="row2">
+        <span style="width:62px">key</span>
+        <span class="combo" id="barKey">reading</span>
+        <small id="barKeyNote" style="margin:0"></small>
+      </div>
+      <small style="margin-top:9px">
+        the browser registers the combination, not the extension: one already held by another extension or by the system
+        comes back empty and is never stored, and the line above turns red. set or clear it on
+        <code>chrome://extensions/shortcuts</code>.<br>
+        the family default is <code>⌥⌘A</code>, and this browser refuses it in a manifest:
+        <code>Invalid value for 'commands[8].mac': Alt+Command+A</code>. the shipped default is therefore
+        <code>⌥⇧A</code>; every line of the product reads the combination the browser actually gave, so setting
+        <code>⌥⌘A</code> by hand on the shortcuts page moves the whole product onto it.
+      </small>
+    </div>
+  </div>
 
   <div class="card">
     <div class="head"><span class="idx">01</span><span class="ttl">keys</span></div>

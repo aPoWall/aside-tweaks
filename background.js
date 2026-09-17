@@ -43,6 +43,7 @@ const DEFAULTS = {
   tidyMinGroup: 3,           // блок при уборке собирается от стольких вкладок; пары остаются россыпью
   paletteOverlay: true,     // палитра слоем поверх страницы; выключено – отдельным окном
   keymapEnabled: true,
+  barMode: 'mark',           // правило 47: mark | mark + value | value | hidden – вид кнопки расширения
   dimBehindPalette: true,
   keymap: DEFAULT_KEYMAP,
   theme: DEFAULT_THEME,
@@ -73,7 +74,7 @@ function upgradeKeymap(stored) {
   return changed ? map : null;
 }
 
-chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0 }).then(s => {
+chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0, barModeRev: 0 }).then(s => {
   // раскладку накладываем поверх дефолтной: иначе действия, добавленные позже,
   // остаются вообще без привязки – в хранилище лежит карта старой версии
   settings = { ...DEFAULTS, ...s, keymap: { ...DEFAULT_KEYMAP, ...(s.keymap || {}) } };
@@ -97,6 +98,15 @@ chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0 }).then(s
     settings.favoriteMovesTab = false;
     chrome.storage.sync.set({ favoriteArcRev: 1, favoriteCloses: false, favoriteMovesTab: false }).catch(() => { });
   }
+
+  // Правило 47: режим smart снят и держит слот пустым; сохранённая настройка один раз
+  // переезжает в «mark + value». Ключ миграции оставляет правку однократной.
+  if (!s.barModeRev) {
+    if (!BAR_MODES.includes(settings.barMode)) settings.barMode = 'mark + value';
+    chrome.storage.sync.set({ barModeRev: 1, barMode: settings.barMode }).catch(() => { });
+  }
+  if (!BAR_MODES.includes(settings.barMode)) settings.barMode = 'mark';
+  paintBar();
 });
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'sync') return;
@@ -105,17 +115,143 @@ chrome.storage.onChanged.addListener((changes, area) => {
     settings[k] = k === 'keymap' ? { ...DEFAULT_KEYMAP, ...(v.newValue || {}) } : v.newValue;
   }
   if (changes.keymap) settings.keymap = { ...DEFAULT_KEYMAP, ...(changes.keymap.newValue || {}) };
+  if (changes.barMode) paintBar();
 });
 
 // панель открывается своей командой/кнопкой, а не кликом по иконке (там попап)
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => { });
+
+// ---------- кнопка расширения как элемент строки меню (правило 47) ----------
+//
+// Браузерное прочтение договора строки меню: кнопка расширения видна всегда, её вид
+// выбирается одним списком, клик открывает поверхность продукта, повторный клик закрывает.
+// mark – знак продукта · mark + value – знак и число вкладок окна · value – одно число,
+// нарисованное иконкой · hidden – пустая площадка (снять квадрат из тулбара может только
+// человек, это записано исключением в REQUIREMENTS.md и сказано в подтверждении настройки).
+const BAR_MODES = ['mark', 'mark + value', 'value', 'hidden'];
+const MARK_ICON = { 16: 'icons/16.png', 32: 'icons/32.png', 48: 'icons/48.png' };
+const BAR_TITLE = {
+  'mark': key => `Aside Tweaks · ${key} opens and closes the panel`,
+  'mark + value': key => `Aside Tweaks · tabs in this window · ${key} opens and closes the panel`,
+  'value': key => `Aside Tweaks · tabs in this window · ${key} opens and closes the panel`,
+  'hidden': key => `Aside Tweaks · hidden · ${key} opens the panel · unpin the square from the toolbar by hand`
+};
+
+let barTimer = null;
+let barKey = null;   // комбинацию регистрирует браузер: спрашиваем его, а не манифест
+
+async function surfaceKey() {
+  if (barKey) return barKey;
+  try {
+    const own = (await chrome.commands.getAll()).find(c => c.name === 'toggle-surface');
+    barKey = own?.shortcut || 'no key';
+  } catch { barKey = 'no key'; }
+  return barKey;
+}
+
+async function barValue() {
+  try {
+    const w = await chrome.windows.getLastFocused({ windowTypes: ['normal'] });
+    const tabs = await chrome.tabs.query({ windowId: w.id });
+    return tabs.length;
+  } catch { return 0; }
+}
+
+// число вкладок, нарисованное самой иконкой: белая площадка N1, чернильная цифра, красный сигнал
+function valueIcon(count, empty = false) {
+  const size = 32;
+  const c = new OffscreenCanvas(size, size);
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, size, size);
+  if (empty) return g.getImageData(0, 0, size, size);
+  g.fillStyle = '#ffffff';
+  g.beginPath();
+  g.roundRect(1, 1, size - 2, size - 2, 6);
+  g.fill();
+  g.strokeStyle = '#202124';
+  g.lineWidth = 2;
+  g.stroke();
+  const text = count > 99 ? '99+' : String(count);
+  g.fillStyle = '#202124';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.font = (text.length > 2 ? '600 13px' : '600 18px') + ' ui-monospace, monospace';
+  g.fillText(text, size / 2, size / 2 + 1);
+  g.fillStyle = '#db303d';
+  g.fillRect(size - 11, 3, 4, 3);
+  return g.getImageData(0, 0, size, size);
+}
+
+// один проход по договору: иконка, бейдж и подпись кнопки в выбранном режиме
+async function paintBar() {
+  const mode = BAR_MODES.includes(settings.barMode) ? settings.barMode : 'mark';
+  const count = mode === 'mark' ? 0 : await barValue();
+  try {
+    if (mode === 'value') await chrome.action.setIcon({ imageData: { 32: valueIcon(count) } });
+    else if (mode === 'hidden') await chrome.action.setIcon({ imageData: { 32: valueIcon(0, true) } });
+    else await chrome.action.setIcon({ path: MARK_ICON });
+    await chrome.action.setBadgeBackgroundColor({ color: '#111111' });
+    await chrome.action.setBadgeTextColor?.({ color: '#ffffff' });
+    await chrome.action.setBadgeText({ text: mode === 'mark + value' ? String(count > 999 ? '999' : count) : '' });
+    await chrome.action.setTitle({ title: BAR_TITLE[mode](await surfaceKey()) });
+  } catch { }
+}
+
+// счёт меняют открытие, закрытие и переезд вкладки между окнами; собираем правки в один проход
+function scheduleBar() {
+  if (settings.barMode === 'mark') return;
+  clearTimeout(barTimer);
+  barTimer = setTimeout(() => paintBar(), 180);
+}
+
+chrome.runtime.onInstalled.addListener(() => paintBar());
+chrome.runtime.onStartup?.addListener(() => paintBar());
+chrome.tabs.onCreated.addListener(scheduleBar);
+chrome.tabs.onRemoved.addListener(scheduleBar);
+chrome.tabs.onAttached.addListener(scheduleBar);
+chrome.tabs.onDetached.addListener(scheduleBar);
+chrome.windows.onFocusChanged.addListener(scheduleBar);
+
+// ---------- одна комбинация на открытие и закрытие (правило 49) ----------
+//
+// Поверхность держит порт, пока открыта: расширение не умеет спросить браузер, висит ли
+// попап, поэтому живое соединение и есть ответ. Закрывает поверхность себя сама – окно
+// попапа и документ боковой панели закрываются изнутри, а снаружи их закрыть нечем.
+const openSurfaces = new Map();
+let surfaceClosedAt = 0;
+
+chrome.runtime.onConnect.addListener(port => {
+  if (port.name !== 'popup' && port.name !== 'panel') return;
+  openSurfaces.set(port.name, port);
+  port.onDisconnect.addListener(() => {
+    if (openSurfaces.get(port.name) !== port) return;
+    openSurfaces.delete(port.name);
+    surfaceClosedAt = Date.now();
+  });
+});
+
+async function toggleSurface(windowId) {
+  // поверхность закрывает себя сама и по той же клавише: если она ушла только что,
+  // эта же клавиша не открывает её обратно
+  if (Date.now() - surfaceClosedAt < 450) return 1;
+  if (openSurfaces.size) {
+    for (const port of openSurfaces.values()) { try { port.postMessage({ close: true }); } catch { } }
+    openSurfaces.clear();
+    return 1;
+  }
+  if (chrome.action.openPopup) {
+    try { await chrome.action.openPopup(); return 1; } catch { }
+  }
+  return togglePanel(windowId);
+}
 
 // ---------- обратная связь бейджем на иконке ----------
 
 let badgeTimer = null;
 let quiet = false;   // составная команда отчитывается один раз, а не за каждый шаг
 
-// бейдж на иконке + всплывашка в активной вкладке: видно, что сочетание сработало
+// бейдж на иконке + всплывашка в активной вкладке: видно, что сочетание сработало;
+// через 1,8 с кнопка возвращается к своему режиму, а не к пустому бейджу
 async function flash(badge, note = '', ok = true) {
   if (quiet) return;
   try {
@@ -123,7 +259,7 @@ async function flash(badge, note = '', ok = true) {
     await chrome.action.setBadgeTextColor?.({ color: '#ffffff' });
     await chrome.action.setBadgeText({ text: String(badge).slice(0, 4) });
     if (badgeTimer) clearTimeout(badgeTimer);
-    badgeTimer = setTimeout(() => chrome.action.setBadgeText({ text: '' }).catch(() => { }), 1800);
+    badgeTimer = setTimeout(() => paintBar(), 1800);
   } catch { }
   if (!note) return;
   try {
@@ -1711,7 +1847,7 @@ const DESK = { deskHealth, deskNotes, deskAgents, deskOpen, deskSwitch, deskRun,
 
 const ACTIONS = {
   tidyDuplicates, groupByDomain, groupByRules, ungroupAll, sortByDomain,
-  pinTab, favoriteTab, listFavorites, bookmarkTab, tidyUp, sortByOpened, getStats, previewDuplicateCleanup, previewTabReview, openPalette, togglePanel,
+  pinTab, favoriteTab, listFavorites, bookmarkTab, tidyUp, sortByOpened, getStats, previewDuplicateCleanup, previewTabReview, openPalette, togglePanel, toggleSurface,
   blockSelected, foldBlocks,
   groupBySense: senseProposal, senseApply
 };
@@ -1788,7 +1924,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 chrome.commands.onCommand.addListener((cmd, tab) => {
   const map = {
     'favorite-tab': 'favoriteTab', 'tidy-up': 'tidyUp', 'tidy-duplicates': 'tidyDuplicates',
-    'pin-tab': 'pinTab', 'bookmark-tab': 'bookmarkTab', 'open-palette': 'openPalette', 'open-panel': 'togglePanel'
+    'pin-tab': 'pinTab', 'bookmark-tab': 'bookmarkTab', 'open-palette': 'openPalette', 'open-panel': 'togglePanel', 'toggle-surface': 'toggleSurface'
   };
   const action = map[cmd];
   if (!action || tooSoon(action)) return;

@@ -20,6 +20,7 @@ const DEFAULTS = {
   favoriteCloses: false, keepPins: true, favoriteMovesTab: false, favoriteLeavesGroup: true, blockKeys: true, paletteOverlay: true, keymapEnabled: true, dimBehindPalette: true,
   tabPlacement: 'underCurrent', placementGuardMs: 2500, tidyMinGroup: 3,
   notesLimit: 3, notesClean: true, notesDate: true, notesOrder: 'modified',
+  barMode: 'mark',
   keymap: DEFAULT_KEYMAP,
   theme: { look: 'aside', mode: 'light', accent: '#111111', tint: 0, density: 'normal' },
   groupRules: [{ name: 'aim', patterns: ['aimindset', 'aim-'] }]
@@ -343,6 +344,67 @@ function seg(id, value, onPick) {
   }
 }
 
+
+// ---------- menu bar (правило 47) ----------
+//
+// Предпросмотр рисует ту же кнопку, что ставит service worker: знак, знак с числом вкладок,
+// одно число площадкой или пустая площадка. Режим hidden спрашивает подтверждение и называет,
+// чем панель открывается дальше: браузер не отдаёт расширению право убрать квадрат из тулбара,
+// это делает человек через «unpin» в его меню.
+const BAR_MODES = ['mark', 'mark + value', 'value', 'hidden'];
+const BAR_NOTES = {
+  'mark': 'the product mark alone',
+  'mark + value': 'the mark and the tabs of this window',
+  'value': 'the tab count drawn as the button',
+  'hidden': 'empty square · unpin it from the toolbar by hand · ⌥⌘A still opens the panel'
+};
+
+async function windowTabs() {
+  try { return (await chrome.tabs.query({ currentWindow: true })).length; } catch { return 0; }
+}
+
+async function renderBar() {
+  const mode = BAR_MODES.includes(state.barMode) ? state.barMode : 'mark';
+  seg('barMode', mode, async v => {
+    if (v === 'hidden' && !confirm('hidden leaves an empty square in the toolbar: the browser keeps the button and only you can unpin it from its own menu. the panel still opens with ⌥⌘A and from chrome://extensions. continue?')) return;
+    await patch({ barMode: v });
+    renderBar();
+  });
+
+  const box = document.getElementById('barPrev');
+  const count = mode === 'mark' ? 0 : await windowTabs();
+  box.replaceChildren();
+  box.classList.toggle('off', mode === 'hidden');
+  if (mode === 'mark' || mode === 'mark + value') {
+    box.append(AIMAppMark.el('aside', { size: 20 }));
+    if (mode === 'mark + value') {
+      const b = document.createElement('span');
+      b.className = 'badge';
+      b.textContent = String(count);
+      box.append(b);
+    }
+  } else if (mode === 'value') {
+    const v = document.createElement('span');
+    v.className = 'val';
+    v.textContent = count > 99 ? '99+' : String(count);
+    const sig = document.createElement('span');
+    sig.className = 'sig';
+    box.append(v, sig);
+  }
+  document.getElementById('barNote').textContent = BAR_NOTES[mode];
+
+  const cmds = await chrome.commands.getAll().catch(() => []);
+  const own = cmds.find(c => c.name === 'toggle-surface');
+  const key = document.getElementById('barKey');
+  const note = document.getElementById('barKeyNote');
+  key.textContent = own?.shortcut || 'not set';
+  key.classList.toggle('bad', !own?.shortcut);
+  note.classList.toggle('bad', !own?.shortcut);
+  note.textContent = own?.shortcut
+    ? 'opens the panel, the same key closes it'
+    : 'conflict: the browser did not register this combination, so it is not stored · chrome://extensions/shortcuts';
+}
+
 // ---------- сборка ----------
 
 const TOGGLES = ['favoriteCloses', 'notesClean', 'notesDate', 'dedupNotice', 'dedupIgnoreHash', 'dedupIgnoreUtm', 'dedupByTitle', 'keepPins', 'favoriteMovesTab', 'favoriteLeavesGroup', 'blockKeys', 'paletteOverlay', 'keymapEnabled', 'dimBehindPalette'];
@@ -373,6 +435,7 @@ function renderAll() {
   renderKeys();
   renderCmds();
   renderRules();
+  renderBar();
 }
 
 chrome.storage.sync.get(DEFAULTS).then(s => {

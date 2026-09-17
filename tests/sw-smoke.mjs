@@ -17,12 +17,22 @@ const area = (bag) => ({
 
 const log = [];
 globalThis.chrome = {
-  runtime: { onMessage: mkEvent('msg'), lastError: null, getURL: p => 'chrome-extension://x' + p, id: 'x' },
+  runtime: {
+    onMessage: mkEvent('msg'), onInstalled: mkEvent('installed'), onStartup: mkEvent('startup'),
+    onConnect: mkEvent('connect'), lastError: null, getURL: p => 'chrome-extension://x' + p, id: 'x'
+  },
   storage: { sync: area(store.sync), session: area(store.session), local: area(store.local), onChanged: mkEvent('storeChanged') },
-  action: { setBadgeText: () => Promise.resolve(), setBadgeBackgroundColor: () => Promise.resolve(), setBadgeTextColor: () => Promise.resolve() },
+  action: {
+    setBadgeText: o => (BAR.badge = o.text, Promise.resolve()),
+    setBadgeBackgroundColor: () => Promise.resolve(),
+    setBadgeTextColor: () => Promise.resolve(),
+    setIcon: o => (BAR.icon = o.path ? 'mark' : (o.imageData?.[32]?.empty ? 'empty' : 'value'), Promise.resolve()),
+    setTitle: o => (BAR.title = o.title, Promise.resolve()),
+    openPopup: () => (BAR.popup = (BAR.popup || 0) + 1, Promise.resolve())
+  },
   sidePanel: { setPanelBehavior: () => Promise.resolve(), open: () => Promise.resolve() },
   omnibox: { setDefaultSuggestion: () => {}, onInputChanged: mkEvent('omni1'), onInputEntered: mkEvent('omni2') },
-  commands: { onCommand: mkEvent('cmd') },
+  commands: { onCommand: mkEvent('cmd'), getAll: () => Promise.resolve([{ name: 'toggle-surface', shortcut: '⌥⇧A' }]) },
   windows: {
     WINDOW_ID_NONE: -1,
     onRemoved: mkEvent('winRemoved'), onFocusChanged: mkEvent('winFocus'),
@@ -106,6 +116,23 @@ globalThis.chrome = {
     }
   }
 };
+// кнопка расширения: что service worker нарисовал в последний раз (правило 47)
+const BAR = { icon: null, badge: null, title: null, popup: 0 };
+
+// холст service worker'а: рисование не проверяем, проверяем выбор режима
+globalThis.OffscreenCanvas = class {
+  constructor(w, h) { this.width = w; this.height = h; }
+  getContext() {
+    const empty = { empty: true };
+    const ctx = {
+      clearRect: () => { }, fillRect: () => { }, beginPath: () => { }, roundRect: () => { },
+      fill: () => { ctx._drawn = true; }, stroke: () => { }, fillText: () => { ctx._drawn = true; },
+      getImageData: () => (ctx._drawn ? { drawn: true } : empty)
+    };
+    return ctx;
+  }
+};
+
 const LAYER_OK = new Set();
 const DIRTY = new Set();
 const sent = [];
@@ -616,6 +643,44 @@ TABS = [
 const plainPlan = await call('previewDuplicateCleanup');
 check('обычная чистка в одном окне закрывает дубль и пустую',
   (plainPlan?.data?.closeIds || []).sort().join(',') === '92,93', JSON.stringify(plainPlan?.data?.closeIds));
+
+
+// ---------- кнопка расширения как элемент строки меню (правило 47) ----------
+const setBar = async mode => {
+  store.sync.barMode = mode;
+  await fire('storeChanged', { barMode: { newValue: mode } }, 'sync');
+  await wait(60);
+};
+TABS = [1, 2, 3].map((n, i) => ({ id: n, windowId: 1, index: i, pinned: false, active: n === 1, url: `https://s${n}.com/` }));
+await setBar('mark');
+check('режим mark: знак продукта и пустой бейдж', BAR.icon === 'mark' && BAR.badge === '', `${BAR.icon} ${JSON.stringify(BAR.badge)}`);
+await setBar('mark + value');
+check('режим mark + value: знак и число вкладок окна', BAR.icon === 'mark' && BAR.badge === '3', `${BAR.icon} ${BAR.badge}`);
+await setBar('value');
+check('режим value: число нарисовано иконкой, бейджа нет', BAR.icon === 'value' && BAR.badge === '', `${BAR.icon} ${JSON.stringify(BAR.badge)}`);
+await setBar('hidden');
+check('режим hidden: пустая площадка, подпись называет живую комбинацию и снятие квадрата',
+  BAR.icon === 'empty' && BAR.badge === '' && /⌥⇧A/.test(BAR.title || '') && /unpin/.test(BAR.title || ''), `${BAR.icon} ${BAR.title}`);
+await setBar('mark + value');
+TABS.push({ id: 4, windowId: 1, index: 3, pinned: false, url: 'https://s4.com/' });
+await fire('tabCreated', TABS[3]);
+await wait(300);
+check('число на кнопке идёт за окном', BAR.badge === '4', String(BAR.badge));
+
+// ---------- одна комбинация на открытие и закрытие (правило 49) ----------
+const cmd = (L['cmd'] || [])[0];
+BAR.popup = 0;
+const closed = [];
+const port = { name: 'popup', onDisconnect: { addListener: f => (port._off = f) }, postMessage: m => closed.push(m) };
+await fire('connect', port);
+await cmd('toggle-surface', { windowId: 1 });
+await wait(30);
+check('открытая поверхность закрывается той же комбинацией', closed.length === 1 && closed[0].close === true && BAR.popup === 0, JSON.stringify(closed));
+port._off?.();
+await wait(500);
+await cmd('toggle-surface', { windowId: 1 });
+await wait(30);
+check('закрытая поверхность открывается той же комбинацией', BAR.popup === 1, String(BAR.popup));
 
 console.log(fails ? `\n${fails} провалов` : '\nвсе проверки зелёные');
 process.exit(fails ? 1 : 0);
