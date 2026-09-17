@@ -5,7 +5,8 @@ One row per requirement that reached this product from the AI Mindset apps sprin
 `AIM-APPS-RULES.md`. Status is what the code and `tests/sw-smoke.mjs` plus `tests/surfaces.mjs` show today.
 Wave 9 (`SPRINT-2026-09-17-JANITOR.md` § D) asked for this ledger, for the leftovers to be closed and for
 two open questions of Alex to be answered here. Wave 10 (`SPRINT-2026-09-17-MENUBAR.md` § A, B, C) added the
-menu bar contract, the character in the header and the one global combination, rules 47 to 49.
+menu bar contract, the character in the header and the one global combination, rules 47 to 49. The review
+of 2026-09-17 added rows B11 and B12 and sharpened B3, B7, B8 and V2.
 
 Legend: `done` shipped and asserted by a test · `open` still to do · `exception` declared deviation with a
 reason · `blocked` waits for something outside the product.
@@ -65,21 +66,23 @@ reason · `blocked` waits for something outside the product.
 |----|-------------|--------|--------|------|
 | B1 | the button is visible by default and its mode is one list: `mark`, `mark + value`, `value`, `hidden` | wave 10 § A, rule 47 | done · setting `barMode`, service worker paints all four, sw-smoke walks them | 2026-09-17 |
 | B2 | `mark + value` carries the tab count of the window; `value` draws the count as the button | wave 10 § A, rule 47 | done · badge for one, an `OffscreenCanvas` plate with the red signal for the other; the count follows tab and window events, never a timer | 2026-09-17 |
-| B3 | `hidden` asks for a confirmation that names how the surface is reached afterwards | wave 10 § A, rule 47 | exception · a browser gives an extension no way to remove its own toolbar button, so the mode empties the drawing and the confirmation and the button title name the combination and the manual unpin | 2026-09-17 |
+| B3 | `hidden` asks for a confirmation that names how the surface is reached afterwards | wave 10 § A, rule 47 | exception · a browser gives an extension no way to remove its own toolbar button, so the mode empties the drawing and the confirmation, the note and the button title name the manual unpin plus the combination read from `chrome.commands.getAll()`; an empty answer reads `no combination · chrome://extensions/shortcuts` | 2026-09-17 |
 | B4 | a stored `smart` setting migrates once to `mark + value` | wave 10 § A, rule 47 | done · key `barModeRev`; the product never had `smart`, so the migration only catches a value that is not one of the four | 2026-09-17 |
 | B5 | one click opens the surface, the next closes it | wave 10 § A, rule 47 | done · the browser toggles the popup by itself, and `toggle-surface` closes through the live port of the open surface | 2026-09-17 |
 | B6 | the position of the item survives a rebuild | wave 10 § A, rule 47 | exception · the browser owns the toolbar; a person pins and orders the button, and the browser keeps that across reloads. There is no `autosaveName` to verify | 2026-09-17 |
-| B7 | settings carry a `menu bar` row with a live preview of the button | wave 10 § A, rule 47 | done · card `00`, the preview draws the chosen mode with the same badge colours the worker paints | 2026-09-17 |
-| B8 | one global combination for open and close, `⌥⌘A` by default | wave 10 § C, rule 49 | exception · Chromium refuses that combination for an extension command at load: `Invalid value for 'commands[8].mac': Alt+Command+A`, and disables the extension. The shipped default is `⌥⇧A`; every line of the product reads the combination from `chrome.commands.getAll()`, so setting `⌥⌘A` by hand on `chrome://extensions/shortcuts` moves the product onto it | 2026-09-17 |
+| B7 | settings carry a `menu bar` row with a live preview of the button | wave 10 § A, rule 47 | done · card `00`, the buttons carry the words of the one list (`mark` · `mark + value` · `value` · `hidden`) and the preview draws the chosen mode with the same badge colours the worker paints, the product value in its note | 2026-09-17 |
+| B8 | one global combination for open and close, `⌥⌘A` by default | wave 10 § C, rule 49 | exception · Chromium refuses that combination for an extension command at load: `Invalid value for 'commands[8].mac': Alt+Command+A`, and disables the extension. The shipped default is `⌥⇧A`; every line of the product reads the combination from `chrome.commands.getAll()` with no cache in the service worker, so setting `⌥⌘A` by hand on `chrome://extensions/shortcuts` moves the product onto it at once. Rule 49, the design system table and the team vault rule carry `⌥⇧A` with that reason | 2026-09-17 |
 | B9 | a conflict is shown as a red line in settings and is never stored | wave 10 § C, rule 49 | done · the browser registers nothing on a conflict and returns an empty shortcut; the row and its note turn red and say it is not stored | 2026-09-17 |
 | B10 | the footer of the surface names its own combination | wave 10 § C, rules 22, 49 | done · `[data-aim-key="toggle-surface"]` in the bottom line of the popup and the panel, filled from the browser | 2026-09-17 |
+| B11 | every line a person reads takes the combination from the browser, never from a literal | review 2026-09-17, rule 49 | done · `toggleCommand()` feeds the `hidden` confirmation and the bar note in `options.js`, `surfaceKey()` in `background.js` dropped its `barKey` cache; `surfaces` fails on a literal inside the menu bar section, `sw-smoke` changes the registered combination mid-run and asserts the button title follows | 2026-09-17 |
+| B12 | the shell comments name the rules by their stable numbers | review 2026-09-17, rule 43 | done · `shell.js` reads 47 to 49; 45 and 46 stay with the janitor wave | 2026-09-17 |
 
 ## Release
 
 | id | requirement | source | status | date |
 |----|-------------|--------|--------|------|
 | V1 | version in `manifest.json` matches the top entry of `CHANGELOG.md` | rule 13 | done · surfaces test | 2026-09-17 |
-| V2 | product page carries the version and what's new | rule 11 | done for 4.24.0 · the page also carries the four bar modes, the combination and a shot of the surface | 2026-09-17 |
+| V2 | product page carries the version and what's new | rule 11 | done for 4.24.0 · the page carries the four bar modes by the words of the one list, the shipped combination `⌥⇧A` with its reason and a shot of the surface | 2026-09-17 |
 | V3 | commits stay on the wave branch, nothing is pushed | wave 9 and 10 boundaries | done · `codex/janitor-4.23`, then `codex/menubar-4.24` | 2026-09-17 |
 | V4 | the reload of the extension confirms the version | wave 10 | done · reloaded through the browser, `4.24.0`, enabled, no manifest or runtime errors, `toggle-surface` registered as `⌥⇧A` | 2026-09-17 |
 

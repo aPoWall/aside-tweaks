@@ -138,15 +138,15 @@ const BAR_TITLE = {
 };
 
 let barTimer = null;
-let barKey = null;   // комбинацию регистрирует браузер: спрашиваем его, а не манифест
 
+// Комбинацию регистрирует браузер: спрашиваем его, а не манифест. Кэша нет – человек меняет
+// комбинацию на chrome://extensions/shortcuts, и подпись кнопки обязана называть живую
+// (правило 49); getAll дешёвый и зовётся раз на перерисовку.
 async function surfaceKey() {
-  if (barKey) return barKey;
   try {
     const own = (await chrome.commands.getAll()).find(c => c.name === 'toggle-surface');
-    barKey = own?.shortcut || 'no key';
-  } catch { barKey = 'no key'; }
-  return barKey;
+    return own?.shortcut || 'no key';
+  } catch { return 'no key'; }
 }
 
 async function barValue() {

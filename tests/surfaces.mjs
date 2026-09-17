@@ -206,5 +206,19 @@ check('hidden выбирается через подтверждение', optio
 check('конфликт комбинации показан красной строкой и не сохраняется',
   optionsJs.includes("chrome.commands.getAll") && optionsJs.includes("classList.toggle('bad'") && optionsJs.includes('conflict:'));
 
+// Правило 49: ни одна строка, которую читает человек, не держит комбинацию литералом –
+// её берут у браузера, поэтому смена на chrome://extensions/shortcuts видна сразу.
+const barSection = optionsJs.slice(optionsJs.indexOf('// ---------- menu bar'), optionsJs.indexOf('// ---------- \u0441\u0431\u043e\u0440\u043a\u0430'));
+check('строка menu bar не называет комбинацию литералом', barSection.length > 500 && !/\u2325[\u2318\u21e7]/.test(barSection));
+check('подтверждение hidden и заметка берут живую комбинацию',
+  optionsJs.includes('async function toggleCommand') && optionsJs.includes('BAR_NOTES[mode](combo)') &&
+  optionsJs.includes('${combo}') && optionsJs.includes('chrome://extensions/shortcuts'));
+check('подпись кнопки не кэширует комбинацию', !bg.includes('let barKey') && !bg.includes('if (barKey) return barKey'));
+
+// Правило 47: один список режимов на четыре продукта, продуктовое значение живёт в предпросмотре
+check('кнопки режима подписаны каноном списка',
+  ['>mark<', '>mark + value<', '>value<', '>hidden<'].every(w => optionsHtml.includes(w)) &&
+  !optionsHtml.includes('>mark + tabs<'));
+
 console.log(fails ? `\n${fails} провалов` : '\nповерхности согласованы');
 process.exit(fails ? 1 : 0);

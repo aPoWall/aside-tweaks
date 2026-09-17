@@ -351,13 +351,23 @@ function seg(id, value, onPick) {
 // одно число площадкой или пустая площадка. Режим hidden спрашивает подтверждение и называет,
 // чем панель открывается дальше: браузер не отдаёт расширению право убрать квадрат из тулбара,
 // это делает человек через «unpin» в его меню.
+//
+// Комбинацию в подтверждении и в заметке берём там же, где её берёт строка key: у браузера
+// (chrome.commands.getAll, команда toggle-surface), а не литералом – зарегистрированная
+// комбинация меняется на chrome://extensions/shortcuts и должна читаться живой.
 const BAR_MODES = ['mark', 'mark + value', 'value', 'hidden'];
+const NO_KEY = 'no combination · chrome://extensions/shortcuts';
 const BAR_NOTES = {
-  'mark': 'the product mark alone',
-  'mark + value': 'the mark and the tabs of this window',
-  'value': 'the tab count drawn as the button',
-  'hidden': 'empty square · unpin it from the toolbar by hand · ⌥⌘A still opens the panel'
+  'mark': () => 'the product mark alone',
+  'mark + value': () => 'the mark and the tabs of this window',
+  'value': () => 'the tab count drawn as the button',
+  'hidden': key => `empty square · unpin it from the toolbar by hand · ${key ? key + ' still opens the panel' : NO_KEY}`
 };
+
+async function toggleCommand() {
+  const cmds = await chrome.commands.getAll().catch(() => []);
+  return cmds.find(c => c.name === 'toggle-surface') || null;
+}
 
 async function windowTabs() {
   try { return (await chrome.tabs.query({ currentWindow: true })).length; } catch { return 0; }
@@ -365,8 +375,13 @@ async function windowTabs() {
 
 async function renderBar() {
   const mode = BAR_MODES.includes(state.barMode) ? state.barMode : 'mark';
+  const own = await toggleCommand();
+  const combo = own?.shortcut || '';
   seg('barMode', mode, async v => {
-    if (v === 'hidden' && !confirm('hidden leaves an empty square in the toolbar: the browser keeps the button and only you can unpin it from its own menu. the panel still opens with ⌥⌘A and from chrome://extensions. continue?')) return;
+    const reach = combo
+      ? `the panel still opens with ${combo} and from chrome://extensions`
+      : `the panel has no combination right now: set one at chrome://extensions/shortcuts`;
+    if (v === 'hidden' && !confirm(`hidden leaves an empty square in the toolbar: the browser keeps the button and only you can unpin it from its own menu. ${reach}. continue?`)) return;
     await patch({ barMode: v });
     renderBar();
   });
@@ -391,10 +406,8 @@ async function renderBar() {
     sig.className = 'sig';
     box.append(v, sig);
   }
-  document.getElementById('barNote').textContent = BAR_NOTES[mode];
+  document.getElementById('barNote').textContent = BAR_NOTES[mode](combo);
 
-  const cmds = await chrome.commands.getAll().catch(() => []);
-  const own = cmds.find(c => c.name === 'toggle-surface');
   const key = document.getElementById('barKey');
   const note = document.getElementById('barKeyNote');
   key.textContent = own?.shortcut || 'not set';

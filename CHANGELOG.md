@@ -9,9 +9,11 @@
   and `hidden`. The row carries a live preview of the button in the chosen mode and the count is read from
   the window, not from a timer: it follows tab creation, closing, a move between windows and window focus;
 - `hidden` asks first and says what it can and cannot do: the browser keeps the square in the toolbar and
-  only a person can unpin it from the button's own menu, so the mode empties the drawing and the title
-  points at `⌥⌘A` and at the unpin step. Declared as an exception in `REQUIREMENTS.md`;
-- one global combination, `⌥⌘A` (rule 49): `toggle-surface` opens the popup through `chrome.action.openPopup`
+  only a person can unpin it from the button's own menu, so the mode empties the drawing and the title,
+  the note and the confirmation point at the combination the browser actually registered and at the unpin
+  step. Declared as an exception in `REQUIREMENTS.md`;
+- one global combination, shipped as `⌥⇧A` (rule 49; Chromium refuses `⌥⌘A` for an extension command,
+  so the family default is set by hand on `chrome://extensions/shortcuts`): `toggle-surface` opens the popup through `chrome.action.openPopup`
   and falls back to the side panel where the browser has no popup route; the same key closes what is open,
   because each surface holds a port while it lives and closes itself on the message. Chrome allows four
   suggested keys per extension, so `open-panel` keeps its command and its custom binding and gives up the
@@ -23,10 +25,17 @@
   a block: the toolbar button, the settings page, the palette line and the favicons. `vendor/aim-voxel.js`
   and `vendor/aim-voxel-models.json` are vendored byte for byte from `sites/apps/assets` and both digests are
   asserted by `tests/surfaces.mjs`, which is what the 4.22 removal was missing;
-- the bottom line of both surfaces names its own combination first: `⌥⌘A panel · ⇧⌘K palette · ⌥⌘D review`;
+- the bottom line of both surfaces names its own combination first, read from the browser:
+  `⌥⇧A panel · ⇧⌘K palette · ⌥⌘D review`;
 - tests: `sw-smoke` drives the four bar modes against a stubbed toolbar, watches the count follow a new tab
   and presses `toggle-surface` twice, once with a connected surface and once without; `surfaces` checks the
   four modes in the service worker, the suggested-key budget, the vendored digests and the settings row.
+- repair pass of the same wave, after the review: the settings note and the `hidden` confirmation took the
+  combination from `chrome.commands.getAll()` instead of the literal `⌥⌘A` they printed, and an empty answer
+  from the browser now reads `no combination · chrome://extensions/shortcuts`; the mode buttons went back to
+  the words of the one list (`mark` · `mark + value` · `value` · `hidden`) with the product value left to the
+  preview line; the service worker stopped caching the combination, so a change on the shortcuts page reaches
+  the button title without a restart; the shell comments name rules 47 to 49 by their stable numbers.
 
 ## 4.23.0 – 2026-09-17
 

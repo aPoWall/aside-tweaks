@@ -16,6 +16,8 @@ const area = (bag) => ({
 });
 
 const log = [];
+// комбинацию держит браузер и может сменить её на chrome://extensions/shortcuts на ходу
+let SHORTCUT = '⌥⇧A';
 globalThis.chrome = {
   runtime: {
     onMessage: mkEvent('msg'), onInstalled: mkEvent('installed'), onStartup: mkEvent('startup'),
@@ -32,7 +34,7 @@ globalThis.chrome = {
   },
   sidePanel: { setPanelBehavior: () => Promise.resolve(), open: () => Promise.resolve() },
   omnibox: { setDefaultSuggestion: () => {}, onInputChanged: mkEvent('omni1'), onInputEntered: mkEvent('omni2') },
-  commands: { onCommand: mkEvent('cmd'), getAll: () => Promise.resolve([{ name: 'toggle-surface', shortcut: '⌥⇧A' }]) },
+  commands: { onCommand: mkEvent('cmd'), getAll: () => Promise.resolve([{ name: 'toggle-surface', shortcut: SHORTCUT }]) },
   windows: {
     WINDOW_ID_NONE: -1,
     onRemoved: mkEvent('winRemoved'), onFocusChanged: mkEvent('winFocus'),
@@ -666,6 +668,15 @@ TABS.push({ id: 4, windowId: 1, index: 3, pinned: false, url: 'https://s4.com/' 
 await fire('tabCreated', TABS[3]);
 await wait(300);
 check('число на кнопке идёт за окном', BAR.badge === '4', String(BAR.badge));
+
+// Правило 49: комбинацию сменили на chrome://extensions/shortcuts, воркер не перезапускали
+await setBar('hidden');
+SHORTCUT = '⌥⌃A';
+await setBar('hidden');
+check('подпись кнопки идёт за сменой комбинации без перезапуска воркера',
+  /⌥⌃A/.test(BAR.title || '') && !/⌥⇧A/.test(BAR.title || ''), String(BAR.title));
+SHORTCUT = '⌥⇧A';
+await setBar('mark + value');
 
 // ---------- одна комбинация на открытие и закрытие (правило 49) ----------
 const cmd = (L['cmd'] || [])[0];
