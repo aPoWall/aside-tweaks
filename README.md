@@ -113,7 +113,7 @@ The page-level keymap uses physical key codes, so Latin and Cyrillic layouts kee
 
 AIM apps rule 37 fixes `⌘K` as the palette key for the whole family. In a browser surface `⌘K` belongs to the address bar, so Aside Tweaks declares one exception: the palette opens on `⇧⌘K`, and `⌘K` keeps the single meaning of «actions for the selected row» inside the palette. The exception is printed on the product page (feature 02) and in the palette itself. Every other family key keeps its family meaning: `esc` closes, digits switch blocks, `⌘D` bookmarks.
 
-`⌘D` appends the page to the **end** of the bookmarks bar, as Arc appends a pinned row to its section. The tab stays open and keeps the focus, the rows above it do not move, and a second `⌘D` on the same page takes the row out. Closing the tab after `⌘D` is still available as a setting and is off by default since 4.21; with it on, the next unpinned tab becomes active and pinned tabs are used only when no working tab remains. Aside's native **Chats** section and system-owned `⌘W` / `⌘V` behavior are outside the extension API.
+`⌘D` makes the page the **first row** of the bookmarks bar and lifts the open tab to the first row of the tabs, right under the pinned squares, with the focus still on it – the same move `⇧⌘D` makes into the squares. A second `⌘D` on the same page takes the row out and leaves the tab open and selected. Both halves are settings: `the new row goes first in the bookmarks bar` and `the open tab rises to the first row` are on since 4.25 and switch back to the 4.21 contract (row at the end, tab order untouched). Closing the tab after `⌘D` is a third setting, off by default; with it on, the next unpinned tab becomes active and pinned tabs are used only when no working tab remains. Aside's native **Chats** section and system-owned `⌘W` / `⌘V` behavior are outside the extension API.
 
 ### Blocks under the number keys
 
@@ -205,6 +205,33 @@ node tests/sw-smoke.mjs
 node ~/repos/lab-sites/internal-sites/aim-product-system/check.mjs   # vendored copies, SHA-256
 ```
 
+### Testbed – a second Aside of its own
+
+Gestures that move tabs and bookmarks cannot be checked in the working window: the test
+rearranges the pages and the bar of the person sitting at the machine. The testbed starts a
+second Aside on its own profile, with its own bookmarks bar and a debugging port, and the
+main window is never touched.
+
+```bash
+scripts/testbed.sh up            # headless, nothing appears on screen
+node tests/testbed-favorite.mjs  # ⌘D and ⇧⌘D against the real service worker
+scripts/testbed.sh down
+scripts/testbed.sh fresh         # wipe the profile of the testbed
+```
+
+`tests/cdp.mjs` is the DevTools Protocol client: it finds the service worker of the
+extension, confirms it by the manifest name – Aside ships built-in extensions with the same
+`background.js` path – and evaluates code inside it, so the scenario calls the same `ACTIONS`
+map a key press calls. Two traps are worth knowing. The worker sleeps and disappears from the
+target list, so the client opens a page of the extension to wake it. And the worker script
+lives in the cache of the profile: it survives a browser restart, `chrome.runtime.reload()`
+throws out an extension loaded with `--load-extension`, so `testbed.sh up` clears
+`Default/Service Worker` and the browser reads the edited file from disk.
+
+`node tests/testbed-visual.mjs` against `scripts/testbed.sh up --visible` writes window
+snapshots to `/tmp/aside-testbed-*.png` through Hammerspoon – the sidebar of Aside is native
+and no API shows it. The snapshot needs the window raised on the current desktop.
+
 `tests/sw-smoke.mjs` executes the real service worker against a small Chromium stub. It covers tab placement, protected review, semantic clusters, receipts, grouping proposals, bookmarks, pins, palette handoff, the whole duplicate-cleanup chain from the popup number to the receipt, and the block number keys.
 
 `tests/surfaces.mjs` also guards the class of breakage that 4.20 shipped: a cleanup function that no key and no surface could reach. It fails when a function in the service worker has no caller and no place in the action maps, when a static button of a surface has no handler (rule 38), when a surface stops taking the shared shell, when the extension icon drifts from the mark glyph, and when a long dash appears in a text.
@@ -215,11 +242,13 @@ node ~/repos/lab-sites/internal-sites/aim-product-system/check.mjs   # vendored 
 2. Update `manifest.json`, `CHANGELOG.md` and this README.
 3. Run syntax and smoke tests.
 4. Open `chrome://extensions` and press **Reload** on Aside Tweaks.
-5. Verify `chrome-extension://biahbgkjdbjnidodbpekgoigldpmpjpg/options.html` reports the new version and that `⌘D` saves a QA page first, then selects the next unpinned tab.
+5. Verify `chrome-extension://biahbgkjdbjnidodbpekgoigldpmpjpg/options.html` reports the new version and that `⌘D` on a QA page puts its row first in the bar and lifts the tab to the first row with the focus on it.
 6. Copy `docs/` into the existing `lab-sites/sites/apps/aside-tweaks/` lane.
 7. Run the `lab-sites` preflight, commit only that site path, push `main`, and verify production.
 
 ### Migration and rollback
+
+**v4.24 → v4.25:** `⌘D` moves to the pin contract once, under the `favoriteTopRev` key: `the open tab rises to the first row` and `the new row goes first in the bookmarks bar` are set to on. Both stay in the options page and switch back to the 4.21 behaviour. Existing bookmarks keep their order; only new rows go to the top. Keymaps, review state, receipts, bridge config and theme settings are untouched.
 
 **v4.21 → v4.22:** no stored value changes. Keymaps, bookmarks, review state, receipts, bridge config and theme settings stay as they are. The voxel character disappears from the panel and popup header and is replaced by the product mark; the popup loses the `settings ↗` link, which is now the `settings` button in the header. The extension icon changes to the product mark, so the toolbar button looks different after the reload.
 

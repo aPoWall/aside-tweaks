@@ -36,7 +36,8 @@ const DEFAULTS = {
   tabPlacement: 'underCurrent',     // underCurrent | end | browser
   placementGuardMs: 2500,           // сколько держим вкладку на месте, если Aside её двигает
   keepPins: true,
-  favoriteMovesTab: false,  // ⌘D по правилу Arc порядок вкладок не трогает; включённая настройка двигает вкладку наверх
+  favoriteMovesTab: true,   // ⌘D поднимает вкладку первой строкой вкладок – как ⇧⌘D поднимает её в квадратики
+  favoriteRowTop: true,     // новая строка встаёт первой в панели закладок; выключено – уходит в конец, как было до 4.25
   favoriteLeavesGroup: true, // ⌘D выводит вкладку из блока: вне блока сайдбар Aside вплавляет её в строку закладки
   favoriteCloses: false,     // ⌘D оставляет вкладку открытой и выбранной, как pin в Arc; включённая настройка закрывает её
   blockKeys: true,           // ⌘1…⌘9 переключают на блок окна, ⇧⌘1…⇧⌘9 кладут вкладку в блок
@@ -74,7 +75,7 @@ function upgradeKeymap(stored) {
   return changed ? map : null;
 }
 
-chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0, barModeRev: 0 }).then(s => {
+chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0, favoriteTopRev: 0, barModeRev: 0 }).then(s => {
   // раскладку накладываем поверх дефолтной: иначе действия, добавленные позже,
   // остаются вообще без привязки – в хранилище лежит карта старой версии
   settings = { ...DEFAULTS, ...s, keymap: { ...DEFAULT_KEYMAP, ...(s.keymap || {}) } };
@@ -97,6 +98,16 @@ chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0, barModeR
     settings.favoriteCloses = false;
     settings.favoriteMovesTab = false;
     chrome.storage.sync.set({ favoriteArcRev: 1, favoriteCloses: false, favoriteMovesTab: false }).catch(() => { });
+  }
+
+  // 4.25. Конец панели закладок оказался проигрышем: строка уходила вниз списка,
+  // вкладка оставалась там, где была, и одна страница показывалась в сайдбаре дважды –
+  // «фокус внизу, копия наверху». ⌘D переводится на движение ⇧⌘D: строка первой в закладках,
+  // вкладка первой строкой вкладок, фокус на ней. Ключ миграции держит правку однократной.
+  if (!s.favoriteTopRev) {
+    settings.favoriteMovesTab = true;
+    settings.favoriteRowTop = true;
+    chrome.storage.sync.set({ favoriteTopRev: 1, favoriteMovesTab: true, favoriteRowTop: true }).catch(() => { });
   }
 
   // Правило 47: режим smart снят и держит слот пустым; сохранённая настройка один раз
@@ -1338,9 +1349,14 @@ async function favoriteTab(windowId) {
     return -1;
   }
 
-  // Как pin в Arc: новая строка встаёт в конец панели закладок, существующие строки не съезжают
-  // и мышечная память по позиции держится. Адрес пишем как есть: Aside сличает его буквально.
-  const made = await chrome.bookmarks.create({ parentId: BAR, title: tab.title || tab.url, url: tab.url });
+  // Строка встаёт первой в панели закладок – там же, где ⇧⌘D ставит квадратик.
+  // Конец панели (favoriteRowTop off) не съезжал по позициям, но уводил свежую строку
+  // вниз длинного списка: у полусотни закладок её приходилось искать прокруткой.
+  // Адрес пишем как есть: Aside сличает его буквально и вплавляет открытую вкладку в строку.
+  const made = await chrome.bookmarks.create({
+    parentId: BAR, title: tab.title || tab.url, url: tab.url,
+    ...(settings.favoriteRowTop ? { index: 0 } : {})
+  });
   await chrome.storage.session.set({ lastFavId: made?.id ?? null, lastFavAt: Date.now() }).catch(() => { });
 
   // Закрытие вкладки после ⌘D осталось настройкой и по умолчанию выключено:
@@ -1358,8 +1374,8 @@ async function favoriteTab(windowId) {
   const left = await leaveGroup(tab);
   const moved = await moveTabTo(tab);
   await keepSelected(tab.id, tab.windowId);
-  flash('BM+', 'last in the bookmarks bar ★' +
-    (left ? '\nout of its block – the sidebar folds the tab into that row' : moved ? '\ntab stays open, folded into the bar row' : '\ntab stays open and selected') +
+  flash('BM+', (settings.favoriteRowTop ? 'first row of the bookmarks bar ★' : 'last in the bookmarks bar ★') +
+    (moved ? '\ntab rises to the first row and keeps the focus ↑' : left ? '\nout of its block – the sidebar folds the tab into that row' : '\ntab stays open and selected') +
     '\n⌘D again takes it out');
   return 1;
 }

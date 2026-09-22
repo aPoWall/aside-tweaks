@@ -1,5 +1,23 @@
 # Changelog
 
+## 4.25.0 – 2026-09-22
+
+- `⌘D` makes the same move as pin. The row goes **first** in the bookmarks bar and the open tab
+  rises to the first row of the tabs, under the pinned squares, with the focus still on it. Before
+  this the row joined the end of the bar while the tab stayed wherever the list held it, so one page
+  showed up twice in the sidebar – the copy on top, the focus at the bottom. Migration key
+  `favoriteTopRev` turns both halves on once; `the new row goes first in the bookmarks bar` and
+  `the open tab rises to the first row` stay in settings card `02 pin vs bookmark` and switch back
+  to the 4.21 contract;
+- testbed: `scripts/testbed.sh` starts a second Aside on its own profile with its own bookmarks bar
+  and a debugging port, so a gesture that moves tabs and bookmarks is checked without touching the
+  working window. `tests/cdp.mjs` talks to the service worker of the extension over the DevTools
+  Protocol and `tests/testbed-favorite.mjs` drives `⌘D` and `⇧⌘D` in the real browser: where the row
+  lands, where the tab lands, what keeps the focus. `tests/testbed-visual.mjs` takes window snapshots
+  for what the API cannot show – the native sidebar;
+- tests: `sw-smoke` asserts the new default in both directions and keeps the 4.21 contract under its
+  two switches.
+
 ## 4.24.0 – 2026-09-17
 
 - the toolbar button reads as a menu bar item (rule 47): it is visible by default, one click opens the

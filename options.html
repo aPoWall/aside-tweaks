@@ -177,15 +177,18 @@
     <div class="head"><span class="idx">02</span><span class="ttl">pin vs bookmark</span></div>
     <div class="body">
       <small style="margin-bottom:9px">
-        <b><code>⌘D</code> – bookmark ⇄ tab.</b> as in Arc: the page joins the end of the bookmarks bar, the tab stays open and keeps the focus,
-        and the rows above it do not move. press ⌘D on the page again to take the row out.<br>
+        <b><code>⌘D</code> – bookmark ⇄ tab.</b> the same move as pin, one row higher: the page becomes the first row of the bookmarks bar,
+        the tab rises to the first row of the tabs and keeps the focus. press ⌘D on the page again to take the row out.<br>
         <b><code>⇧⌘D</code> – pin.</b> the squares on top of the sidebar, the browser's own pin on a key of its own; the tab keeps the focus after pinning.
       </small>
       <label class="opt"><input type="checkbox" id="favoriteCloses">
         <span>after ⌘D the tab closes<small>off by default since 4.21: the tab stays open and selected, as a pinned page does in Arc. on – the page opens again from the bar row and focus moves to the next unpinned tab</small></span>
       </label>
       <label class="opt"><input type="checkbox" id="favoriteMovesTab">
-        <span>the open tab moves to the top<small>off by default since 4.21: ⌘D changes the bookmarks bar and leaves the tab order alone. on – the tab jumps under the pinned squares</small></span>
+        <span>the open tab rises to the first row<small>on by default since 4.25: the page you just kept sits under the pinned squares instead of staying where the list happened to hold it. off – ⌘D changes the bookmarks bar and leaves the tab order alone</small></span>
+      </label>
+      <label class="opt"><input type="checkbox" id="favoriteRowTop">
+        <span>the new row goes first in the bookmarks bar<small>on by default since 4.25: the fresh row is the one you look for, so it stands where pin puts a square. off – the row joins the end of the bar and the positions above it never shift</small></span>
       </label>
       <label class="opt"><input type="checkbox" id="favoriteLeavesGroup">
         <span>⌘D takes the tab out of its block<small>Aside's sidebar folds an open tab into the bookmark row with the same address – but only a tab outside any block. inside a block the page would show twice: in the bookmarks and in the block</small></span>

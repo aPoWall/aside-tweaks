@@ -1,3 +1,16 @@
+aside tweaks 4.25.0 – 2026-09-22
+
+- ⌘D makes the same move as pin: the row goes first in the bookmarks bar, the open tab rises to the first row of the tabs and keeps the focus
+- one page stops showing twice in the sidebar – before this the row joined the end of the bar while the tab stayed at the bottom
+- both halves stay switches in settings and return to the 4.21 contract
+- testbed: a second Aside on its own profile checks ⌘D and ⇧⌘D in a real browser without touching the working window
+
+aside tweaks 4.24.0 – 2026-09-17
+
+- the toolbar button reads as a menu bar item: one click opens the surface of the product, the next closes it, and the mode is one list in settings – mark, mark + value, value, hidden
+- one global combination for open and close, shipped as ⌥⇧A, and the bottom line of every surface names the combination the browser actually registered
+- the voxel character is back in the header of the popup and the panel; the flat mark stays on the button, the settings page and the favicons
+
 aside tweaks 4.23.0 – 2026-09-17
 
 - a number key always lands somewhere: ⌘1…⌘9 address the blocks of the window, and a number with no block selects the tab in that position, ⌘9 the last one, the way the same key reads in the browser

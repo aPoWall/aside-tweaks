@@ -17,8 +17,8 @@ const TWEAK_COMMANDS = [
     words: 'palette search find', group: 'surface', on: ['popup']
   },
   {
-    action: 'favoriteTab', glyph: '★', title: 'bookmark ⇄ tab', short: 'bookmark ⇄ tab', sub: 'end of the bar', key: '⌘D',
-    hint: 'as in Arc: the page joins the end of the bookmarks bar, the tab stays open and selected, and a second ⌘D takes the row out again',
+    action: 'favoriteTab', glyph: '★', title: 'bookmark ⇄ tab', short: 'bookmark ⇄ tab', sub: 'first row, top', key: '⌘D',
+    hint: 'the same move as pin: the row goes first in the bookmarks bar, the tab rises to the first row of the tabs and keeps the focus, a second ⌘D takes the row out again',
     words: 'bookmark bar keep star arc pin', group: 'tab', on: ['palette', 'popup']
   },
   {

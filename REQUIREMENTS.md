@@ -15,8 +15,8 @@ reason · `blocked` waits for something outside the product.
 
 | id | requirement | source | status | date |
 |----|-------------|--------|--------|------|
-| K1 | `⌘D` as in Arc: the bookmark joins the end of the bar, the tab stays open and selected, a second `⌘D` takes it out | wave 6 § D | done · sw-smoke asserts order, focus and the toggle | 2026-09-16 |
-| K2 | `⇧⌘D` pins and unpins, the focus stays on the tab | wave 6 § D | done · sw-smoke | 2026-09-16 |
+| K1 | `⌘D` makes the same move as pin: the row goes first in the bar, the open tab rises to the first row of the tabs and keeps the focus, a second `⌘D` takes the row out | wave 11 § ⌘D, 2026-09-22 | done · sw-smoke asserts both directions and the two switches, `tests/testbed-favorite.mjs` asserts the same in a real browser | 2026-09-22 |
+| K2 | `⇧⌘D` pins and unpins, the focus stays on the tab | wave 6 § D | done · sw-smoke, and the testbed compares `⌘D` with it as the reference move | 2026-09-22 |
 | K3 | `⌘1`…`⌘9` address the blocks of the window, `⇧⌘` with the same number files the current tab | wave 6 § D | done · sw-smoke | 2026-09-16 |
 | K4 | a number key never lands on nothing | wave 9 § D, rule 38 | done · a number with no block selects the tab in that position, `⌘9` the last one; `⇧⌘` on the next free number opens a block around the tab | 2026-09-17 |
 | K5 | the palette lists what each number holds | wave 6 § D | done · `listBlocks` feeds the palette | 2026-09-16 |
@@ -83,7 +83,8 @@ reason · `blocked` waits for something outside the product.
 |----|-------------|--------|--------|------|
 | V1 | version in `manifest.json` matches the top entry of `CHANGELOG.md` | rule 13 | done · surfaces test | 2026-09-17 |
 | V2 | product page carries the version and what's new | rule 11 | done for 4.24.0 · the page carries the four bar modes by the words of the one list, the shipped combination `⌥⇧A` with its reason and a shot of the surface | 2026-09-17 |
-| V3 | commits stay on the wave branch, nothing is pushed | wave 9 and 10 boundaries | done · `codex/janitor-4.23`, then `codex/menubar-4.24` | 2026-09-17 |
+| V3 | commits stay on the wave branch until a release is asked for | wave 9 and 10 boundaries | done · `codex/janitor-4.23`, `codex/menubar-4.24`, then `codex/favorite-top-4.25`, merged and pushed on request | 2026-09-22 |
+| T1 | a gesture that moves tabs and bookmarks is checked in a browser, not only against a stub | wave 11, 2026-09-22 | done · `scripts/testbed.sh` starts a second Aside on its own profile, `tests/cdp.mjs` reaches the service worker, `tests/testbed-favorite.mjs` runs the scenario, `tests/testbed-visual.mjs` snapshots the window | 2026-09-22 |
 | V4 | the reload of the extension confirms the version | wave 10 | done · reloaded through the browser, `4.24.0`, enabled, no manifest or runtime errors, `toggle-surface` registered as `⌥⇧A` | 2026-09-17 |
 
 ## Two open questions of Alex, answered
