@@ -3,7 +3,7 @@
   const paletteData = {
     palette: [
       ['Recent'], ['AT', 'Aside Tweaks · product page', 'apps.aimindset.org', 'tab'], ['S', 'Space · working surface', 'space.aimindset.org', 'tab'],
-      ['Notes'], ['◇', 'aside product map', 'Obsidian · today', 'note'], ['Commands'], ['★', 'bookmark ⇄ tab', 'first in the bar · tab rises, stays selected', '⌘D'], ['◎', 'review tabs', 'exact · related · event · source', '⌥⌘D']
+      ['Notes'], ['◇', 'aside product map', 'Obsidian · today', 'note'], ['Commands'], ['★', 'bookmark ⇄ tab', 'first in the bar · pinned on top', '⌘D'], ['◎', 'review tabs', 'exact · related · event · source', '⌥⌘D']
     ],
     review: [
       ['Related product · Space'], ['S', 'AI Mindset {space} · evolution', 'canonical · protected', 'keep'], ['D', 'Space Dataflow', 'unsaved form · protected', 'keep'], ['L', 'Space local preview', 'eligible sibling', 'close'],
@@ -64,10 +64,12 @@
     clone.style.left = (tabRect.left - stageRect.left) + 'px'; clone.style.top = (tabRect.top - stageRect.top) + 'px'; clone.style.width = tabRect.width + 'px'; stage.append(clone);
     const dx = destRect.left - tabRect.left + 6, dy = destRect.top - tabRect.top + 4;   // 4.25: новая строка встаёт первой в полосе
     const finish = () => {
-      // 4.25: строка встаёт первой в полосе, вкладка остаётся открытой и выбранной
+      // 4.26: страница встаёт первой строкой закладок и квадратиком наверху –
+      // в сайдбаре она живёт квадратом, строка вкладки уступает ему место
       clone.remove();
       const fav = document.createElement('span'); fav.className = 'favorite new'; fav.dataset.demoFavorite = ''; fav.textContent = 'AT'; favorites.prepend(fav);
-      kept = true; say('kept first · tab stays');
+      tab.classList.add('parked'); tab.classList.remove('active');
+      kept = true; say('pinned on top · row saved');
     };
     if (matchMedia('(prefers-reduced-motion: reduce)').matches || !clone.animate) { finish(); return; }
     const anim = clone.animate([{ transform: 'translate(0,0) scale(1)' }, { transform: `translate(${dx * .64}px,${dy * .38}px) scale(.88)`, offset: .55 }, { transform: `translate(${dx}px,${dy}px) scale(.32)`, opacity: .2 }], { duration: 520, easing: 'cubic-bezier(.2,.8,.2,1)' });

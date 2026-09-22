@@ -17,8 +17,8 @@ const TWEAK_COMMANDS = [
     words: 'palette search find', group: 'surface', on: ['popup']
   },
   {
-    action: 'favoriteTab', glyph: '★', title: 'bookmark ⇄ tab', short: 'bookmark ⇄ tab', sub: 'first row, top', key: '⌘D',
-    hint: 'the same move as pin: the row goes first in the bookmarks bar, the tab rises to the first row of the tabs and keeps the focus, a second ⌘D takes the row out again',
+    action: 'favoriteTab', glyph: '★', title: 'bookmark ⇄ tab', short: 'bookmark ⇄ tab', sub: 'first row · squares on top', key: '⌘D',
+    hint: 'keeps the page in both senses: the row goes first in the bookmarks bar and the tab is pinned into the squares on top of the sidebar, focus stays on it; a second ⌘D takes the row and the square out again',
     words: 'bookmark bar keep star arc pin', group: 'tab', on: ['palette', 'popup']
   },
   {
@@ -27,14 +27,19 @@ const TWEAK_COMMANDS = [
     words: 'pin unpin squares', group: 'tab', on: ['palette', 'popup']
   },
   {
-    action: 'tidyUp', glyph: '✦', title: 'tidy up', short: 'tidy up', sub: 'one sweep', key: '⌥⌘T',
-    hint: 'opens review first, then cleans exact duplicates and empty tabs → flatten → recent loose tabs on top → blocks from 3 tabs',
+    action: 'tidyUp', glyph: '✦', title: 'tidy up', short: 'tidy up', sub: 'runs the whole sweep', key: '⌥⌘T',
+    hint: 'runs it: closes exact duplicates and empty tabs, flattens the blocks, puts the recent loose tabs on top and rebuilds blocks from 3 tabs, then writes a receipt · protections hold and ⌥⌘D shows what a cleanup would take',
     words: 'tidy sweep clean order everything', group: 'window', on: ['panel', 'palette', 'popup']
   },
   {
     action: 'tidyDuplicates', glyph: '◎', title: 'review tabs', short: 'review tabs', sub: 'what closes, what stays', key: '⌥⌘D',
     hint: 'the list of tabs that cleanup would close, grouped and with the reason on each row · the first line closes them all · protected tabs stay and every batch gets a receipt',
     words: 'review dd dedup duplicates twins semantic siblings stale event research source cleanup', group: 'window', on: ['panel', 'palette', 'popup']
+  },
+  {
+    action: 'cleanDuplicates', glyph: '−', title: 'remove duplicates', short: 'remove dupes', sub: 'closes them now', key: '',
+    hint: 'closes the exact duplicates and the empty tabs of every window straight away, without opening review first · pinned, active, marked, unsaved-form and last-in-window tabs stay · every batch writes a receipt',
+    words: 'remove clean duplicates dupes dedup twins empty close now', group: 'window', on: ['panel', 'palette', 'popup']
   },
   {
     action: 'groupBySense', glyph: '✳', title: 'blocks by meaning', short: 'by meaning', sub: 'a model reads the titles', key: '',

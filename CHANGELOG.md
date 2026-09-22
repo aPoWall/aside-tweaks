@@ -1,5 +1,25 @@
 # Changelog
 
+## 4.26.0 – 2026-09-22
+
+- `⌘D` puts the page where `⇧⌘D` puts it. The row becomes the first row of the bookmarks bar and the
+  tab is pinned, so in the sidebar it stands as a square on top, with the focus still on it. 4.25 lifted
+  the tab to the first row of the tab list, which in this sidebar still reads as «down there», and one
+  page kept showing as two entries. A second `⌘D` takes the row and the square out and leaves the tab
+  open, selected and first in the list. Setting `⌘D pins the page into the squares on top`, migration
+  key `favoritePinRev`, applied once;
+- the selection is confirmed twice. The sidebar rebuilds its list after a pin and after a new bookmark
+  row and moves the highlight to a neighbour; a second pass 260 ms later brings it back to the page
+  the person is working on;
+- `remove duplicates` is a command again – in the palette, the panel and the popup. It closes the exact
+  duplicates and the empty tabs of every window straight away, with the same protections as before
+  (pinned, active, marked, unsaved form, last tab in its window) and the same receipt;
+- `tidy up` runs the sweep instead of opening the palette: cleanup → flatten → recent loose tabs on top
+  → blocks from three tabs → receipt. `review tabs` stays the door into the review surface, and this
+  reverses the 4.18 rule that sent every cleanup key through review first;
+- the palette puts the tab the person is on first and marks it `active`; until now it was sorted to the
+  end of the list.
+
 ## 4.25.0 – 2026-09-22
 
 - `⌘D` makes the same move as pin. The row goes **first** in the bookmarks bar and the open tab

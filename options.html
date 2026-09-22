@@ -177,8 +177,8 @@
     <div class="head"><span class="idx">02</span><span class="ttl">pin vs bookmark</span></div>
     <div class="body">
       <small style="margin-bottom:9px">
-        <b><code>⌘D</code> – bookmark ⇄ tab.</b> the same move as pin, one row higher: the page becomes the first row of the bookmarks bar,
-        the tab rises to the first row of the tabs and keeps the focus. press ⌘D on the page again to take the row out.<br>
+        <b><code>⌘D</code> – bookmark ⇄ tab.</b> keeps the page in both senses: the row goes first in the bookmarks bar and the tab is pinned
+        into the squares on top of the sidebar, with the focus still on it. press ⌘D on the page again to take the row and the square out.<br>
         <b><code>⇧⌘D</code> – pin.</b> the squares on top of the sidebar, the browser's own pin on a key of its own; the tab keeps the focus after pinning.
       </small>
       <label class="opt"><input type="checkbox" id="favoriteCloses">
@@ -186,6 +186,9 @@
       </label>
       <label class="opt"><input type="checkbox" id="favoriteMovesTab">
         <span>the open tab rises to the first row<small>on by default since 4.25: the page you just kept sits under the pinned squares instead of staying where the list happened to hold it. off – ⌘D changes the bookmarks bar and leaves the tab order alone</small></span>
+      </label>
+      <label class="opt"><input type="checkbox" id="favoritePins">
+        <span>⌘D pins the page into the squares on top<small>on by default since 4.26: the saved page goes where ⇧⌘D puts it, so one page stops standing in the sidebar twice. off – ⌘D only writes the bookmark row and the tab keeps its place in the list</small></span>
       </label>
       <label class="opt"><input type="checkbox" id="favoriteRowTop">
         <span>the new row goes first in the bookmarks bar<small>on by default since 4.25: the fresh row is the one you look for, so it stands where pin puts a square. off – the row joins the end of the bar and the positions above it never shift</small></span>

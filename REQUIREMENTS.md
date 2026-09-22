@@ -15,7 +15,7 @@ reason · `blocked` waits for something outside the product.
 
 | id | requirement | source | status | date |
 |----|-------------|--------|--------|------|
-| K1 | `⌘D` makes the same move as pin: the row goes first in the bar, the open tab rises to the first row of the tabs and keeps the focus, a second `⌘D` takes the row out | wave 11 § ⌘D, 2026-09-22 | done · sw-smoke asserts both directions and the two switches, `tests/testbed-favorite.mjs` asserts the same in a real browser | 2026-09-22 |
+| K1 | `⌘D` puts the page where `⇧⌘D` puts it: the row first in the bar, the tab pinned into the squares on top of the sidebar, the focus on it; a second `⌘D` takes both out | wave 11 § ⌘D, 2026-09-22 | done · sw-smoke asserts both directions and the switches, `tests/testbed-favorite.mjs` asserts pin, row and focus in a real browser | 2026-09-22 |
 | K2 | `⇧⌘D` pins and unpins, the focus stays on the tab | wave 6 § D | done · sw-smoke, and the testbed compares `⌘D` with it as the reference move | 2026-09-22 |
 | K3 | `⌘1`…`⌘9` address the blocks of the window, `⇧⌘` with the same number files the current tab | wave 6 § D | done · sw-smoke | 2026-09-16 |
 | K4 | a number key never lands on nothing | wave 9 § D, rule 38 | done · a number with no block selects the tab in that position, `⌘9` the last one; `⇧⌘` on the next free number opens a block around the tab | 2026-09-17 |
@@ -33,6 +33,9 @@ reason · `blocked` waits for something outside the product.
 | R4 | review tabs is explained in one line on the surface or leaves it | wave 6 § D | done · the first row of review says what the list is, the command hint says it in the palette and in the popup | 2026-09-17 |
 | R5 | the summary and the confirm line stand first, above the rows | wave 6 § D | done | 2026-09-16 |
 | R6 | unsaved input is asked with a time limit, sleeping tabs are skipped | wave 6 § D | done · 200 ms per tab | 2026-09-16 |
+
+| C9 | a command that names an action performs it: `remove duplicates` closes, `tidy up` sweeps, `review tabs` opens the review | wave 11, 2026-09-22 | done · reverses the 4.18 rule that sent every cleanup key into review; protections and receipts hold in both paths, sw-smoke asserts each | 2026-09-22 |
+| C10 | the palette shows the tab the person is on, first and marked `active` | wave 11, 2026-09-22 | done · `palette.js` ranks it first without a query | 2026-09-22 |
 
 ## Palette and rows
 

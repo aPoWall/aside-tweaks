@@ -208,9 +208,9 @@ const stats = await call('getStats');
 check('getStats отвечает', stats?.ok && stats.data?.total === 5, JSON.stringify(stats?.data));
 check('getStats видит дубль сквозь www и слэш, и пустую вкладку', stats.data?.dups === 1 && stats.data?.empties === 1, JSON.stringify(stats?.data));
 
-const tidy = await call('tidyUp', { windowId: 1 });
+const review = await call('tidyDuplicates', { windowId: 1 });
 await wait(200);
-check('tidyUp открыл review и сам ничего не закрыл', tidy?.ok === true && tidy.count === 0 && TABS.length === 5, JSON.stringify(tidy));
+check('review tabs открывает разбор и сам ничего не закрывает', review?.ok === true && review.count === 0 && TABS.length === 5, JSON.stringify(review));
 const reviewBeforeTidy = await call('previewTabReview', { windowId: 1 });
 check('review разделяет exact cleanup и защищает активную', reviewBeforeTidy?.data?.summary?.exactClosable === 2 && reviewBeforeTidy.data.clusters[0]?.tabs.some(t => t.active && t.canonical), JSON.stringify(reviewBeforeTidy?.data?.summary));
 const tidyApplied = await call('applyReviewBatch', { clusterKey: 'all-exact', intent: 'tidy', windowId: 1 });
@@ -241,7 +241,7 @@ TABS = [
 ];
 let mark = log.length;
 await wait(500);   // тогл-команды глушат повтор в пределах 450 мс
-await call('tidyUp', { windowId: 1 });
+await call('tidyDuplicates', { windowId: 1 });
 await call('applyReviewBatch', { clusterKey: 'all-exact', intent: 'tidy', windowId: 1 });
 check('tidy: россыпь сверху, блок из трёх ниже', TABS.map(t => t.id).join(' ') === '52 54 51 53 55', TABS.map(t => t.id).join(' '));
 check('tidy: собран ровно один блок', log.slice(mark).filter(l => l.startsWith('group')).join('|') === 'group 51,53,55', log.slice(mark).filter(l => l.startsWith('group')).join('|'));
@@ -251,11 +251,41 @@ MARKS = [{ id: 'bh', title: 'one', url: 'https://github.com/1' }];
 TABS.forEach((t, i) => { t.index = i; });
 mark = log.length;
 await wait(500);
-await call('tidyUp', { windowId: 1 });
+await call('tidyDuplicates', { windowId: 1 });
 await call('applyReviewBatch', { clusterKey: 'all-exact', intent: 'tidy', windowId: 1 });
 check('tidy: вкладка с закладкой остаётся вне блока, блока из двух нет',
   !log.slice(mark).some(l => l.startsWith('group')) && TABS[0]?.id === 51, TABS.map(t => t.id).join(' '));
 MARKS = [];
+
+// 4.26: рабочие команды выполняют работу, а не открывают разбор.
+// Жалоба, из которой это выросло: «tidy up вызывает палитру, а не чистит».
+MARKS = [];
+TABS = [
+  { id: 71, windowId: 1, index: 0, pinned: false, active: true, url: 'https://keep.example/page', lastAccessed: 900 },
+  { id: 72, windowId: 1, index: 1, pinned: false, url: 'https://twin.example/x', lastAccessed: 500 },
+  { id: 73, windowId: 1, index: 2, pinned: false, url: 'https://www.twin.example/x/', lastAccessed: 400 },
+  { id: 74, windowId: 1, index: 3, pinned: false, url: 'chrome://newtab/' }
+];
+await wait(500);
+const sweptNow = await call('cleanDuplicates', { windowId: 1 });
+check('remove duplicates закрывает сразу, без подтверждения в палитре',
+  sweptNow?.ok && sweptNow.count === 2 && TABS.length === 2 && TABS.some(t => t.id === 72), sweptNow?.count + ' · ' + TABS.map(t => t.id).join(' '));
+check('remove duplicates не тронул активную вкладку', TABS.find(t => t.id === 71)?.active === true, TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
+
+mark = log.length;
+TABS = [
+  { id: 81, windowId: 1, index: 0, pinned: false, url: 'https://github.com/1', lastAccessed: 500 },
+  { id: 82, windowId: 1, index: 1, pinned: false, url: 'https://a.com/x', lastAccessed: 400 },
+  { id: 83, windowId: 1, index: 2, pinned: false, url: 'https://github.com/2', lastAccessed: 300 },
+  { id: 84, windowId: 1, index: 3, pinned: false, active: true, url: 'https://a.com/y', lastAccessed: 200 },
+  { id: 85, windowId: 1, index: 4, pinned: false, url: 'https://github.com/3', lastAccessed: 100 },
+  { id: 86, windowId: 1, index: 5, pinned: false, url: 'https://www.github.com/1/', lastAccessed: 50 }
+];
+await wait(500);
+const ran = await call('tidyUp', { windowId: 1 });
+check('tidy up закрывает дубль сам', ran?.ok && ran.count === 1 && !TABS.some(t => t.id === 86), ran?.count + ' · ' + TABS.map(t => t.id).join(' '));
+check('tidy up расставляет: россыпь сверху, блок из трёх ниже', TABS.map(t => t.id).join(' ') === '82 84 81 83 85', TABS.map(t => t.id).join(' '));
+check('tidy up собирает ровно один блок', log.slice(mark).filter(l => l.startsWith('group')).join('|') === 'group 81,83,85', log.slice(mark).filter(l => l.startsWith('group')).join('|'));
 
 const pin = await call('pinTab', { windowId: 1 });
 check('pinTab закрепил', pin?.ok && pin.count === 1 && TABS.some(t => t.pinned));
@@ -277,7 +307,7 @@ const fav = await call('favoriteTab', { windowId: 1 });
 check('favoriteTab сделал закладку', fav?.ok && fav.count === 1 && MARKS.length === 1, JSON.stringify(MARKS));
 check('вкладка осталась жива – без закрытия и перезагрузки', TABS.some(t => t.id === 23), TABS.map(t => t.id).join(' '));
 check('⌘D вывел вкладку из блока – сайдбар вплавит её в строку закладки', log.slice(mark).includes('ungroup 1') && TABS.find(t => t.id === 23)?.groupId === -1, log.slice(mark).join(' | '));
-check('⌘D поднял вкладку первой строкой, под закреплённую', TABS.map(t => t.id).join(' ') === '21 23 22 24', TABS.map(t => t.id).join(' '));
+check('⌘D закрепил вкладку – квадратик наверху сайдбара', TABS.find(t => t.id === 23)?.pinned === true, TABS.map(t => t.id + (t.pinned ? '📌' : '')).join(' '));
 
 // адрес уже открыт – переключение вместо второй вкладки, как в Arc
 const before = TABS.length;
@@ -289,7 +319,7 @@ TABS.find(t => t.id === 23).active = true;
 await wait(500);   // защита от двойного срабатывания: повтор в пределах 450 мс глушится
 const unfav = await call('favoriteTab', { windowId: 1 });
 check('второе нажатие сняло закладку', unfav?.ok && unfav.count === -1 && MARKS.length === 0);
-check('снятая закладка оставляет вкладку первой строкой', TABS.map(t => t.id).join(' ') === '21 23 22 24', TABS.map(t => t.id).join(' '));
+check('второе нажатие сняло и закрепление', TABS.find(t => t.id === 23)?.pinned === false, TABS.map(t => t.id + (t.pinned ? '📌' : '')).join(' '));
 
 const twice = await call('favoriteTab', { windowId: 1 });
 const twiceAgain = await call('favoriteTab', { windowId: 1 });
@@ -470,7 +500,8 @@ const scene = () => {
 store.sync.favoriteCloses = false;
 store.sync.favoriteMovesTab = true;
 store.sync.favoriteRowTop = true;
-await fire('storeChanged', { favoriteCloses: { newValue: false }, favoriteMovesTab: { newValue: true }, favoriteRowTop: { newValue: true } }, 'sync');
+store.sync.favoritePins = true;
+await fire('storeChanged', { favoriteCloses: { newValue: false }, favoriteMovesTab: { newValue: true }, favoriteRowTop: { newValue: true }, favoritePins: { newValue: true } }, 'sync');
 await wait(20);
 scene();
 await wait(500);   // защита от повтора: то же действие в пределах 450 мс глушится
@@ -478,22 +509,23 @@ const favTop = await call('favoriteTab', { windowId: 1 });
 check('⌘D: строка встаёт первой в панели закладок',
   favTop?.count === 1 && MARKS.length === 2 && MARKS[0].url === 'https://keep.example/page',
   JSON.stringify(MARKS.map(b => b.url)));
-check('⌘D: вкладка поднимается первой строкой вкладок, под закреплённые',
-  TABS.map(t => t.id).join(' ') === '101 103 102 104', TABS.map(t => t.id).join(' '));
+check('⌘D: страница закреплена – она встаёт квадратиком наверху сайдбара',
+  TABS.find(t => t.id === 103)?.pinned === true, TABS.map(t => t.id + (t.pinned ? '📌' : '')).join(' '));
 check('⌘D: фокус остаётся на той же странице',
   TABS.find(t => t.id === 103)?.active === true, TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
 check('⌘D: копии страницы во вкладках не появилось',
   TABS.filter(t => t.url === 'https://keep.example/page').length === 1, TABS.map(t => t.url).join(' '));
 await wait(500);
 const unfavTop = await call('favoriteTab', { windowId: 1 });
-check('⌘D второй раз снимает строку, вкладка остаётся наверху и выбранной',
-  unfavTop?.count === -1 && MARKS.length === 1 && TABS.map(t => t.id).join(' ') === '101 103 102 104' && TABS.find(t => t.id === 103)?.active === true,
-  JSON.stringify(MARKS.map(b => b.url)) + ' · ' + TABS.map(t => t.id).join(' '));
+check('⌘D второй раз снимает строку и квадрат, вкладка остаётся выбранной',
+  unfavTop?.count === -1 && MARKS.length === 1 && TABS.find(t => t.id === 103)?.pinned === false && TABS.find(t => t.id === 103)?.active === true,
+  JSON.stringify(MARKS.map(b => b.url)) + ' · ' + TABS.map(t => t.id + (t.pinned ? '📌' : '')).join(' '));
 
 // прежний договор 4.21 остаётся двумя настройками: конец панели и порядок вкладок не трогаем
 store.sync.favoriteMovesTab = false;
 store.sync.favoriteRowTop = false;
-await fire('storeChanged', { favoriteMovesTab: { newValue: false }, favoriteRowTop: { newValue: false } }, 'sync');
+store.sync.favoritePins = false;
+await fire('storeChanged', { favoriteMovesTab: { newValue: false }, favoriteRowTop: { newValue: false }, favoritePins: { newValue: false } }, 'sync');
 await wait(20);
 scene();
 await wait(500);

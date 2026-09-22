@@ -1,3 +1,11 @@
+aside tweaks 4.26.0 – 2026-09-22
+
+- ⌘D puts the page where ⇧⌘D puts it: the row goes first in the bookmarks bar and the tab is pinned into the squares on top of the sidebar, with the focus still on it
+- a second ⌘D takes the row and the square out and leaves the tab open, selected and first in the list
+- remove duplicates is a command again: it closes the exact duplicates and the empty tabs of every window straight away, with the same protections and the same receipt
+- tidy up runs the sweep instead of opening the palette – cleanup, flatten, recent tabs on top, blocks from three tabs; review tabs stays the door into review
+- the palette shows the tab you are on first and marks it active
+
 aside tweaks 4.25.0 – 2026-09-22
 
 - ⌘D makes the same move as pin: the row goes first in the bookmarks bar, the open tab rises to the first row of the tabs and keeps the focus
@@ -7,11 +15,9 @@ aside tweaks 4.25.0 – 2026-09-22
 
 aside tweaks 4.24.0 – 2026-09-17
 
-- the toolbar button reads as a menu bar item: one click opens the surface, the next closes it, and the mode of the button is one list in settings – mark, mark and the tab count of this window, the count drawn as the button, or hidden
-- hidden asks first and says what it can do: the browser keeps the square in the toolbar and only a person unpins it, so the mode empties the drawing and the title points at the combination
-- one combination for open and close, read from the browser in every line of the product; the family default ⌥⌘A is refused by this browser for an extension command, so the shipped default is ⌥⇧A and a refused combination turns the settings row red and is never stored
-- the voxel character is back in the header of the popup and the panel at 40 px: it assembles in 700 ms, lifts under the cursor and steps its red cursor on a click; the flat mark stays on the toolbar button, in settings and on the favicons
-- aim-voxel.js and the shared voxel model file are vendored byte for byte and both digests are asserted by the surfaces test
+- the toolbar button reads as a menu bar item: one click opens the surface of the product, the next closes it, and the mode is one list in settings – mark, mark + value, value, hidden
+- one global combination for open and close, shipped as ⌥⇧A, and the bottom line of every surface names the combination the browser actually registered
+- the voxel character is back in the header of the popup and the panel; the flat mark stays on the button, the settings page and the favicons
 
 aside tweaks 4.23.0 – 2026-09-17
 

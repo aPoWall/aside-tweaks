@@ -113,7 +113,7 @@ The page-level keymap uses physical key codes, so Latin and Cyrillic layouts kee
 
 AIM apps rule 37 fixes `⌘K` as the palette key for the whole family. In a browser surface `⌘K` belongs to the address bar, so Aside Tweaks declares one exception: the palette opens on `⇧⌘K`, and `⌘K` keeps the single meaning of «actions for the selected row» inside the palette. The exception is printed on the product page (feature 02) and in the palette itself. Every other family key keeps its family meaning: `esc` closes, digits switch blocks, `⌘D` bookmarks.
 
-`⌘D` makes the page the **first row** of the bookmarks bar and lifts the open tab to the first row of the tabs, right under the pinned squares, with the focus still on it – the same move `⇧⌘D` makes into the squares. A second `⌘D` on the same page takes the row out and leaves the tab open and selected. Both halves are settings: `the new row goes first in the bookmarks bar` and `the open tab rises to the first row` are on since 4.25 and switch back to the 4.21 contract (row at the end, tab order untouched). Closing the tab after `⌘D` is a third setting, off by default; with it on, the next unpinned tab becomes active and pinned tabs are used only when no working tab remains. Aside's native **Chats** section and system-owned `⌘W` / `⌘V` behavior are outside the extension API.
+`⌘D` keeps the page in both senses at once: the row becomes the **first row** of the bookmarks bar and the tab is **pinned**, so in the sidebar of Aside it stands as a square on top – exactly where `⇧⌘D` puts it – with the focus still on it. A second `⌘D` takes the row and the square out and leaves the tab open, selected, first in the list. The difference between the two keys stays: `⇧⌘D` pins for this session, `⌘D` also writes the row that survives the tab. Three settings: `⌘D pins the page into the squares on top` (4.26), `the new row goes first in the bookmarks bar` and `the open tab rises to the first row` (4.25); switching all three off returns the 4.21 contract. Closing the tab after `⌘D` is a third setting, off by default; with it on, the next unpinned tab becomes active and pinned tabs are used only when no working tab remains. Aside's native **Chats** section and system-owned `⌘W` / `⌘V` behavior are outside the extension API.
 
 ### Blocks under the number keys
 
@@ -242,11 +242,13 @@ and no API shows it. The snapshot needs the window raised on the current desktop
 2. Update `manifest.json`, `CHANGELOG.md` and this README.
 3. Run syntax and smoke tests.
 4. Open `chrome://extensions` and press **Reload** on Aside Tweaks.
-5. Verify `chrome-extension://biahbgkjdbjnidodbpekgoigldpmpjpg/options.html` reports the new version and that `⌘D` on a QA page puts its row first in the bar and lifts the tab to the first row with the focus on it.
+5. Verify `chrome-extension://biahbgkjdbjnidodbpekgoigldpmpjpg/options.html` reports the new version and that `⌘D` on a QA page puts its row first in the bar, pins the tab into the squares on top and keeps the focus on it.
 6. Copy `docs/` into the existing `lab-sites/sites/apps/aside-tweaks/` lane.
 7. Run the `lab-sites` preflight, commit only that site path, push `main`, and verify production.
 
 ### Migration and rollback
+
+**v4.25 → v4.26:** `⌘D` starts pinning the page, once, under the `favoritePinRev` key: `⌘D pins the page into the squares on top` is set to on and stays a switch in the options page. Existing bookmarks, pins, keymaps, review state, receipts, bridge config and theme settings are untouched. `tidy up` and `remove duplicates` become working commands instead of doors into review – both keep every protection and write a receipt, and `review tabs` still opens the review surface.
 
 **v4.24 → v4.25:** `⌘D` moves to the pin contract once, under the `favoriteTopRev` key: `the open tab rises to the first row` and `the new row goes first in the bookmarks bar` are set to on. Both stay in the options page and switch back to the 4.21 behaviour. Existing bookmarks keep their order; only new rows go to the top. Keymaps, review state, receipts, bridge config and theme settings are untouched.
 

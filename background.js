@@ -38,6 +38,7 @@ const DEFAULTS = {
   keepPins: true,
   favoriteMovesTab: true,   // ⌘D поднимает вкладку первой строкой вкладок – как ⇧⌘D поднимает её в квадратики
   favoriteRowTop: true,     // новая строка встаёт первой в панели закладок; выключено – уходит в конец, как было до 4.25
+  favoritePins: true,       // ⌘D закрепляет страницу: в сайдбаре Aside она встаёт квадратиком наверху, как после ⇧⌘D
   favoriteLeavesGroup: true, // ⌘D выводит вкладку из блока: вне блока сайдбар Aside вплавляет её в строку закладки
   favoriteCloses: false,     // ⌘D оставляет вкладку открытой и выбранной, как pin в Arc; включённая настройка закрывает её
   blockKeys: true,           // ⌘1…⌘9 переключают на блок окна, ⇧⌘1…⇧⌘9 кладут вкладку в блок
@@ -75,7 +76,7 @@ function upgradeKeymap(stored) {
   return changed ? map : null;
 }
 
-chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0, favoriteTopRev: 0, barModeRev: 0 }).then(s => {
+chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0, favoriteTopRev: 0, favoritePinRev: 0, barModeRev: 0 }).then(s => {
   // раскладку накладываем поверх дефолтной: иначе действия, добавленные позже,
   // остаются вообще без привязки – в хранилище лежит карта старой версии
   settings = { ...DEFAULTS, ...s, keymap: { ...DEFAULT_KEYMAP, ...(s.keymap || {}) } };
@@ -108,6 +109,14 @@ chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0, favorite
     settings.favoriteMovesTab = true;
     settings.favoriteRowTop = true;
     chrome.storage.sync.set({ favoriteTopRev: 1, favoriteMovesTab: true, favoriteRowTop: true }).catch(() => { });
+  }
+
+  // 4.26. Первая строка списка вкладок – ещё не «наверху»: наверху сайдбара Aside стоят
+  // квадратики закреплённых вкладок, и страница, сохранённая через ⌘D, должна вставать туда же,
+  // куда её ставит ⇧⌘D. Иначе одна страница остаётся в сайдбаре дважды – строкой и вкладкой.
+  if (!s.favoritePinRev) {
+    settings.favoritePins = true;
+    chrome.storage.sync.set({ favoritePinRev: 1, favoritePins: true }).catch(() => { });
   }
 
   // Правило 47: режим smart снят и держит слот пустым; сохранённая настройка один раз
@@ -1083,16 +1092,42 @@ async function sortByOpened(windowId) {
   return reorder(windowId, t => t.id, 'by when opened');
 }
 
-// Публичные команды открывают review. Прямые apply-действия доступны только из
-// финальной строки подтверждения внутри review-поверхности.
+// Две разные двери, и это была ошибка 4.18 – сделать их одной. `review tabs` показывает,
+// что чистка считает лишним, и решение остаётся за человеком. `remove duplicates` и
+// `tidy up` – рабочие команды: они выполняют то, что написано на кнопке, и пишут квитанцию.
+// Защиты действуют в обоих случаях: закреплённая, активная, отмеченная, с несохранённой
+// формой и последняя вкладка окна не закрываются никогда.
 async function tidyDuplicates(windowId) {
   await openPalette(windowId, '', 'review');
   return 0;
 }
 
+// Прямая чистка точных дублей и пустых вкладок – без предварительного review.
+async function cleanDuplicates() {
+  const out = await applyDuplicateCleanup();
+  return out?.closed ?? 0;
+}
+
+// Уборка одним проходом: чистка → плоский список → свежие вкладки наверх → блоки.
+// До 4.26 команда лишь открывала review и ничего не делала сама.
 async function tidyUp(windowId) {
-  await openPalette(windowId, '', 'review-tidy');
-  return 0;
+  const wid = await targetWindowId(windowId);
+  if (wid == null) return 0;
+
+  const cleaned = await applyDuplicateCleanup();
+  const closed = cleaned?.closed || 0;
+
+  const all = await chrome.tabs.query({ windowId: wid }).catch(() => []);
+  const grouped = all.filter(t => t.groupId !== -1).map(t => t.id);
+  if (grouped.length) await chrome.tabs.ungroup(grouped).catch(() => { });
+
+  const arranged = await arrangeWindow(wid);
+  const parts = [];
+  if (closed) parts.push('closed ' + closed);
+  parts.push(arranged.loose + ' loose on top');
+  if (arranged.blocks) parts.push(arranged.blocks + ' block' + (arranged.blocks === 1 ? '' : 's'));
+  flash('✦', 'tidy up · ' + parts.join(' · ') + (closed ? '\nreceipt saved · ⌥⌘D shows what stays' : '\nnothing to close · ⌥⌘D shows why'));
+  return closed;
 }
 
 const recentOf = t => t.lastAccessed || 0;
@@ -1291,9 +1326,16 @@ async function listFavorites() {
 }
 
 // после переноса боковая панель теряет подсветку строки – возвращаем её на ту же страницу
+// Выбор подтверждаем дважды. Сайдбар Aside перестраивает список после закрепления и
+// после появления строки закладки и в этот момент уводит подсветку на соседнюю строку;
+// второй заход через четверть секунды возвращает её на ту страницу, с которой человек работает.
 async function keepSelected(tabId, windowId) {
-  await chrome.tabs.update(tabId, { active: true }).catch(() => { });
-  if (windowId != null) await chrome.windows.update(windowId, { focused: true }).catch(() => { });
+  const select = async () => {
+    await chrome.tabs.update(tabId, { active: true }).catch(() => { });
+    if (windowId != null) await chrome.windows.update(windowId, { focused: true }).catch(() => { });
+  };
+  await select();
+  setTimeout(select, 260);
 }
 
 // Сайдбар Aside вплавляет открытую вкладку в строку закладки с тем же адресом – но только
@@ -1340,12 +1382,22 @@ async function favoriteTab(windowId) {
 
   if (twin) {
     await chrome.bookmarks.remove(twin.id).catch(() => { });
+    // страница возвращается в список вкладок целиком: строка снята, квадрат снят
+    const unpinned = tab.pinned && settings.favoritePins;
+    if (unpinned) {
+      await chrome.tabs.update(tab.id, { pinned: false }).catch(() => { });
+      tab.pinned = false;
+      const rest = await chrome.tabs.query({ windowId: tab.windowId }).catch(() => []);
+      await chrome.tabs.move(tab.id, { index: rest.filter(t => t.pinned && t.id !== tab.id).length }).catch(() => { });
+    }
     await leaveGroup(tab);
-    const moved = await moveTabTo(tab);
+    const moved = unpinned ? false : await moveTabTo(tab);
     await keepSelected(tab.id, tab.windowId);
-    flash('BM−', moved
-      ? 'back in the tabs – first row, selected ↑'
-      : 'out of the bookmarks bar · tab stays open and selected');
+    flash('BM−', unpinned
+      ? 'row and square removed – first row of the tabs, still selected ↑'
+      : moved
+        ? 'back in the tabs – first row, selected ↑'
+        : 'out of the bookmarks bar · tab stays open and selected');
     return -1;
   }
 
@@ -1372,10 +1424,19 @@ async function favoriteTab(windowId) {
   }
 
   const left = await leaveGroup(tab);
-  const moved = await moveTabTo(tab);
+  // Наверху сайдбара стоят квадратики закреплённых вкладок – туда же, куда ставит ⇧⌘D,
+  // ⌘D поднимает и сохранённую страницу. Строка закладки при этом остаётся: она переживёт
+  // закрытие вкладки, а квадрат – нет.
+  const pinned = settings.favoritePins && !tab.pinned
+    ? await chrome.tabs.update(tab.id, { pinned: true }).then(() => true).catch(() => false)
+    : tab.pinned;
+  if (pinned) await chrome.storage.session.set({ lastPinId: tab.id, lastPinAt: Date.now() }).catch(() => { });
+  const moved = pinned ? false : await moveTabTo(tab);
   await keepSelected(tab.id, tab.windowId);
   flash('BM+', (settings.favoriteRowTop ? 'first row of the bookmarks bar ★' : 'last in the bookmarks bar ★') +
-    (moved ? '\ntab rises to the first row and keeps the focus ↑' : left ? '\nout of its block – the sidebar folds the tab into that row' : '\ntab stays open and selected') +
+    (pinned ? '\npinned ↑ – the squares on top, focus stays here'
+      : moved ? '\ntab rises to the first row and keeps the focus ↑'
+        : left ? '\nout of its block – the sidebar folds the tab into that row' : '\ntab stays open and selected') +
     '\n⌘D again takes it out');
   return 1;
 }
@@ -1862,7 +1923,7 @@ const DESK = { deskHealth, deskNotes, deskAgents, deskOpen, deskSwitch, deskRun,
 // ---------- messages / commands ----------
 
 const ACTIONS = {
-  tidyDuplicates, groupByDomain, groupByRules, ungroupAll, sortByDomain,
+  tidyDuplicates, cleanDuplicates, groupByDomain, groupByRules, ungroupAll, sortByDomain,
   pinTab, favoriteTab, listFavorites, bookmarkTab, tidyUp, sortByOpened, getStats, previewDuplicateCleanup, previewTabReview, openPalette, togglePanel, toggleSurface,
   blockSelected, foldBlocks,
   groupBySense: senseProposal, senseApply
@@ -1880,7 +1941,7 @@ const REVIEW_ACTIONS = {
 
 // Одно и то же сочетание приходит с двух уровней – от страницы и от команды браузера.
 // Для тоглов это означало бы «поставил и тут же снял», поэтому повтор в пределах кадра глушим.
-const TOGGLES = new Set(['favoriteTab', 'pinTab', 'bookmarkTab', 'tidyUp', 'tidyDuplicates']);
+const TOGGLES = new Set(['favoriteTab', 'pinTab', 'bookmarkTab', 'tidyUp', 'tidyDuplicates', 'cleanDuplicates']);
 const lastRun = new Map();
 
 function tooSoon(action) {
@@ -1939,7 +2000,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 chrome.commands.onCommand.addListener((cmd, tab) => {
   const map = {
-    'favorite-tab': 'favoriteTab', 'tidy-up': 'tidyUp', 'tidy-duplicates': 'tidyDuplicates',
+    'favorite-tab': 'favoriteTab', 'tidy-up': 'tidyUp', 'tidy-duplicates': 'tidyDuplicates', 'clean-duplicates': 'cleanDuplicates',
     'pin-tab': 'pinTab', 'bookmark-tab': 'bookmarkTab', 'open-palette': 'openPalette', 'open-panel': 'togglePanel', 'toggle-surface': 'toggleSurface'
   };
   const action = map[cmd];

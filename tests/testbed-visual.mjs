@@ -35,11 +35,21 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 
 const shot = async step => {
   const out = '/tmp/aside-testbed-' + step + '.png';
+  // w:snapshot() на этой macOS отдаёт nil, поэтому снимаем область экрана под окном.
+  // Значит, окно должно быть на текущем рабочем столе и поверх: переносим, поднимаем,
+  // снимаем и сразу возвращаем фокус тому окну, которое его держало.
   const lua = `
+    local prev = hs.window.focusedWindow()
     for _, w in ipairs(hs.window.allWindows()) do
       if (w:title() or ''):find('${MARK}', 1, true) then
-        local img = w:snapshot()
-        if img then img:saveToFile('${out}'); return '${out} · ' .. w:title() end
+        pcall(function() hs.spaces.moveWindowToSpace(w, hs.spaces.focusedSpace()) end)
+        w:raise(); w:focus()
+        hs.timer.usleep(800000)
+        local f = w:frame()
+        local img = w:screen():snapshot(hs.geometry.rect(f.x, f.y, f.w, f.h))
+        local ok = img and img:saveToFile('${out}')
+        if prev then prev:focus() end
+        return '${out} · ' .. tostring(ok) .. ' · ' .. w:title()
       end
     end
     return 'окно стенда не найдено – поднят ли он с --visible?'`;
@@ -55,7 +65,12 @@ const wid = await worker(`
   const kids = await chrome.bookmarks.getChildren('1').catch(() => []);
   for (const k of kids) await chrome.bookmarks.remove(k.id).catch(() => chrome.bookmarks.removeTree(k.id).catch(() => {}));
   // три готовые строки: на пустой панели «наверх» и «в конец» неразличимы
-  for (const t of ['alpha', 'beta', 'gamma']) await chrome.bookmarks.create({ parentId: '1', title: t, url: 'https://example.com/' + t });
+  // разные места хранения с говорящими именами: по снимку видно, какое из них
+  // рисуется квадратиками наверху сайдбара, а какое – строками ниже
+  for (const t of ['BAR ONE', 'BAR TWO', 'BAR THREE']) await chrome.bookmarks.create({ parentId: '1', title: t, url: 'https://example.com/' + t });
+  const folder = await chrome.bookmarks.create({ parentId: '1', title: 'FOLDER' });
+  await chrome.bookmarks.create({ parentId: folder.id, title: 'IN FOLDER', url: 'https://example.com/in-folder' });
+  await chrome.bookmarks.create({ parentId: '2', title: 'OTHER ONE', url: 'https://example.com/other' });
   return win.id;
 `);
 await wait(5000);   // ждём сторожа размещения, иначе в кадре его работа, а не результат команды

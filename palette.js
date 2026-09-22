@@ -469,8 +469,10 @@ async function build(raw) {
       .filter(x => x.m > 0)
       .sort((a, b) => {
         if (q && b.m !== a.m) return b.m - a.m;
+        // вкладка, на которой человек стоит, идёт первой строкой и помечена – до 4.26
+        // её уводили в конец списка, и «где я сейчас» приходилось искать глазами
         const ca = isCurrent(a.t), cb = isCurrent(b.t);
-        if (ca !== cb) return ca ? 1 : -1;
+        if (ca !== cb) return ca ? -1 : 1;
         if (q) {
           const fa = score(normUrl(a.t.url)), fb = score(normUrl(b.t.url));
           if (fb !== fa) return fb - fa;
@@ -485,7 +487,7 @@ async function build(raw) {
         icon: (t.favIconUrl && /^https?:|^data:/.test(t.favIconUrl)) ? t.favIconUrl : favicon(t.url),
         url: t.url, title: t.title || t.url, sub: hostOf(t.url),
         twin: n > 1 ? '×' + n : '',
-        kindLabel: t.pinned ? 'pinned' : t.discarded ? 'asleep' : 'tab',
+        kindLabel: isCurrent(t) ? 'active' : t.pinned ? 'pinned' : t.discarded ? 'asleep' : 'tab',
         primary: isCurrent(t) ? 'here' : 'switch',
         run: async () => {
           bump(normUrl(t.url));
