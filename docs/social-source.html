@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../assets/aim-mini-apps.css">
+<style>
+html,body{margin:0;width:1200px;height:630px;background:#fff;font-family:AIMPlex,ui-monospace,monospace;color:#202124;overflow:hidden}
+.wrap{position:relative;width:1200px;height:630px;display:grid;grid-template-columns:1fr 420px;align-items:center;padding:0 84px;box-sizing:border-box;gap:56px}
+.eyebrow{font-size:16px;letter-spacing:.1em;text-transform:uppercase;color:#6b6e75;font-weight:600;display:flex;align-items:center;gap:14px}
+.eyebrow svg{width:36px;height:36px}
+h1{margin:24px 0 22px;font-size:70px;line-height:.98;letter-spacing:-.06em;font-weight:500}
+p{margin:0;font-size:22px;line-height:1.5;color:#6b6e75;max-width:600px}
+.vox{display:grid;place-items:center;height:470px;background:#f2f3f5;border:1px solid #e8e9ed;border-radius:16px;position:relative}
+.vox svg{width:300px;height:auto;filter:drop-shadow(14px 16px 12px rgba(32,33,36,.14));overflow:visible}
+.cap{position:absolute;left:20px;right:20px;bottom:16px;display:flex;justify-content:space-between;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#6b6e75;font-weight:600}.cap b{color:#db303d}
+.foot{position:absolute;left:84px;bottom:40px;font-size:15px;color:#6b6e75;letter-spacing:.04em}
+</style></head><body><div class="wrap"><div>
+<div class="eyebrow"><svg viewBox="0 0 48 48"><use href="../assets/aim-app-marks.svg#aside"/></svg>aside tweaks · 4.22.0</div>
+<h1>the keys your browser<br>kept for itself.</h1>
+<p>⌘D keeps the page first. ⇧⌘K searches the whole desk. every cleanup waits for a review.</p></div>
+<div class="vox" id="vox"><div class="cap"><span>live product mark</span><b>4.22.0</b></div></div></div>
+<div class="foot">apps.aimindset.org/aside-tweaks</div>
+<script src="../assets/aim-voxel.js"></script>
+<script>fetch('../assets/voxel-models.json').then(r=>r.json()).then(d=>{document.getElementById('vox').insertAdjacentHTML('afterbegin',AIMVoxel.toSVGString(d.models.aside,{unit:12}));document.body.dataset.ready='1';});</script>
+</body></html>
