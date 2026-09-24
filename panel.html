@@ -47,6 +47,9 @@
   .row .glyph { width: 14px; text-align: center; flex: none; color: var(--dim); font-size: 10px; }
   .row .t { flex: 1; overflow: hidden; text-overflow: ellipsis; }
   .row.sleeping .t { color: var(--muted); }
+  .row .tag { flex: none; font-size: 9.5px; color: var(--muted); opacity: .75; max-width: 42%; overflow: hidden; text-overflow: ellipsis; }
+  .row:hover .tag { opacity: 0; }
+  .row .tag.now { color: var(--accent); opacity: 1; letter-spacing: .04em; }
   .row .act {
     opacity: 0; flex: none; border: none; background: none;
     color: var(--muted); font: inherit; font-size: 11px; cursor: pointer; padding: 0 3px;

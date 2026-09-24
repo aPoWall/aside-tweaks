@@ -17,8 +17,8 @@ const TWEAK_COMMANDS = [
     words: 'palette search find', group: 'surface', on: ['popup']
   },
   {
-    action: 'favoriteTab', glyph: '★', title: 'bookmark ⇄ tab', short: 'bookmark ⇄ tab', sub: 'first row · squares on top', key: '⌘D',
-    hint: 'keeps the page in both senses: the row goes first in the bookmarks bar and the tab is pinned into the squares on top of the sidebar, focus stays on it; a second ⌘D takes the row and the square out again',
+    action: 'favoriteTab', glyph: '★', title: 'bookmark ⇄ tab', short: 'bookmark ⇄ tab', sub: 'first row of the bar', key: '⌘D',
+    hint: 'the page becomes the first row of the bookmarks bar and the sidebar folds the open tab into that row, so one page stands in the sidebar once and keeps the focus; a second ⌘D takes the row out again',
     words: 'bookmark bar keep star arc pin', group: 'tab', on: ['palette', 'popup']
   },
   {

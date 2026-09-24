@@ -313,7 +313,7 @@ const fav = await call('favoriteTab', { windowId: 1 });
 check('favoriteTab сделал закладку', fav?.ok && fav.count === 1 && MARKS.length === 1, JSON.stringify(MARKS));
 check('вкладка осталась жива – без закрытия и перезагрузки', TABS.some(t => t.id === 23), TABS.map(t => t.id).join(' '));
 check('⌘D вывел вкладку из блока – сайдбар вплавит её в строку закладки', log.slice(mark).includes('ungroup 1') && TABS.find(t => t.id === 23)?.groupId === -1, log.slice(mark).join(' | '));
-check('⌘D закрепил вкладку – квадратик наверху сайдбара', TABS.find(t => t.id === 23)?.pinned === true, TABS.map(t => t.id + (t.pinned ? '📌' : '')).join(' '));
+check('⌘D вкладку не закрепляет – квадратики остаются за ⇧⌘D', TABS.find(t => t.id === 23)?.pinned !== true, TABS.map(t => t.id + (t.pinned ? '📌' : '')).join(' '));
 
 // адрес уже открыт – переключение вместо второй вкладки, как в Arc
 const before = TABS.length;
@@ -325,7 +325,7 @@ TABS.find(t => t.id === 23).active = true;
 await wait(500);   // защита от двойного срабатывания: повтор в пределах 450 мс глушится
 const unfav = await call('favoriteTab', { windowId: 1 });
 check('второе нажатие сняло закладку', unfav?.ok && unfav.count === -1 && MARKS.length === 0);
-check('второе нажатие сняло и закрепление', TABS.find(t => t.id === 23)?.pinned === false, TABS.map(t => t.id + (t.pinned ? '📌' : '')).join(' '));
+check('вкладка осталась первой строкой списка', TABS.map(t => t.id).join(' ') === '21 23 22 24', TABS.map(t => t.id).join(' '));
 
 const twice = await call('favoriteTab', { windowId: 1 });
 const twiceAgain = await call('favoriteTab', { windowId: 1 });
@@ -506,8 +506,8 @@ const scene = () => {
 store.sync.favoriteCloses = false;
 store.sync.favoriteMovesTab = true;
 store.sync.favoriteRowTop = true;
-store.sync.favoritePins = true;
-await fire('storeChanged', { favoriteCloses: { newValue: false }, favoriteMovesTab: { newValue: true }, favoriteRowTop: { newValue: true }, favoritePins: { newValue: true } }, 'sync');
+store.sync.favoritePins = false;
+await fire('storeChanged', { favoriteCloses: { newValue: false }, favoriteMovesTab: { newValue: true }, favoriteRowTop: { newValue: true }, favoritePins: { newValue: false } }, 'sync');
 await wait(20);
 scene();
 await wait(500);   // защита от повтора: то же действие в пределах 450 мс глушится
@@ -515,23 +515,37 @@ const favTop = await call('favoriteTab', { windowId: 1 });
 check('⌘D: строка встаёт первой в панели закладок',
   favTop?.count === 1 && MARKS.length === 2 && MARKS[0].url === 'https://keep.example/page',
   JSON.stringify(MARKS.map(b => b.url)));
-check('⌘D: страница закреплена – она встаёт квадратиком наверху сайдбара',
-  TABS.find(t => t.id === 103)?.pinned === true, TABS.map(t => t.id + (t.pinned ? '📌' : '')).join(' '));
+check('⌘D: страница остаётся вкладкой и поднимается первой строкой – сайдбар вплавит её в строку закладки',
+  TABS.find(t => t.id === 103)?.pinned !== true && TABS.map(t => t.id).join(' ') === '101 103 102 104',
+  TABS.map(t => t.id + (t.pinned ? '📌' : '')).join(' '));
 check('⌘D: фокус остаётся на той же странице',
   TABS.find(t => t.id === 103)?.active === true, TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
 check('⌘D: копии страницы во вкладках не появилось',
   TABS.filter(t => t.url === 'https://keep.example/page').length === 1, TABS.map(t => t.url).join(' '));
 await wait(500);
 const unfavTop = await call('favoriteTab', { windowId: 1 });
-check('⌘D второй раз снимает строку и квадрат, вкладка остаётся выбранной',
-  unfavTop?.count === -1 && MARKS.length === 1 && TABS.find(t => t.id === 103)?.pinned === false && TABS.find(t => t.id === 103)?.active === true,
-  JSON.stringify(MARKS.map(b => b.url)) + ' · ' + TABS.map(t => t.id + (t.pinned ? '📌' : '')).join(' '));
+check('⌘D второй раз снимает строку, вкладка остаётся открытой и выбранной',
+  unfavTop?.count === -1 && MARKS.length === 1 && TABS.find(t => t.id === 103)?.active === true,
+  JSON.stringify(MARKS.map(b => b.url)) + ' · ' + TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
+
+// закрепление осталось настройкой для тех, кому нужны квадратики
+store.sync.favoritePins = true;
+await fire('storeChanged', { favoritePins: { newValue: true } }, 'sync');
+await wait(20);
+scene();
+await wait(500);
+await call('favoriteTab', { windowId: 1 });
+check('настройка «⌘D закрепляет» включается и работает', TABS.find(t => t.id === 103)?.pinned === true, TABS.map(t => t.id + (t.pinned ? '📌' : '')).join(' '));
+await wait(500);
+await call('favoriteTab', { windowId: 1 });
+store.sync.favoritePins = false;
+await fire('storeChanged', { favoritePins: { newValue: false } }, 'sync');
+await wait(20);
 
 // прежний договор 4.21 остаётся двумя настройками: конец панели и порядок вкладок не трогаем
 store.sync.favoriteMovesTab = false;
 store.sync.favoriteRowTop = false;
-store.sync.favoritePins = false;
-await fire('storeChanged', { favoriteMovesTab: { newValue: false }, favoriteRowTop: { newValue: false }, favoritePins: { newValue: false } }, 'sync');
+await fire('storeChanged', { favoriteMovesTab: { newValue: false }, favoriteRowTop: { newValue: false } }, 'sync');
 await wait(20);
 scene();
 await wait(500);

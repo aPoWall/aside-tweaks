@@ -114,8 +114,8 @@ check('⌘D пишет строку в панель закладок', !!row, ro
 check('строка встаёт наверх панели закладок', row?.i === 0, 'index ' + row?.i);
 check('вкладка остаётся открытой', !!same);
 check('вкладка остаётся выбранной', !!same?.active);
-check('вкладка закреплена – в сайдбаре это квадратик наверху', same?.pinned === true);
-check('закреплённая вкладка стоит первой', same?.i === 0, 'index ' + same?.i);
+check('вкладка не закреплена – квадратики остаются за ⇧⌘D', same?.pinned !== true);
+check('вкладка поднялась первой строкой списка', same?.i === after.tabs.filter(t => t.pinned).length, 'index ' + same?.i);
 check('копии вкладки не появилось', after.tabs.filter(t => t.url === live.url).length === 1,
   after.tabs.filter(t => t.url === live.url).length + ' вкладок с этим адресом');
 
@@ -124,7 +124,6 @@ await act('favoriteTab');
 const back = await snapshot();
 console.log('второй ⌘D · ' + show(back));
 check('второй ⌘D убирает строку', !back.bar.some(b => b.url === live.url));
-check('второй ⌘D снимает и закрепление', back.tabs.find(t => t.id === live.id)?.pinned === false);
 check('второй ⌘D оставляет вкладку выбранной', !!back.tabs.find(t => t.id === live.id)?.active);
 
 // ⇧⌘D – эталон поведения, с которым сравнивают ⌘D

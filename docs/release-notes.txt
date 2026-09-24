@@ -1,3 +1,9 @@
+aside tweaks 4.27.0 – 2026-09-24
+
+- ⌘D stops pinning: the row goes first in the bookmarks bar and the sidebar folds the open tab into it, so the page stands in the sidebar once and keeps the focus
+- the squares on top belong to ⇧⌘D; pinning on ⌘D stays a switch and is off by default
+- the panel names the row you are on – active, pinned, asleep or the host – and scrolls that row into the middle of its window on every render and every tab switch
+
 aside tweaks 4.26.0 – 2026-09-22
 
 - ⌘D puts the page where ⇧⌘D puts it: the row goes first in the bookmarks bar and the tab is pinned into the squares on top of the sidebar, with the focus still on it

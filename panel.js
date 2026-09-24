@@ -86,6 +86,11 @@ function favRow(mark) {
 
 // ---------- строка вкладки ----------
 
+// хост строкой справа – тот же признак, по которому читается строка палитры
+function hostOf(u) {
+  try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; }
+}
+
 function tabRow(tab) {
   const d = document.createElement('div');
   d.className = 'row' + (tab.active ? ' active' : '') + (tab.discarded ? ' sleeping' : '');
@@ -96,6 +101,13 @@ function tabRow(tab) {
   t.className = 't';
   t.textContent = tab.title || tab.url || 'untitled';
   d.append(iconFor(tab.url, tab.favIconUrl), t);
+
+  // Как в палитре: справа сказано, что это за строка. Жалоба была ровно про это –
+  // в палитре видно, где ты стоишь, а панель молчала.
+  const tag = document.createElement('span');
+  tag.className = 'tag' + (tab.active ? ' now' : '');
+  tag.textContent = tab.active ? 'active' : tab.pinned ? 'pinned' : tab.discarded ? 'asleep' : hostOf(tab.url);
+  d.append(tag);
 
   d.append(act('★', 'bookmark ⇄ tab · first row of the bar, then next open tab', false, async () => {
     await chrome.tabs.update(tab.id, { active: true });
@@ -201,6 +213,10 @@ async function render() {
   }
   if (!rest.length) tabsEl.append(emptyLine('empty'));
 
+  // Панель догоняет вкладку. Активная строка встаёт в середину окна панели, иначе
+  // при полусотне вкладок «где я сейчас» приходится искать прокруткой.
+  focusActiveRow();
+
   document.getElementById('nFav').textContent = String(marks.length);
   document.getElementById('nPins').textContent = String(pins.length);
   document.getElementById('nTabs').textContent = String(rest.length);
@@ -208,6 +224,15 @@ async function render() {
   // строка под именем продукта: из чего состоит окно прямо сейчас
   document.getElementById('count').textContent =
     `${all.length} tabs${sleeping ? ` · ${sleeping} asleep` : ''}`;
+}
+
+// прокрутку делаем после кадра отрисовки: до него у строк нет геометрии
+function focusActiveRow() {
+  requestAnimationFrame(() => {
+    const row = document.querySelector('.row.active');
+    if (!row) return;
+    row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
 }
 
 let rerenderTimer = null;
@@ -219,6 +244,9 @@ function rerender() {
 for (const ev of ['onCreated', 'onRemoved', 'onUpdated', 'onMoved', 'onActivated', 'onDetached', 'onAttached', 'onReplaced']) {
   chrome.tabs[ev]?.addListener(rerender);
 }
+// переключились на другую вкладку – панель едет к ней сразу, не дожидаясь перерисовки
+chrome.tabs.onActivated?.addListener(focusActiveRow);
+chrome.windows?.onFocusChanged?.addListener(focusActiveRow);
 for (const ev of ['onCreated', 'onRemoved', 'onChanged', 'onMoved']) {
   chrome.bookmarks[ev]?.addListener(rerender);
 }

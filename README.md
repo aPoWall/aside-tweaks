@@ -113,7 +113,7 @@ The page-level keymap uses physical key codes, so Latin and Cyrillic layouts kee
 
 AIM apps rule 37 fixes `⌘K` as the palette key for the whole family. In a browser surface `⌘K` belongs to the address bar, so Aside Tweaks declares one exception: the palette opens on `⇧⌘K`, and `⌘K` keeps the single meaning of «actions for the selected row» inside the palette. The exception is printed on the product page (feature 02) and in the palette itself. Every other family key keeps its family meaning: `esc` closes, digits switch blocks, `⌘D` bookmarks.
 
-`⌘D` keeps the page in both senses at once: the row becomes the **first row** of the bookmarks bar and the tab is **pinned**, so in the sidebar of Aside it stands as a square on top – exactly where `⇧⌘D` puts it – with the focus still on it. A second `⌘D` takes the row and the square out and leaves the tab open, selected, first in the list. The difference between the two keys stays: `⇧⌘D` pins for this session, `⌘D` also writes the row that survives the tab. Three settings: `⌘D pins the page into the squares on top` (4.26), `the new row goes first in the bookmarks bar` and `the open tab rises to the first row` (4.25); switching all three off returns the 4.21 contract. Closing the tab after `⌘D` is a third setting, off by default; with it on, the next unpinned tab becomes active and pinned tabs are used only when no working tab remains. Aside's native **Chats** section and system-owned `⌘W` / `⌘V` behavior are outside the extension API.
+`⌘D` makes the page the **first row** of the bookmarks bar, and the sidebar of Aside folds the open tab into that row: the page leaves the tab list, stands in the sidebar once and keeps the focus. A second `⌘D` takes the row out and the tab comes back into the list, selected. The squares on top of the sidebar belong to `⇧⌘D`, which pins for this session; `⌘D` writes the row that survives the tab. Settings: `the new row goes first in the bookmarks bar` and `the open tab rises to the first row` are on since 4.25, `⌘D also pins the page into the squares on top` is off since 4.27. Closing the tab after `⌘D` is a third setting, off by default; with it on, the next unpinned tab becomes active and pinned tabs are used only when no working tab remains. Aside's native **Chats** section and system-owned `⌘W` / `⌘V` behavior are outside the extension API.
 
 ### Blocks under the number keys
 
@@ -247,6 +247,8 @@ and no API shows it. The snapshot needs the window raised on the current desktop
 7. Run the `lab-sites` preflight, commit only that site path, push `main`, and verify production.
 
 ### Migration and rollback
+
+**v4.26 → v4.27:** `⌘D` stops pinning, once, under the `favoriteUnpinRev` key: `⌘D also pins the page into the squares on top` is set to off and stays a switch. Pages pinned by 4.26 keep their squares – unpin them with `⇧⌘D` or from the panel. Bookmarks, keymaps, review state, receipts, bridge config and theme settings are untouched.
 
 **v4.25 → v4.26:** `⌘D` starts pinning the page, once, under the `favoritePinRev` key: `⌘D pins the page into the squares on top` is set to on and stays a switch in the options page. Existing bookmarks, pins, keymaps, review state, receipts, bridge config and theme settings are untouched. `tidy up` and `remove duplicates` become working commands instead of doors into review – both keep every protection and write a receipt, and `review tabs` still opens the review surface.
 

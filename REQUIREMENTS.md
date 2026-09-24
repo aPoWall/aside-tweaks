@@ -15,7 +15,7 @@ reason · `blocked` waits for something outside the product.
 
 | id | requirement | source | status | date |
 |----|-------------|--------|--------|------|
-| K1 | `⌘D` puts the page where `⇧⌘D` puts it: the row first in the bar, the tab pinned into the squares on top of the sidebar, the focus on it; a second `⌘D` takes both out | wave 11 § ⌘D, 2026-09-22 | done · sw-smoke asserts both directions and the switches, `tests/testbed-favorite.mjs` asserts pin, row and focus in a real browser | 2026-09-22 |
+| K1 | `⌘D` writes the row first in the bar and the sidebar folds the open tab into it: one page, one place, the focus on it; `⇧⌘D` keeps the squares | wave 12, 2026-09-24 | done · sw-smoke asserts both directions and the pin switch, `tests/testbed-favorite.mjs` asserts row, focus and no pin in a real browser | 2026-09-24 |
 | K2 | `⇧⌘D` pins and unpins, the focus stays on the tab | wave 6 § D | done · sw-smoke, and the testbed compares `⌘D` with it as the reference move | 2026-09-22 |
 | K3 | `⌘1`…`⌘9` address the blocks of the window, `⇧⌘` with the same number files the current tab | wave 6 § D | done · sw-smoke | 2026-09-16 |
 | K4 | a number key never lands on nothing | wave 9 § D, rule 38 | done · a number with no block selects the tab in that position, `⌘9` the last one; `⇧⌘` on the next free number opens a block around the tab | 2026-09-17 |
@@ -36,6 +36,8 @@ reason · `blocked` waits for something outside the product.
 
 | C9 | a command that names an action performs it: `remove duplicates` closes, `tidy up` sweeps, `review tabs` opens the review | wave 11, 2026-09-22 | done · reverses the 4.18 rule that sent every cleanup key into review; protections and receipts hold in both paths, sw-smoke asserts each | 2026-09-22 |
 | C10 | the palette shows the tab the person is on, first and marked `active` | wave 11, 2026-09-22 | done · `palette.js` ranks it first without a query | 2026-09-22 |
+
+| C11 | the panel names the row you are on and scrolls to it | wave 12, 2026-09-24 | done · label on every row, active row centred on render and on tab switch | 2026-09-24 |
 
 ## Palette and rows
 

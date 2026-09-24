@@ -1,5 +1,19 @@
 # Changelog
 
+## 4.27.0 – 2026-09-24
+
+- `⌘D` stops pinning. The squares on top belong to `⇧⌘D`; `⌘D` writes the row, first in the bookmarks
+  bar, and the sidebar of Aside folds the open tab into that row – the page leaves the tab list and
+  stands in the sidebar once, with the focus on it. 4.26 sent it into the squares, which is a different
+  gesture and a different place. Pinning stays as a switch, `⌘D also pins the page into the squares on
+  top`, off by default; migration key `favoriteUnpinRev` turns it off once;
+- the panel says where you are and goes there. Every row carries a label on the right, the way a palette
+  row does – `active`, `pinned`, `asleep` or the host – and the panel scrolls the active row into the
+  middle of its own window on every render and on every tab switch. Until now the highlight was there
+  and the panel never moved to it, so on fifty tabs «where am I» meant scrolling by hand;
+- tests: sw-smoke asserts the new default in both directions and keeps the pin under its switch;
+  `tests/testbed-favorite.mjs` asserts the same in a real browser.
+
 ## 4.26.0 – 2026-09-22
 
 - `⌘D` puts the page where `⇧⌘D` puts it. The row becomes the first row of the bookmarks bar and the

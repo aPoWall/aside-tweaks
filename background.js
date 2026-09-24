@@ -38,7 +38,7 @@ const DEFAULTS = {
   keepPins: true,
   favoriteMovesTab: true,   // ⌘D поднимает вкладку первой строкой вкладок – как ⇧⌘D поднимает её в квадратики
   favoriteRowTop: true,     // новая строка встаёт первой в панели закладок; выключено – уходит в конец, как было до 4.25
-  favoritePins: true,       // ⌘D закрепляет страницу: в сайдбаре Aside она встаёт квадратиком наверху, как после ⇧⌘D
+  favoritePins: false,      // квадратики наверху остаются за ⇧⌘D; ⌘D живёт строкой закладки, в которую сайдбар вплавляет вкладку
   favoriteLeavesGroup: true, // ⌘D выводит вкладку из блока: вне блока сайдбар Aside вплавляет её в строку закладки
   favoriteCloses: false,     // ⌘D оставляет вкладку открытой и выбранной, как pin в Arc; включённая настройка закрывает её
   blockKeys: true,           // ⌘1…⌘9 переключают на блок окна, ⇧⌘1…⇧⌘9 кладут вкладку в блок
@@ -76,7 +76,7 @@ function upgradeKeymap(stored) {
   return changed ? map : null;
 }
 
-chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0, favoriteTopRev: 0, favoritePinRev: 0, barModeRev: 0 }).then(s => {
+chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0, favoriteTopRev: 0, favoritePinRev: 0, favoriteUnpinRev: 0, barModeRev: 0 }).then(s => {
   // раскладку накладываем поверх дефолтной: иначе действия, добавленные позже,
   // остаются вообще без привязки – в хранилище лежит карта старой версии
   settings = { ...DEFAULTS, ...s, keymap: { ...DEFAULT_KEYMAP, ...(s.keymap || {}) } };
@@ -117,6 +117,15 @@ chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0, favorite
   if (!s.favoritePinRev) {
     settings.favoritePins = true;
     chrome.storage.sync.set({ favoritePinRev: 1, favoritePins: true }).catch(() => { });
+  }
+
+  // 4.27. Закрепление оказалось не тем движением. Квадратики наверху – место ⇧⌘D,
+  // а ⌘D должен класть страницу строкой в закладки: сайдбар Aside вплавляет в эту строку
+  // открытую вкладку, страница уходит из списка вкладок и остаётся одной записью.
+  // Настройка осталась, ключ миграции гасит её один раз.
+  if (!s.favoriteUnpinRev) {
+    settings.favoritePins = false;
+    chrome.storage.sync.set({ favoriteUnpinRev: 1, favoritePins: false }).catch(() => { });
   }
 
   // Правило 47: режим smart снят и держит слот пустым; сохранённая настройка один раз
@@ -1443,8 +1452,7 @@ async function favoriteTab(windowId) {
   await keepSelected(tab.id, tab.windowId);
   flash('BM+', (settings.favoriteRowTop ? 'first row of the bookmarks bar ★' : 'last in the bookmarks bar ★') +
     (pinned ? '\npinned ↑ – the squares on top, focus stays here'
-      : moved ? '\ntab rises to the first row and keeps the focus ↑'
-        : left ? '\nout of its block – the sidebar folds the tab into that row' : '\ntab stays open and selected') +
+      : '\nthe sidebar folds the open tab into that row' + (left ? ' – out of its block' : '') + ', focus stays here') +
     '\n⌘D again takes it out');
   return 1;
 }
