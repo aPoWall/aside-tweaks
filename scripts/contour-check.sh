@@ -23,22 +23,31 @@ handler=$(swift "$REPO/scripts/default-browser.swift" 2>/dev/null | awk '/^  htt
   && say PASS "ссылки открывает Aside" "$handler" \
   || say FAIL "ссылки открывает не Aside" "${handler:-неизвестно}"
 
-# 2. расширение: версия на диске и то, что браузер записал о нём в профиль
+# 2. расширение: что реально поднялось в браузере
+#    Первый признак – метка сборки, которую расширение пишет о себе при загрузке.
+#    Пока она не появилась (её пишут версии с 4.27), читаем ключ миграции 4.26.
 want=$(grep -o '"version": "[0-9.]*"' "$REPO/manifest.json" | head -1 | grep -o '[0-9.]*')
-state=$($NODE -e '
+local_db="$PROFILE/Local Extension Settings/$ID"
+sync_db="$PROFILE/Sync Extension Settings/$ID"
+stamp=$(strings "$local_db"/*.log 2>/dev/null | grep -o '"version":"[0-9.]*"' | tail -1 | grep -o '[0-9.]*')
+off=$($NODE -e '
   const fs = require("fs");
-  const p = process.argv[1] + "/Secure Preferences";
-  const e = (JSON.parse(fs.readFileSync(p, "utf8")).extensions?.settings ?? {})[process.argv[2]];
-  if (!e) { console.log("нет записи"); process.exit(0); }
-  const off = (e.disable_reasons ?? []).length;
-  const cmds = Object.keys(e.commands ?? {});
-  console.log((off ? "выключено:" + e.disable_reasons.join(",") : "включено") + " commands:" + cmds.length + (cmds.includes("clean-duplicates") ? " 4.26+" : " до-4.26"));
+  const e = (JSON.parse(fs.readFileSync(process.argv[1] + "/Secure Preferences", "utf8")).extensions?.settings ?? {})[process.argv[2]];
+  console.log(!e ? "нет записи" : (e.disable_reasons ?? []).join(",") || "");
 ' "$PROFILE" "$ID" 2>/dev/null)
-case "$state" in
-  включено*4.26+) say PASS "расширение включено и свежее" "на диске $want" ;;
-  включено*)      say FAIL "расширение включено, но старее $want" "$state · нужен Reload" ;;
-  *)              say FAIL "расширение не работает" "$state · chrome://extensions → Developer mode" ;;
-esac
+
+if [[ -n "$off" ]]; then
+  hint="$off"
+  [[ "$off" == *16777216* ]] && hint="16777216 = DISABLE_UNSUPPORTED_DEVELOPER_EXTENSION · chrome://extensions → Developer mode"
+  say FAIL "расширение выключено браузером" "$hint"
+elif [[ -n "$stamp" ]]; then
+  [[ "$stamp" == "$want" ]] && say PASS "расширение живёт и это $stamp" \
+    || say FAIL "в браузере $stamp, на диске $want" "нужен Reload"
+elif strings "$sync_db"/*.log 2>/dev/null | grep -q favoritePinRev; then
+  say PASS "расширение живёт, ключ миграции 4.26 на месте" "метка сборки появится после Reload"
+else
+  say FAIL "расширение не отметилось" "ни метки сборки, ни ключа миграции"
+fi
 
 # 3. стенд – тот же путь, которым сессия с сервера ведёт браузер
 if [[ "${1:-}" != "--quick" ]]; then

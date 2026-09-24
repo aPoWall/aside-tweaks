@@ -21,7 +21,9 @@ let SHORTCUT = '⌥⇧A';
 globalThis.chrome = {
   runtime: {
     onMessage: mkEvent('msg'), onInstalled: mkEvent('installed'), onStartup: mkEvent('startup'),
-    onConnect: mkEvent('connect'), lastError: null, getURL: p => 'chrome-extension://x' + p, id: 'x'
+    onConnect: mkEvent('connect'), lastError: null, getURL: p => 'chrome-extension://x' + p, id: 'x',
+    // манифест читаем настоящий: метка сборки должна нести ту же версию, что и файл
+    getManifest: () => JSON.parse(fs.readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'))
   },
   storage: { sync: area(store.sync), session: area(store.session), local: area(store.local), onChanged: mkEvent('storeChanged') },
   action: {
@@ -204,6 +206,10 @@ TABS = [
   { id: 14, windowId: 1, index: 3, pinned: false, url: 'chrome://newtab/' },
   { id: 15, windowId: 1, index: 4, pinned: false, url: 'https://c.com/', lastAccessed: 100 }
 ];
+// метка сборки: по ней проверка контура снаружи понимает, какая версия поднялась
+const manifestVersion = JSON.parse(fs.readFileSync(new URL('../manifest.json', import.meta.url), 'utf8')).version;
+check('расширение отмечает свою сборку в storage.local', store.local.build?.version === manifestVersion, JSON.stringify(store.local.build));
+
 const stats = await call('getStats');
 check('getStats отвечает', stats?.ok && stats.data?.total === 5, JSON.stringify(stats?.data));
 check('getStats видит дубль сквозь www и слэш, и пустую вкладку', stats.data?.dups === 1 && stats.data?.empties === 1, JSON.stringify(stats?.data));

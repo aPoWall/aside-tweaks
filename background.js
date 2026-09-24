@@ -224,8 +224,16 @@ function scheduleBar() {
   barTimer = setTimeout(() => paintBar(), 180);
 }
 
-chrome.runtime.onInstalled.addListener(() => paintBar());
-chrome.runtime.onStartup?.addListener(() => paintBar());
+// Метка сборки на диске. Снаружи – из проверки контура, с сервера – по файлу настроек
+// браузера не видно, какая версия распакованного расширения реально поднялась: Chromium
+// пишет туда лениво и про путь с версией молчит. Поэтому расширение отмечается само.
+const stampBuild = () => chrome.storage.local.set({
+  build: { version: chrome.runtime.getManifest().version, at: new Date().toISOString() }
+}).catch(() => { });
+stampBuild();
+
+chrome.runtime.onInstalled.addListener(() => { stampBuild(); paintBar(); });
+chrome.runtime.onStartup?.addListener(() => { stampBuild(); paintBar(); });
 chrome.tabs.onCreated.addListener(scheduleBar);
 chrome.tabs.onRemoved.addListener(scheduleBar);
 chrome.tabs.onAttached.addListener(scheduleBar);
