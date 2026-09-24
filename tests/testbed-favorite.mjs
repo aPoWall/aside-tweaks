@@ -48,14 +48,23 @@ const worker = code => evalInWorker(cdp, sessionId, code);
 
 // Сцена живёт в собственном окне. Чужие окна стенда – приветственную страницу
 // встроенного расширения Aside – не трогаем: на свежем профиле её закрытие уносило
-// за собой и наше окно, а сценарий и так смотрит только в своё.
+// за собой и наше окно. Окно иногда закрывается само в первые секунды после старта
+// браузера, поэтому сцену собираем с тремя попытками, а не с одной.
 const wid = await worker(`
-  const win = await chrome.windows.create({ url: ${JSON.stringify([url('/one'), url('/two'), url('/three')])}, focused: true });
+  const urls = ${JSON.stringify([url('/one'), url('/two'), url('/three')])};
   const kids = await chrome.bookmarks.getChildren('1').catch(() => []);
   for (const k of kids) await chrome.bookmarks.remove(k.id).catch(() => chrome.bookmarks.removeTree(k.id).catch(() => {}));
   // три готовые строки: на пустой панели «наверх» и «в конец» неразличимы
   for (const t of ['alpha', 'beta', 'gamma']) await chrome.bookmarks.create({ parentId: '1', title: t, url: 'https://example.com/' + t });
-  return win.id;
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const win = await chrome.windows.create({ url: urls, focused: true }).catch(() => null);
+    if (!win) continue;
+    await new Promise(r => setTimeout(r, 1500));
+    const alive = await chrome.tabs.query({ windowId: win.id }).catch(() => []);
+    if (alive.length >= urls.length) return win.id;
+  }
+  throw new Error('окно сцены не держится: браузер закрывает его сразу после создания');
 `);
 // сторож размещения досылает свежие вкладки на место до placementGuardMs –
 // снимок раньше этого показывает не результат команды, а работу сторожа
