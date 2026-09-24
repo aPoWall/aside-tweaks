@@ -226,11 +226,16 @@ async function render() {
     `${all.length} tabs${sleeping ? ` · ${sleeping} asleep` : ''}`;
 }
 
-// прокрутку делаем после кадра отрисовки: до него у строк нет геометрии
+// Прокрутку делаем после кадра отрисовки: до него у строк нет геометрии.
+// Едем только когда строка действительно не видна – иначе панель дёргалась бы
+// на каждой перерисовке, а их здесь много: любое событие вкладок перерисовывает список.
 function focusActiveRow() {
   requestAnimationFrame(() => {
     const row = document.querySelector('.row.active');
     if (!row) return;
+    const box = row.getBoundingClientRect();
+    const pad = 24;   // у самого края строка формально видна, но читается как «за кадром»
+    if (box.top >= pad && box.bottom <= window.innerHeight - pad) return;
     row.scrollIntoView({ block: 'center', behavior: 'smooth' });
   });
 }
