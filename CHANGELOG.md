@@ -1,5 +1,20 @@
 # Changelog
 
+## 4.28.0 – 2026-09-27
+
+- `⌘D` is one keep-on-top gesture again: it writes the durable row first in the bookmarks bar, pins the
+  open page into the squares on top and returns the focus to that page. A second `⌘D` removes both while
+  leaving the page open and selected. Migration key `favoriteRepinRev` restores the switch once; after
+  that the setting belongs to the person;
+- fixed the invisible-new-row regression: the command inserted a bookmark at index 0 while the panel
+  rendered the last 14 bookmarks, so a successful `⌘D` looked broken on a long bar. The panel now reads
+  the first 14 and keeps the newest row visible;
+- the panel gains a six-row local smart history, ranked with the palette's recency and choice signals and
+  excluding pages already open or bookmarked. Kept pages and pins form compact categories only for named
+  rules or repeated sites; one-off domains stay together instead of producing a wall of headings;
+- reopening, revealing or focusing the panel rereads the window and centres the active row immediately.
+  Tab activation does the same after the fresh state renders, so a stale previous row can no longer win.
+
 ## 4.27.0 – 2026-09-24
 
 - `⌘D` stops pinning. The squares on top belong to `⇧⌘D`; `⌘D` writes the row, first in the bookmarks

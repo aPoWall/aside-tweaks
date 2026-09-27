@@ -4,7 +4,7 @@
 
 **A review layer for the [Aside](https://aside.com) browser.** Aside Tweaks turns open tabs into named product families, protects work in progress, previews every cleanup batch, and records what stayed and what closed.
 
-The extension also ships a Raycast-shaped palette, a browser-level keymap, Arc-style bookmark and pin gestures, stable tab placement, an optional Obsidian/agent bridge, panel, popup and settings.
+The extension also ships a Raycast-shaped palette, a browser-level keymap, Arc-style keep and pin gestures, stable tab placement, a local smart history, an optional Obsidian/agent bridge, panel, popup and settings.
 
 [Product page](https://apps.aimindset.org/aside-tweaks/) · [Source](https://github.com/aPoWall/aside-tweaks)
 
@@ -96,8 +96,8 @@ Useful keys:
 | `⇧⌘K` | open palette |
 | `⌥⌘D` | review tabs |
 | `⌥⌘T` | review, then tidy the window |
-| `⌘D` | bookmark ⇄ tab |
-| `⇧⌘D` | pin / unpin |
+| `⌘D` | keep on top: bookmark row + pinned square |
+| `⇧⌘D` | pin / unpin only |
 | `⇥` | change palette scope |
 | `⇧↵` | secondary row action |
 | `⌘⌫` | close one eligible tab |
@@ -111,9 +111,15 @@ The page-level keymap uses physical key codes, so Latin and Cyrillic layouts kee
 
 ### Family keys – declared exception to rule 37
 
-AIM apps rule 37 fixes `⌘K` as the palette key for the whole family. In a browser surface `⌘K` belongs to the address bar, so Aside Tweaks declares one exception: the palette opens on `⇧⌘K`, and `⌘K` keeps the single meaning of «actions for the selected row» inside the palette. The exception is printed on the product page (feature 02) and in the palette itself. Every other family key keeps its family meaning: `esc` closes, digits switch blocks, `⌘D` bookmarks.
+AIM apps rule 37 fixes `⌘K` as the palette key for the whole family. In a browser surface `⌘K` belongs to the address bar, so Aside Tweaks declares one exception: the palette opens on `⇧⌘K`, and `⌘K` keeps the single meaning of «actions for the selected row» inside the palette. The exception is printed on the product page (feature 02) and in the palette itself. Every other family key keeps its family meaning: `esc` closes, digits switch blocks, `⌘D` keeps a page on top.
 
-`⌘D` makes the page the **first row** of the bookmarks bar, and the sidebar of Aside folds the open tab into that row: the page leaves the tab list, stands in the sidebar once and keeps the focus. A second `⌘D` takes the row out and the tab comes back into the list, selected. The squares on top of the sidebar belong to `⇧⌘D`, which pins for this session; `⌘D` writes the row that survives the tab. Settings: `the new row goes first in the bookmarks bar` and `the open tab rises to the first row` are on since 4.25, `⌘D also pins the page into the squares on top` is off since 4.27. Closing the tab after `⌘D` is a third setting, off by default; with it on, the next unpinned tab becomes active and pinned tabs are used only when no working tab remains. Aside's native **Chats** section and system-owned `⌘W` / `⌘V` behavior are outside the extension API.
+`⌘D` makes the page the **first row** of the bookmarks bar and pins the live tab into the squares on top. The page stays open and selected. A second `⌘D` removes the row and the square, then returns the selected page to the first loose-tab position. `⇧⌘D` remains the pin-only gesture. Settings keep the two parts separable: `the new row goes first in the bookmarks bar` and `⌘D also pins the page into the squares on top` are on by default. Closing the tab after `⌘D` is a separate setting, off by default; with it on, the next unpinned tab becomes active and pinned tabs are used only when no working tab remains. Aside's native **Chats** section and system-owned `⌘W` / `⌘V` behavior are outside the extension API.
+
+### Panel: active page, categories and smart history
+
+The active row is labelled and centred after a tab switch, window focus, panel reveal or sidebar reopen. The panel reads the first 14 kept rows, matching the place where `⌘D` inserts a new one. Kept pages and pins use the same product rules as tab blocks; repeated sites become one category and isolated sites stay in one compact `other` group.
+
+Smart history shows at most six local pages. It excludes URLs that are already open or bookmarked and ranks the rest from Chromium visit data plus the same decaying choice score used by the palette. Opening a history row strengthens that local score. Nothing is sent to a server.
 
 ### Blocks under the number keys
 
@@ -247,6 +253,8 @@ and no API shows it. The snapshot needs the window raised on the current desktop
 7. Run the `lab-sites` preflight, commit only that site path, push `main`, and verify production.
 
 ### Migration and rollback
+
+**v4.27 → v4.28:** `⌘D` pins again, once, under the `favoriteRepinRev` key: `⌘D also pins the page into the squares on top` is set to on and remains a switch. Existing bookmarks and pins keep their current order. Keymaps, review state, receipts, bridge config and theme settings are untouched. Rolling back to 4.27 keeps the migration keys; 4.27 does not remove existing pins, and its setting can be changed by hand.
 
 **v4.26 → v4.27:** `⌘D` stops pinning, once, under the `favoriteUnpinRev` key: `⌘D also pins the page into the squares on top` is set to off and stays a switch. Pages pinned by 4.26 keep their squares – unpin them with `⇧⌘D` or from the panel. Bookmarks, keymaps, review state, receipts, bridge config and theme settings are untouched.
 

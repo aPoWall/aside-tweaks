@@ -177,9 +177,9 @@
     <div class="head"><span class="idx">02</span><span class="ttl">pin vs bookmark</span></div>
     <div class="body">
       <small style="margin-bottom:9px">
-        <b><code>⌘D</code> – bookmark ⇄ tab.</b> the page becomes the first row of the bookmarks bar, and the sidebar of Aside folds the open tab
-        into that row: one page stands in the sidebar once, with the focus still on it. press ⌘D on the page again to take the row out.<br>
-        <b><code>⇧⌘D</code> – pin.</b> the squares on top of the sidebar, the browser's own pin on a key of its own; the tab keeps the focus after pinning.
+        <b><code>⌘D</code> – keep on top.</b> the page becomes the first row of the bookmarks bar and a pinned square on top, with the focus still on it.
+        press ⌘D on the page again to remove both.<br>
+        <b><code>⇧⌘D</code> – pin only.</b> the browser's square without the durable bookmark row; the tab keeps the focus after pinning.
       </small>
       <label class="opt"><input type="checkbox" id="favoriteCloses">
         <span>after ⌘D the tab closes<small>off by default since 4.21: the tab stays open and selected, as a pinned page does in Arc. on – the page opens again from the bar row and focus moves to the next unpinned tab</small></span>
@@ -188,7 +188,7 @@
         <span>the open tab rises to the first row<small>on by default since 4.25: the page you just kept sits under the pinned squares instead of staying where the list happened to hold it. off – ⌘D changes the bookmarks bar and leaves the tab order alone</small></span>
       </label>
       <label class="opt"><input type="checkbox" id="favoritePins">
-        <span>⌘D also pins the page into the squares on top<small>off by default since 4.27, the squares belong to ⇧⌘D: on – the saved page also takes a square on top. off – ⌘D writes the bookmark row and leaves the squares alone</small></span>
+        <span>⌘D also pins the page into the squares on top<small>on by default: the durable bookmark row and the live square are one keep action. off – ⌘D writes only the bookmark row; ⇧⌘D remains pin only</small></span>
       </label>
       <label class="opt"><input type="checkbox" id="favoriteRowTop">
         <span>the new row goes first in the bookmarks bar<small>on by default since 4.25: the fresh row is the one you look for, so it stands where pin puts a square. off – the row joins the end of the bar and the positions above it never shift</small></span>

@@ -1,3 +1,9 @@
+aside tweaks 4.28.0 – 2026-09-27
+
+- ⌘D is keep on top again: first bookmark row, pinned square and focus on the same page; a second press removes the row and square
+- fixed the long-bar bug where a new row was inserted first but the panel displayed the last 14 bookmarks
+- the panel adds six local smart-history rows, compact categories and reliable active-row return after reveal or refocus
+
 aside tweaks 4.27.0 – 2026-09-24
 
 - ⌘D stops pinning: the row goes first in the bookmarks bar and the sidebar folds the open tab into it, so the page stands in the sidebar once and keeps the focus

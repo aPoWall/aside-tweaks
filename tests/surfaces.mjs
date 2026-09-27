@@ -38,6 +38,13 @@ check('у команд попапа есть short и group', noShort.length ===
 // панель и палитра рендерят из общего списка
 check('панель рендерит из общего списка', panel.includes("commandsFor('panel')"));
 check('палитра рендерит из общего списка', palette.includes("commandsFor('palette')"));
+check('панель показывает начало закладок, куда ⌘D ставит свежую строку',
+  panel.includes('allMarks.slice(0, 14)') && !panel.includes('slice(-14)'));
+check('панель держит компактную умную историю на сигналах палитры',
+  panel.includes('const HISTORY_LIMIT = 6') && panel.includes('chrome.history.search') && panel.includes('twFrecency'));
+check('панель перечитывает окно и возвращает активную строку после раскрытия',
+  panel.includes("window.addEventListener('focus'") && panel.includes("window.addEventListener('pageshow'") &&
+  panel.includes("document.addEventListener('visibilitychange'") && panel.includes("ev === 'onActivated'"));
 
 // чистка дублей обязана быть на всех трёх поверхностях – это и была жалоба
 const dedup = TWEAK_COMMANDS.find(c => c.action === 'tidyDuplicates');

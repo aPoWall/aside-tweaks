@@ -11,8 +11,8 @@
     ]
   };
   const T = {
-    en: { start: 'drag the palette. arrows move, ⌘K opens actions.', palette: 'arrows move. ⌘K opens actions.', review: 'review is a proposal until you confirm.', kept: 'saved first. next unpinned tab is active.', returned: 'returned to the first tab row. selected.', actionsOn: 'actions open. choose the explicit verb.', actionsOff: 'actions closed.', moved: 'window moved. state stays put.' },
-    ru: { start: 'тащи палитру. стрелки двигают, ⌘K открывает действия.', palette: 'стрелки двигают. ⌘K открывает действия.', review: 'ревью остаётся предложением, пока ты не подтвердишь.', kept: 'сохранено первой. активна следующая незакреплённая вкладка.', returned: 'вернулась в первую строку вкладок. выбрана.', actionsOn: 'действия открыты. выбери точный глагол.', actionsOff: 'действия закрыты.', moved: 'окно передвинуто. состояние на месте.' }
+    en: { start: 'drag the palette. arrows move, ⌘K opens actions.', palette: 'arrows move. ⌘K opens actions.', review: 'review is a proposal until you confirm.', kept: 'saved first · pinned on top · still active.', returned: 'row and square removed · page stays active.', actionsOn: 'actions open. choose the explicit verb.', actionsOff: 'actions closed.', moved: 'window moved. state stays put.' },
+    ru: { start: 'тащи палитру. стрелки двигают, ⌘K открывает действия.', palette: 'стрелки двигают. ⌘K открывает действия.', review: 'ревью остаётся предложением, пока ты не подтвердишь.', kept: 'сохранено первой · закреплено наверху · фокус на месте.', returned: 'строка и квадрат сняты · страница остаётся активной.', actionsOn: 'действия открыты. выбери точный глагол.', actionsOff: 'действия закрыты.', moved: 'окно передвинуто. состояние на месте.' }
   };
   const lang = () => (document.documentElement.lang === 'ru' ? 'ru' : 'en');
   const stage = document.getElementById('stage');
@@ -23,6 +23,26 @@
   const demoText = document.getElementById('demoText');
   if (!stage || !palette || !list || !query || !actionMenu || !demoText) return;
   let mode = 'palette', selected = 0, kept = false;
+
+  const setCopy = (el, en, ru) => {
+    if (!el) return;
+    el.dataset.en = en;
+    el.dataset.ru = ru;
+    el.textContent = (document.documentElement.lang === 'ru' ? ru : en);
+  };
+  setCopy(document.querySelector('#example .example-head p:nth-child(2) span'),
+    '⌘D puts that page first in the bar and pins it into the square on top. ⌥⌘D shows the cluster.',
+    '⌘D кладёт её первой строкой панели и закрепляет квадратом наверху. ⌥⌘D показывает кластер.');
+  setCopy(document.querySelector('#features article:first-child p:last-child'),
+    'the row becomes the first bookmark row and the live page becomes a pinned square on top, with the focus still on it. press ⌘D again to remove both while the page stays open.',
+    'строка становится первой в закладках, а живая страница закрепляется квадратом наверху и держит фокус. повторное ⌘D снимает строку и квадрат, оставляя страницу открытой.');
+  setCopy(document.querySelector('#install > .eyebrow'), 'unpacked extension · 4.28.0', 'распакованное расширение · 4.28.0');
+  setCopy(document.querySelector('#install h3 + p'),
+    'pull the repository and press reload on the extension card. 4.28.0 keeps keymaps, bookmarks, review state, bridge config and theme settings. it restores the ⌘D pin switch once; rollback to 4.27 keeps every bookmark and pin.',
+    'обновите репозиторий и нажмите reload на карточке расширения. 4.28.0 сохраняет клавиши, закладки, ревью, bridge и тему. версия один раз возвращает pin для ⌘D; откат на 4.27 сохраняет все закладки и пины.');
+  setCopy(document.querySelector('.privacy h3 + p'),
+    'version 4.28.0 uses the shared apps shell and keeps the panel state local. the character, product mark and toolbar icon come from the same checked exports.',
+    'версия 4.28.0 использует общую оболочку apps и хранит состояние панели локально. персонаж, знак продукта и иконка панели приходят из одних проверенных экспортов.');
 
   function say(key) { demoText.dataset.key = key; demoText.textContent = T[lang()][key] || ''; }
   document.addEventListener('aim:lang', () => say(demoText.dataset.key || 'start'));
@@ -57,7 +77,7 @@
     const tab = document.getElementById('keepTab'), favorites = document.getElementById('favorites');
     if (kept) {
       favorites.querySelector('[data-demo-favorite]')?.remove();
-      tab.classList.remove('parked'); tab.classList.add('active'); kept = false; say('row removed · tab stays'); return;
+      tab.classList.remove('parked'); tab.classList.add('active'); kept = false; say('returned'); return;
     }
     const stageRect = stage.getBoundingClientRect(), tabRect = tab.getBoundingClientRect(), destRect = favorites.getBoundingClientRect();
     const clone = tab.cloneNode(true); clone.removeAttribute('id'); clone.className = 'aside-tab fly';
@@ -69,7 +89,7 @@
       clone.remove();
       const fav = document.createElement('span'); fav.className = 'favorite new'; fav.dataset.demoFavorite = ''; fav.textContent = 'AT'; favorites.prepend(fav);
       tab.classList.add('parked'); tab.classList.remove('active');
-      kept = true; say('pinned on top · row saved');
+      kept = true; say('kept');
     };
     if (matchMedia('(prefers-reduced-motion: reduce)').matches || !clone.animate) { finish(); return; }
     const anim = clone.animate([{ transform: 'translate(0,0) scale(1)' }, { transform: `translate(${dx * .64}px,${dy * .38}px) scale(.88)`, offset: .55 }, { transform: `translate(${dx}px,${dy}px) scale(.32)`, opacity: .2 }], { duration: 520, easing: 'cubic-bezier(.2,.8,.2,1)' });
