@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Aside Tweaks",
-  "version": "4.29.0",
-  "description": "A review layer for Aside: product-aware tab families, protected cleanup previews and receipts, plus the palette, keymap, Obsidian and agent bridge.",
+  "version": "4.30.0",
+  "description": "Aside-native Bookmarks and Pins, a fast palette, local Obsidian search and protected tab-review previews.",
   "permissions": [
     "tabs",
     "storage",
@@ -73,7 +73,7 @@
         "default": "Ctrl+Shift+B",
         "mac": "Command+D"
       },
-      "description": "Закладка ⇄ вкладка: строка в конце панели закладок, порядок вкладок и фокус остаются"
+      "description": "Сохранить / убрать из Bookmarks: последняя строка, фокус остаётся"
     },
     "pin-tab": {
       "suggested_key": {
@@ -92,7 +92,7 @@
       "description": "Уборка: чистка, плоский список, свежие наверх, блоки"
     },
     "bookmark-tab": {
-      "description": "В закладки без диалога (тогл)"
+      "description": "Legacy: обычная закладка браузера без строки Aside Bookmarks"
     }
   },
   "web_accessible_resources": [

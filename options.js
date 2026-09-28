@@ -17,7 +17,7 @@ const DEFAULT_KEYMAP = {
 
 const DEFAULTS = {
   dedupAuto: false, dedupNotice: true, dedupIgnoreHash: true, dedupIgnoreUtm: true, dedupByTitle: true,
-  favoriteCloses: false, keepPins: true, favoriteMovesTab: false, favoriteRowTop: false, favoritePins: false, favoriteLeavesGroup: false, blockKeys: true, paletteOverlay: true, keymapEnabled: true, dimBehindPalette: true,
+  favoriteCloses: false, keepPins: true, favoriteMovesTab: false, favoriteRowTop: false, favoritePins: false, favoriteLeavesGroup: true, blockKeys: true, paletteOverlay: true, keymapEnabled: true, dimBehindPalette: true,
   tabPlacement: 'underCurrent', placementGuardMs: 2500, tidyMinGroup: 3,
   notesLimit: 3, notesClean: true, notesDate: true, notesOrder: 'modified',
   barMode: 'mark',
@@ -27,12 +27,12 @@ const DEFAULTS = {
 };
 
 const ACTIONS = [
-  ['favoriteTab', 'bookmark ⇄ tab', 'last row of the bar · tab and focus stay put'],
-  ['pinTab', 'pin / unpin tab', 'the squares on top of the sidebar · native ⌃D'],
+  ['favoriteTab', 'save / remove from Bookmarks', 'last native row · page stays active'],
+  ['pinTab', 'pin / unpin square', 'the squares on top of the sidebar · native ⌃D'],
   ['tidyUp', 'tidy up – one sweep', 'clean, group by blocks, sort'],
-  ['tidyDuplicates', 'review tabs before cleanup', 'native ⌃⇧D'],
+  ['tidyDuplicates', 'review tab families', 'inspect first · native ⌃⇧D'],
   ['togglePanel', 'open tweaks panel', 'native ⌃⇧S is more reliable'],
-  ['bookmarkTab', 'bookmark, no dialog', ''],
+  ['bookmarkTab', 'legacy browser bookmark', 'compatibility action · does not create an Aside Bookmarks row'],
   ['openPalette', 'palette', 'the browser also holds ⇧⌘K – see the table below'],
   ['groupByRules', 'group by my blocks', ''],
   ['groupByDomain', 'group by site', ''],
@@ -172,8 +172,8 @@ function renderKeys() {
 // то, что держит сам браузер: живой список, а не наши догадки
 const CMD_LABEL = {
   'open-palette': 'palette', 'open-panel': 'tweaks panel',
-  'favorite-tab': 'bookmark ⇄ tab', 'pin-tab': 'pin / unpin',
-  'tidy-duplicates': 'clean duplicates', 'tidy-up': 'tidy up', 'bookmark-tab': 'bookmark, no dialog',
+  'favorite-tab': 'save / remove from Bookmarks', 'pin-tab': 'pin / unpin square',
+  'tidy-duplicates': 'clean duplicates', 'tidy-up': 'tidy up', 'bookmark-tab': 'legacy browser bookmark',
   '_execute_action': 'open the popup'
 };
 
@@ -518,7 +518,7 @@ document.getElementById('copyDefaults')?.addEventListener('click', async () => {
 document.getElementById('resetKeys').addEventListener('click', async () => {
   await patch({ keymap: { ...DEFAULT_KEYMAP } });
   renderKeys();
-  flash('keys reset · ⌘D bookmark ⇄ tab · ⇧⌘D pin · ⌥⌘T tidy · ⇧⌘K palette');
+  flash('keys reset · ⌘D Bookmarks · ⇧⌘D Pin · ⌥⌘T tidy · ⇧⌘K palette');
 });
 
 // ---------- ключ OpenRouter ----------

@@ -273,9 +273,9 @@ async function buildReview(q) {
   const swept = sweep?.closes || 0;
   out.push({
     kind: 'cmd', section: 'what this is', glyph: '◎',
-    title: `review of ${review.summary?.total || 0} tabs in this window`,
-    sub: `what this window already repeats, with the reason on every row · ${review.summary?.exact || 0} exact copies · ${review.summary?.related || 0} working threads · ${review.summary?.protected || 0} protected · closing waits for the line below`,
-    kindLabel: 'review', primary: 'back',
+    title: `safe review · nothing closes on this screen`,
+    sub: `${review.summary?.total || 0} tabs · ${review.summary?.exact || 0} exact copies · ${review.summary?.related || 0} product families · ${review.summary?.protected || 0} protected · use Actions to keep, bookmark or inspect`,
+    kindLabel: 'guide', primary: 'back',
     run: () => { view = null; refresh(); }
   });
   out.push({
@@ -306,7 +306,7 @@ async function buildReview(q) {
       const section = kind === 'exact' ? `exact duplicates · ${list.length}` : `related products · ${list.length}`;
       out.push({
         kind: 'cluster', section: n === 0 ? section : '', glyph: kind === 'exact' ? '≡' : '⌘',
-        title: c.name, sub: c.wide ? `${c.tabs.length} tabs · too wide for one batch, close rows one by one` : `${c.tabs.length} tabs · ${c.closeIds.length} available to close`,
+        title: c.name, sub: c.wide ? `${c.tabs.length} tabs · inspect and close rows one by one` : kind === 'exact' ? `${c.tabs.length} copies · choose the canonical page before preview` : `${c.tabs.length} related tabs · choose keep, source or close`,
         tags: [kind], kindLabel: 'cluster', primary: c.closeIds.length ? 'preview' : 'inspect',
         run: () => { view = { kind: 'cluster', clusterKey: c.key, intent: view?.intent || 'review' }; refresh(); },
         actions: [
@@ -498,7 +498,7 @@ async function build(raw) {
         actions: [
           { label: 'switch to tab', key: '↵', fn: null },
           { label: t.pinned ? 'unpin' : 'pin', key: '⇧↵', fn: async () => { await chrome.tabs.update(t.id, { pinned: !t.pinned }); closeSelf(); } },
-          { label: 'bookmark ⇄ tab', key: '⌘B', fn: async () => { await chrome.tabs.update(t.id, { active: true }); await send('favoriteTab', { windowId: t.windowId }); closeSelf(); } },
+          { label: 'save / remove selected tab in Bookmarks', key: '⌘B', fn: async () => { await chrome.tabs.update(t.id, { active: true }); await send('favoriteTab', { windowId: t.windowId }); closeSelf(); } },
           { label: 'close tab', key: '⌘⌫', fn: async () => { await chrome.tabs.remove(t.id).catch(() => { }); refresh(); } },
           { label: 'copy url', key: '⌘C', fn: () => copy(t.url) }
         ]
@@ -511,9 +511,10 @@ async function build(raw) {
   if (wantNotes && notesLimit > 0 && (q || scope !== 'commands')) {
     const order = notesPrefs.notesOrder === 'opened' ? 'opened' : 'modified';
     // область notes без запроса: сначала то, что менялось сегодня, потом остальное по свежести
+    const orderLabel = order === 'opened' ? 'last opened in Obsidian' : 'last modified on disk';
     const batches = (scope === 'notes' && !q)
-      ? [{ section: 'today', since: 'today', limit: 12 }, { section: 'recent', since: '', limit: notesLimit }]
-      : [{ section: 'notes', since: '', limit: notesLimit }];
+      ? [{ section: 'notes · edited today', since: 'today', limit: 12 }, { section: `notes · ${orderLabel}`, since: '', limit: notesLimit }]
+      : [{ section: q ? 'notes · filename match' : `notes · ${orderLabel}`, since: '', limit: notesLimit }];
     const seenNotes = new Set();
     for (const b of batches) {
     const res = (await send('deskNotes', { q: qRaw, limit: b.limit, sort: order, since: b.since }))?.data;
@@ -561,8 +562,8 @@ async function build(raw) {
       let sub = c.sub;
       if (c.action === 'tidyDuplicates' && stats) {
         sub = (stats.dups || stats.empties)
-          ? `review ${stats.dups + stats.empties} exact / empty · plus product families`
-          : 'review related products, events and research sources';
+          ? `inspect ${stats.dups + stats.empties} exact / empty · nothing closes yet`
+          : 'inspect product families, events and research sources · nothing closes yet';
       }
       shown++;
       const row = {

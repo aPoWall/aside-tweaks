@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.30.0 – 2026-09-29
+
+- `⌘D` now completes the native Aside move: it appends the active page to the bottom of **Bookmarks**, takes it out of a tab group so Aside can show one live saved row, and keeps that page selected. `⇧⌘D` remains the separate Pin square. The one-time `favoriteBookmarkFoldRev` migration clears the three 4.28 keep-on-top defaults and enables the native Bookmarks fold without changing existing bookmark order;
+- palette, panel, popup, settings and browser command labels now say **Bookmarks** and **Pin** explicitly. The selected-tab action is `save / remove selected tab in Bookmarks`, and the legacy duplicate bookmark command no longer appears in the palette;
+- tab review opens with `nothing closes on this screen`, names the four review families and sends every destructive batch through its separate preview. Notes say why they are present: edited today, filename match, last modified on disk or last opened in Obsidian;
+- product copy and the interactive website model use the same 4.30 contract.
+
 ## 4.29.0 – 2026-09-28
 
 - `⌘D` returns to the bookmark contract: the new row is appended to the end of Bookmarks, the open tab

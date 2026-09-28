@@ -3,9 +3,10 @@
   const paletteData = {
     palette: [
       ['Recent'], ['AT', 'Aside Tweaks · product page', 'apps.aimindset.org', 'tab'], ['S', 'Space · working surface', 'space.aimindset.org', 'tab'],
-      ['Notes'], ['◇', 'aside product map', 'Obsidian · today', 'note'], ['Commands'], ['★', 'bookmark ⇄ tab', 'last in bookmarks · focus stays', '⌘D'], ['◎', 'review tabs', 'exact · related · event · source', '⌥⌘D']
+      ['Notes · edited today'], ['◇', 'aside product map', 'local Obsidian · edited today', 'note'], ['Commands'], ['★', 'save in Bookmarks', 'last native row · page stays active', '⌘D'], ['◎', 'review tab families', 'inspect first · nothing closes yet', '⌥⌘D']
     ],
     review: [
+      ['Safe review'], ['◎', 'Nothing closes on this screen', 'choose keep, source or inspect', 'guide'],
       ['Related product · Space'], ['S', 'AI Mindset {space} · evolution', 'canonical · protected', 'keep'], ['D', 'Space Dataflow', 'unsaved form · protected', 'keep'], ['L', 'Space local preview', 'eligible sibling', 'close'],
       ['Sources'], ['G', 'Space product source', 'github.com', 'bookmark']
     ]
@@ -51,29 +52,39 @@
     el.dataset.ru = ru;
     el.textContent = (document.documentElement.lang === 'ru' ? ru : en);
   };
-  setCopy(document.querySelector('.hero .eyebrow'), 'aside browser extension · version 4.29.0', 'расширение для aside · версия 4.29.0');
+  const productVersion = document.querySelector('.product-header > span');
+  if (productVersion) productVersion.textContent = '4.30.0';
+  const bookmarkAction = actionMenu.querySelector('.action:nth-of-type(3)');
+  if (bookmarkAction?.firstChild) bookmarkAction.firstChild.textContent = 'save selected tab in Bookmarks ';
+  setCopy(document.querySelector('.hero .eyebrow'), 'aside browser extension · version 4.30.0', 'расширение для aside · версия 4.30.0');
   setCopy(document.querySelector('.hero .lead'),
-    '⌘D adds a bookmark at the end and keeps the live tab exactly where you are. ⇧⌘D owns pin. ⇧⌘K searches tabs, smart history, bookmarks, notes, Aside menu items and agents from one fast palette.',
-    '⌘D добавляет закладку в конец и оставляет живую вкладку ровно там, где вы были. ⇧⌘D отвечает за pin. ⇧⌘K быстро ищет вкладки, умную историю, закладки, заметки, меню Aside и агентов.');
-  setCopy(document.querySelector('.hero .button.primary span'), 'get 4.29.0 on github', 'взять 4.29.0 на github');
+    '⌘D moves the active page into the last native Bookmarks row and keeps it selected. ⇧⌘D owns the Pin square. ⇧⌘K searches tabs, smart history, bookmarks, local Obsidian notes, Aside menu items and agents from one fast palette.',
+    '⌘D переносит активную страницу в последнюю нативную строку Bookmarks и оставляет её выбранной. ⇧⌘D отвечает за квадрат Pin. ⇧⌘K быстро ищет вкладки, умную историю, закладки, локальные заметки Obsidian, меню Aside и агентов.');
+  setCopy(document.querySelector('.hero .button.primary span'), 'get 4.30.0 on github', 'взять 4.30.0 на github');
   const releaseDate = document.querySelector('[data-release-date]');
-  if (releaseDate) releaseDate.textContent = '2026-09-28';
+  if (releaseDate) releaseDate.textContent = '2026-09-29';
   setCopy(document.querySelector('#example .example-head p:nth-child(2) span'),
-    '⌘D adds that page to the end of Bookmarks and keeps the live tab in focus. ⌥⌘D shows the cluster.',
-    '⌘D добавляет страницу в конец Bookmarks и оставляет живую вкладку в фокусе. ⌥⌘D показывает кластер.');
+    '⌘D moves that page into the last Bookmarks row. ⌥⌘D opens an inspection screen where nothing closes yet.',
+    '⌘D переносит страницу в последнюю строку Bookmarks. ⌥⌘D открывает экран проверки, где пока ничего не закрывается.');
   setCopy(document.querySelector('#features article:first-child p:last-child'),
-    'the row joins the end of Bookmarks while the live tab keeps its position, native group and focus. press ⌘D again to remove the bookmark.',
-    'строка уходит в конец Bookmarks, а живая вкладка сохраняет позицию, нативную группу и фокус. повторное ⌘D снимает закладку.');
+    'the active page leaves its tab group and becomes one live row at the bottom of native Bookmarks. it stays selected. press ⌘D again to return it to Tabs.',
+    'активная страница выходит из группы вкладок и становится одной живой строкой внизу нативного Bookmarks. она остаётся выбранной. повторное ⌘D возвращает её в Tabs.');
   setCopy(document.querySelector('#features article:first-child h2'),
-    'the bookmark lands, the page stays.',
-    'закладка на месте, страница остаётся.');
-  setCopy(document.querySelector('#install > .eyebrow'), 'unpacked extension · 4.29.0', 'распакованное расширение · 4.29.0');
+    'one saved row. still your page.',
+    'одна сохранённая строка. та же страница.');
+  setCopy(document.querySelector('#features article:nth-child(2) p:last-child'),
+    'tabs, smart history, Bookmarks, local Obsidian notes, Aside menu items, commands and agents share one field. note sections name why they appear: edited today, filename match, last modified or last opened. ⌘K opens explicit actions for the selected row.',
+    'вкладки, умная история, Bookmarks, локальные заметки Obsidian, меню Aside, команды и агенты живут в одном поле. раздел заметок объясняет выбор: изменено сегодня, совпадение имени, последняя правка или последнее открытие. ⌘K открывает точные действия выбранной строки.');
+  setCopy(document.querySelector('#features article:nth-child(3) p:last-child'),
+    'exact copies, related products, stale events and research sources stay separate. the first screen only inspects; every close batch gets its own final preview and local receipt.',
+    'точные копии, связанные продукты, устаревшие события и исследовательские источники разделены. первый экран только проверяет; каждая пачка закрытия получает отдельное финальное превью и локальный чек.');
+  setCopy(document.querySelector('#install > .eyebrow'), 'unpacked extension · 4.30.0', 'распакованное расширение · 4.30.0');
   setCopy(document.querySelector('#install h3 + p'),
-    'pull the repository and press reload on the extension card. 4.29.0 keeps keymaps, bookmarks, review state, bridge config and theme settings. it separates ⌘D bookmark from ⇧⌘D pin once; rollback to 4.28 keeps every stored bookmark and pin.',
-    'обновите репозиторий и нажмите reload на карточке расширения. 4.29.0 сохраняет клавиши, закладки, ревью, bridge и тему. версия один раз разделяет bookmark на ⌘D и pin на ⇧⌘D; откат на 4.28 сохраняет все записанные закладки и пины.');
+    'pull the repository and press reload on the extension card. 4.30.0 keeps keymaps, bookmark order, pins, review state, bridge config and theme settings. it moves ⌘D to the last native Bookmarks row once; rollback to 4.29 keeps every stored bookmark and pin.',
+    'обновите репозиторий и нажмите reload на карточке расширения. 4.30.0 сохраняет клавиши, порядок закладок, пины, ревью, bridge и тему. версия один раз переводит ⌘D на последнюю нативную строку Bookmarks; откат на 4.29 сохраняет все закладки и пины.');
   setCopy(document.querySelector('.privacy h3 + p'),
-    'version 4.29.0 uses the shared apps shell and keeps the panel state local. the character, product mark and toolbar icon come from the same checked exports.',
-    'версия 4.29.0 использует общую оболочку apps и хранит состояние панели локально. персонаж, знак продукта и иконка панели приходят из одних проверенных экспортов.');
+    'version 4.30.0 uses the shared apps shell and keeps the panel state local. the character, product mark and toolbar icon come from the same checked exports.',
+    'версия 4.30.0 использует общую оболочку apps и хранит состояние панели локально. персонаж, знак продукта и иконка панели приходят из одних проверенных экспортов.');
 
   function say(key) {
     demoText.dataset.key = key;
@@ -114,6 +125,7 @@
     const tab = document.getElementById('keepTab'), bookmarks = document.getElementById('bookmarks');
     if (kept) {
       bookmarks.querySelector('[data-demo-bookmark]')?.remove();
+      tab.style.removeProperty('display');
       tab.classList.add('active'); kept = false; say('returned'); return;
     }
     const stageRect = stage.getBoundingClientRect(), tabRect = tab.getBoundingClientRect(), destRect = bookmarks.getBoundingClientRect();
@@ -122,11 +134,12 @@
     const dx = destRect.left - tabRect.left, dy = destRect.bottom - tabRect.top + 2;
     const finish = () => {
       clone.remove();
-      const row = document.createElement('div'); row.className = 'aside-tab bookmark new'; row.dataset.demoBookmark = '';
+      const row = document.createElement('div'); row.className = 'aside-tab bookmark new active'; row.dataset.demoBookmark = '';
       const icon = document.createElement('span'); icon.className = 'ico'; icon.textContent = 'AT';
       const title = document.createElement('span'); title.textContent = 'Aside Tweaks · product page';
       row.append(icon, title); bookmarks.append(row);
-      tab.classList.add('active');
+      tab.classList.remove('active');
+      tab.style.display = 'none';
       kept = true; say('kept');
     };
     if (matchMedia('(prefers-reduced-motion: reduce)').matches || !clone.animate) { finish(); return; }

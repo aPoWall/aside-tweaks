@@ -157,10 +157,10 @@ function tabRow(tab) {
   tag.textContent = tab.active ? 'active' : tab.pinned ? 'pinned' : tab.discarded ? 'asleep' : hostOf(tab.url);
   d.append(tag);
 
-  d.append(act('★', 'bookmark ⇄ tab · last row, keep tab and focus', false, async () => {
+  d.append(act('★', 'save / remove in Aside Bookmarks · last row · keep focus', false, async () => {
     await chrome.tabs.update(tab.id, { active: true });
     const r = await chrome.runtime.sendMessage({ action: 'favoriteTab', windowId: tab.windowId });
-    say(r?.count === -1 ? 'bookmark removed · tab stays here' : 'bookmarked · last row · focus stays');
+    say(r?.count === -1 ? 'removed from Bookmarks · page stays active' : 'saved in Bookmarks · last row · page stays active');
   }));
   d.append(act(tab.pinned ? '◆' : '◇', tab.pinned ? 'unpin' : 'pin to the sidebar squares', tab.pinned, async () => {
     await chrome.tabs.update(tab.id, { pinned: !tab.pinned });

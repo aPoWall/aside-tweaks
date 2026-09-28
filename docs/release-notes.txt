@@ -1,3 +1,9 @@
+aside tweaks 4.30.0 – 2026-09-29
+
+- ⌘D appends the active page to the bottom of Bookmarks, folds it out of a tab group into one native saved row and keeps it selected; ⇧⌘D remains Pin
+- palette, panel, popup and settings name Bookmarks and Pins explicitly; the duplicate legacy bookmark command is gone from the palette
+- review says nothing closes on its first screen, and Notes name whether they came from today's edits, filename search, disk modification time or Obsidian's recent-files list
+
 aside tweaks 4.29.0 – 2026-09-28
 
 - ⌘D appends the page to the end of Bookmarks, keeps the tab in its native group and keeps focus; ⇧⌘D remains pin

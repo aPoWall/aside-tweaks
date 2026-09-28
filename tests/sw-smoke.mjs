@@ -209,12 +209,13 @@ TABS = [
 // метка сборки: по ней проверка контура снаружи понимает, какая версия поднялась
 const manifestVersion = JSON.parse(fs.readFileSync(new URL('../manifest.json', import.meta.url), 'utf8')).version;
 check('расширение отмечает свою сборку в storage.local', store.local.build?.version === manifestVersion, JSON.stringify(store.local.build));
-check('4.29 один раз разделяет bookmark и pin',
+check('4.30 разделяет bookmark и pin и выводит живую страницу в Bookmarks',
   store.sync.favoriteBookmarkTailRev === 1 && store.sync.favoritePins === false &&
   store.sync.favoriteMovesTab === false && store.sync.favoriteRowTop === false &&
-  store.sync.favoriteLeavesGroup === false,
+  store.sync.favoriteBookmarkFoldRev === 1 && store.sync.favoriteLeavesGroup === true,
   JSON.stringify({
     favoriteBookmarkTailRev: store.sync.favoriteBookmarkTailRev,
+    favoriteBookmarkFoldRev: store.sync.favoriteBookmarkFoldRev,
     favoritePins: store.sync.favoritePins,
     favoriteMovesTab: store.sync.favoriteMovesTab,
     favoriteRowTop: store.sync.favoriteRowTop,
@@ -323,7 +324,7 @@ await wait(20);
 const fav = await call('favoriteTab', { windowId: 1 });
 check('favoriteTab сделал закладку', fav?.ok && fav.count === 1 && MARKS.length === 1, JSON.stringify(MARKS));
 check('вкладка осталась жива – без закрытия и перезагрузки', TABS.some(t => t.id === 23), TABS.map(t => t.id).join(' '));
-check('⌘D оставил вкладку в нативной группе', !log.slice(mark).includes('ungroup 1') && TABS.find(t => t.id === 23)?.groupId === 7, log.slice(mark).join(' | '));
+check('⌘D вывел вкладку из группы в нативный ряд Bookmarks', log.slice(mark).includes('ungroup 1') && TABS.find(t => t.id === 23)?.groupId === -1, log.slice(mark).join(' | '));
 check('⌘D не занял квадратик pin', TABS.find(t => t.id === 23)?.pinned === false, TABS.map(t => t.id + (t.pinned ? '📌' : '')).join(' '));
 
 // адрес уже открыт – переключение вместо второй вкладки, как в Arc
@@ -501,14 +502,14 @@ TABS.forEach(t => t.active = t.id === 92);   // палитра переключ�
 await callFrom('signalDone', 93);
 check('переключение из палитры сильнее возврата', TABS.find(t => t.id === 92)?.active === true && !TABS.some(t => t.id === 93), TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
 
-// ⌘D по умолчанию 4.29: bookmark дописывается в конец, а живая вкладка остаётся
-// на своём месте, в своём блоке и в фокусе. Pin остаётся отдельным ⇧⌘D.
+// ⌘D по умолчанию 4.30: bookmark дописывается в конец, живая вкладка выходит
+// из группы в нативный Bookmarks-ряд и остаётся в фокусе. Pin остаётся отдельным ⇧⌘D.
 const scene = () => {
   MARKS = [{ id: 'existing', title: 'Existing', url: 'https://existing.example/', index: 0, parentId: '1' }];
   TABS = [
     { id: 101, windowId: 1, index: 0, pinned: true, url: 'https://pinned.example/', title: 'Pinned', lastAccessed: 999 },
     { id: 102, windowId: 1, index: 1, pinned: false, url: 'https://prev.example/', title: 'Previous', lastAccessed: 900 },
-    { id: 103, windowId: 1, index: 2, pinned: false, active: true, url: 'https://keep.example/page', title: 'Keep me', lastAccessed: 950 },
+    { id: 103, windowId: 1, index: 2, pinned: false, active: true, url: 'https://keep.example/page', title: 'Keep me', lastAccessed: 950, groupId: 17 },
     { id: 104, windowId: 1, index: 3, pinned: false, url: 'https://next.example/', title: 'Next', lastAccessed: 50 }
   ];
 };
@@ -517,11 +518,11 @@ store.sync.favoriteCloses = false;
 store.sync.favoriteMovesTab = false;
 store.sync.favoriteRowTop = false;
 store.sync.favoritePins = false;
-store.sync.favoriteLeavesGroup = false;
+store.sync.favoriteLeavesGroup = true;
 await fire('storeChanged', {
   favoriteCloses: { newValue: false }, favoriteMovesTab: { newValue: false },
   favoriteRowTop: { newValue: false }, favoritePins: { newValue: false },
-  favoriteLeavesGroup: { newValue: false }
+  favoriteLeavesGroup: { newValue: true }
 }, 'sync');
 await wait(20);
 scene();
@@ -530,9 +531,11 @@ const favTail = await call('favoriteTab', { windowId: 1 });
 check('⌘D: строка дописывается в конец панели закладок',
   favTail?.count === 1 && MARKS.length === 2 && MARKS[0].id === 'existing' && MARKS[1].url === 'https://keep.example/page',
   JSON.stringify(MARKS.map(b => b.url)));
-check('⌘D: страница не pin-ится и не меняет позицию',
+check('⌘D: страница не pin-ится, не меняет позицию и выходит в Bookmarks',
   TABS.find(t => t.id === 103)?.pinned !== true && TABS.map(t => t.id).join(' ') === '101 102 103 104',
-  TABS.map(t => t.id + (t.pinned ? '📌' : '')).join(' '));
+  TABS.map(t => t.id + (t.pinned ? '📌' : '') + ':' + (t.groupId ?? -1)).join(' '));
+check('⌘D: живая строка покинула tab group', TABS.find(t => t.id === 103)?.groupId === -1,
+  TABS.map(t => t.id + ':' + (t.groupId ?? -1)).join(' '));
 check('⌘D: фокус остаётся на той же странице',
   TABS.find(t => t.id === 103)?.active === true, TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
 check('⌘D: копии страницы во вкладках не появилось',

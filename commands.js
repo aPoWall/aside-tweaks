@@ -17,12 +17,12 @@ const TWEAK_COMMANDS = [
     words: 'palette search find', group: 'surface', on: ['popup']
   },
   {
-    action: 'favoriteTab', glyph: '★', title: 'bookmark ⇄ tab', short: 'bookmark ⇄ tab', sub: 'last row · focus stays', key: '⌘D',
-    hint: 'the page joins the end of the bookmarks bar while the live tab stays in its current position, group and focus; a second ⌘D takes the bookmark row out again',
+    action: 'favoriteTab', glyph: '★', title: 'save / remove from Bookmarks', short: 'save in Bookmarks', sub: 'last row · page stays active', key: '⌘D',
+    hint: 'the active page becomes the last native Bookmarks row in Aside; it leaves a tab group so the sidebar can show one live row, and a second ⌘D returns it to Tabs',
     words: 'bookmark bar keep star arc pin', group: 'tab', on: ['palette', 'popup']
   },
   {
-    action: 'pinTab', glyph: '◆', title: 'pin / unpin tab', short: 'pin / unpin', sub: 'the squares on top', key: '⇧⌘D',
+    action: 'pinTab', glyph: '◆', title: 'pin / unpin square', short: 'pin / unpin', sub: 'the squares on top', key: '⇧⌘D',
     hint: 'the tab keeps the focus after pinning; unpinning returns the page to the first row of the tabs and keeps it selected',
     words: 'pin unpin squares', group: 'tab', on: ['palette', 'popup']
   },
@@ -32,8 +32,8 @@ const TWEAK_COMMANDS = [
     words: 'tidy sweep clean order everything', group: 'window', on: ['panel', 'palette', 'popup']
   },
   {
-    action: 'tidyDuplicates', glyph: '◎', title: 'review tabs', short: 'review tabs', sub: 'what closes, what stays', key: '⌥⌘D',
-    hint: 'the list of tabs that cleanup would close, grouped and with the reason on each row · the first line closes them all · protected tabs stay and every batch gets a receipt',
+    action: 'tidyDuplicates', glyph: '◎', title: 'review tab families', short: 'review tabs', sub: 'inspect first · nothing closes yet', key: '⌥⌘D',
+    hint: 'inspect exact copies, related products, old event pages and research sources; closing starts only from a separate preview and protected tabs stay',
     words: 'review dd dedup duplicates twins semantic siblings stale event research source cleanup', group: 'window', on: ['panel', 'palette', 'popup']
   },
   {
@@ -82,9 +82,9 @@ const TWEAK_COMMANDS = [
     words: 'fold collapse expand blocks groups arc', group: 'order', on: ['panel', 'palette', 'popup']
   },
   {
-    action: 'bookmarkTab', glyph: '☆', title: 'bookmark, no dialog', short: 'bookmark', sub: 'toggle', key: '',
-    hint: 'writes the bookmark without the browser dialog, second call removes it',
-    words: 'bookmark bm save no dialog', group: 'tab', on: ['palette']
+    action: 'bookmarkTab', glyph: '☆', title: 'legacy browser bookmark', short: 'legacy bookmark', sub: 'compatibility action', key: '',
+    hint: 'kept for an old custom keymap; use save in Bookmarks for the native Aside row',
+    words: 'legacy bookmark bm no dialog', group: 'tab', on: []
   }
 ];
 

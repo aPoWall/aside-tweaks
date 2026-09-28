@@ -39,7 +39,7 @@ const DEFAULTS = {
   favoriteMovesTab: false,  // ⌘D меняет только закладки; порядок живых вкладок остаётся на месте
   favoriteRowTop: false,    // новая строка дописывается в конец панели закладок
   favoritePins: false,      // pin остаётся отдельным жестом ⇧⌘D
-  favoriteLeavesGroup: false, // bookmark не разрывает нативный блок вкладки
+  favoriteLeavesGroup: true,  // bookmark выводит страницу в нативный ряд Bookmarks
   favoriteCloses: false,     // ⌘D оставляет вкладку открытой и выбранной, как pin в Arc; включённая настройка закрывает её
   blockKeys: true,           // ⌘1…⌘9 переключают на блок окна, ⇧⌘1…⇧⌘9 кладут вкладку в блок
   tidyMinGroup: 3,           // блок при уборке собирается от стольких вкладок; пары остаются россыпью
@@ -76,7 +76,7 @@ function upgradeKeymap(stored) {
   return changed ? map : null;
 }
 
-chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0, favoriteTopRev: 0, favoritePinRev: 0, favoriteUnpinRev: 0, favoriteRepinRev: 0, favoriteBookmarkTailRev: 0, barModeRev: 0 }).then(s => {
+chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0, favoriteTopRev: 0, favoritePinRev: 0, favoriteUnpinRev: 0, favoriteRepinRev: 0, favoriteBookmarkTailRev: 0, favoriteBookmarkFoldRev: 0, barModeRev: 0 }).then(s => {
   // раскладку накладываем поверх дефолтной: иначе действия, добавленные позже,
   // остаются вообще без привязки – в хранилище лежит карта старой версии
   settings = { ...DEFAULTS, ...s, keymap: { ...DEFAULT_KEYMAP, ...(s.keymap || {}) } };
@@ -129,24 +129,31 @@ chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0, favorite
   }
 
   // 4.29. ⌘D снова означает ровно bookmark: новая строка дописывается в конец,
-  // живая вкладка не pin'ится, не переезжает и не покидает свой блок. Фокус остаётся
-  // на ней. ⇧⌘D сохраняет отдельный, явный контракт pin. Миграция однократная.
+  // живая вкладка не pin'ится и не переезжает. Фокус остаётся на ней.
+  // ⇧⌘D сохраняет отдельный, явный контракт pin. Миграция однократная.
   if (!s.favoriteBookmarkTailRev) {
     Object.assign(settings, {
       favoriteCloses: false,
       favoriteMovesTab: false,
       favoriteRowTop: false,
-      favoritePins: false,
-      favoriteLeavesGroup: false
+      favoritePins: false
     });
     chrome.storage.sync.set({
       favoriteBookmarkTailRev: 1,
       favoriteCloses: false,
       favoriteMovesTab: false,
       favoriteRowTop: false,
-      favoritePins: false,
-      favoriteLeavesGroup: false
+      favoritePins: false
     }).catch(() => { });
+  }
+
+  // 4.30. Aside показывает сохранённую открытую страницу одной живой строкой в Bookmarks,
+  // только когда вкладка не заперта внутри нативной группы. Поэтому ⌘D выводит её из группы,
+  // затем Aside вплавляет активную вкладку в новую последнюю строку Bookmarks. Pin остаётся
+  // отдельным квадратом по ⇧⌘D. Ручной выключатель снова принадлежит человеку после миграции.
+  if (!s.favoriteBookmarkFoldRev) {
+    settings.favoriteLeavesGroup = true;
+    chrome.storage.sync.set({ favoriteBookmarkFoldRev: 1, favoriteLeavesGroup: true }).catch(() => { });
   }
 
   // Правило 47: режим smart снят и держит слот пустым; сохранённая настройка один раз
@@ -1491,9 +1498,9 @@ async function favoriteTab(windowId) {
   if (pinned) await chrome.storage.session.set({ lastPinId: tab.id, lastPinAt: Date.now() }).catch(() => { });
   const moved = pinned ? false : await moveTabTo(tab);
   await keepSelected(tab.id, tab.windowId);
-  flash('BM+', (settings.favoriteRowTop ? 'first row of the bookmarks bar ★' : 'last in the bookmarks bar ★') +
+  flash('BM+', (settings.favoriteRowTop ? 'first row of Bookmarks ★' : 'last row of Bookmarks ★') +
     (pinned ? '\npinned ↑ – the squares on top, focus stays here'
-      : '\nthe sidebar folds the open tab into that row' + (left ? ' – out of its block' : '') + ', focus stays here') +
+      : '\nthe sidebar folds the active page into that row' + (left ? ' – moved out of its tab group' : '') + ', focus stays here') +
     '\n⌘D again takes it out');
   return 1;
 }
