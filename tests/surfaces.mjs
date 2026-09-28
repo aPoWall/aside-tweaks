@@ -38,8 +38,8 @@ check('у команд попапа есть short и group', noShort.length ===
 // панель и палитра рендерят из общего списка
 check('панель рендерит из общего списка', panel.includes("commandsFor('panel')"));
 check('палитра рендерит из общего списка', palette.includes("commandsFor('palette')"));
-check('панель показывает начало закладок, куда ⌘D ставит свежую строку',
-  panel.includes('allMarks.slice(0, 14)') && !panel.includes('slice(-14)'));
+check('панель показывает хвост закладок, куда ⌘D дописывает свежую строку',
+  panel.includes('allMarks.slice(Math.max(0, allMarks.length - 14))'));
 check('панель держит компактную умную историю на сигналах палитры',
   panel.includes('const HISTORY_LIMIT = 6') && panel.includes('chrome.history.search') && panel.includes('twFrecency'));
 check('панель перечитывает окно и возвращает активную строку после раскрытия',

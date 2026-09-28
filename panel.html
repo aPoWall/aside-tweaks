@@ -35,7 +35,7 @@
   .row:hover { background: var(--sel); }
   .row.active { background: var(--sel); box-shadow: inset 2px 0 0 var(--accent); }
   .row.drop-into { box-shadow: inset 0 -2px 0 var(--accent); }
-  /* только что улетевшее наверх подсвечивается, как делал Arc */
+  /* только что добавленная строка подсвечивается, не меняя порядок остальных */
   @keyframes flashrow {
     0%   { background: var(--accent); color: var(--accent-fg); }
     70%  { background: var(--accent); color: var(--accent-fg); }
@@ -63,6 +63,16 @@
   .cmds .tile { padding: 8px 10px; }
   .cmds .tile-main { font-size: 11px; }
 
+  .command-drawer { margin-top: 7px; border-top: 1px solid var(--line); }
+  .command-drawer summary {
+    display: flex; align-items: center; gap: 7px; cursor: pointer; list-style: none;
+    padding: 10px var(--pad); color: var(--muted); font-size: 10px;
+  }
+  .command-drawer summary::-webkit-details-marker { display: none; }
+  .command-drawer summary::before { content: '›'; width: 9px; color: var(--dim); transition: transform .14s ease; }
+  .command-drawer[open] summary::before { transform: rotate(90deg); }
+  .command-drawer summary .key { margin-left: auto; font-size: 9px; color: var(--dim); }
+
   .empty { padding: 3px var(--pad) 7px; font-size: 10px; color: var(--muted); }
 
   /* облик aside: строки-пилюли со скруглением, подписи секций как в сайдбаре, спящие с zz */
@@ -86,7 +96,7 @@
   </header>
 
   <main class="aim-shell-body">
-    <div class="sec-hdr"><span class="n">01</span> ★ kept · newest first · grouped <span id="nFav">0</span></div>
+    <div class="sec-hdr"><span class="n">01</span> ★ bookmarks · latest at bottom <span id="nFav">0</span></div>
     <div id="favs"></div>
 
     <div class="sec-hdr"><span class="n">02</span> ◆ pinned · squares on top · grouped <span id="nPins">0</span></div>
@@ -95,11 +105,13 @@
     <div class="sec-hdr"><span class="n">03</span> ◴ smart history · local <span id="nHistory">0</span></div>
     <div id="history"></div>
 
-    <div class="sec-hdr"><span class="n">04</span> ▤ tabs · grouped by blocks <span id="nTabs">0</span></div>
+    <div class="sec-hdr"><span class="n">04</span> ▤ tabs · native groups first <span id="nTabs">0</span></div>
     <div id="tabs"></div>
 
-    <div class="sec-hdr"><span class="n">05</span> ⚡ commands · act on this window</div>
-    <div class="cmds" id="cmds"></div>
+    <details class="command-drawer">
+      <summary><span>⚡</span><span>commands for this window</span><span class="key">⇧⌘K</span></summary>
+      <div class="cmds" id="cmds"></div>
+    </details>
   </main>
 
   <footer class="aim-shell-foot">

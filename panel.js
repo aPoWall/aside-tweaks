@@ -1,6 +1,6 @@
 // Aside Tweaks – панель (chrome.sidePanel)
-// Три яруса сверху вниз: favorites (страницы, перенесённые наверх), pinned
-// (нативные пины Chromium), tabs (всё остальное, разбитое по блокам).
+// Четыре яруса сверху вниз: bookmarks (хвост панели закладок), pinned
+// (нативные пины Chromium), smart history и tabs (нативные группы + правила).
 // Поиска здесь нет намеренно – он живёт в палитре ⇧⌘K.
 
 const SECOND_LEVEL = new Set(['co.uk', 'org.uk', 'com.br', 'com.au', 'co.jp', 'com.tr']);
@@ -119,9 +119,9 @@ function historyRow(item) {
   tag.className = 'tag';
   tag.textContent = 'history';
   d.append(iconFor(item.url), t, tag);
-  d.append(act('★', 'keep in the first row of bookmarks', false, async () => {
-    await chrome.bookmarks.create({ parentId: BAR, index: 0, title: item.title || item.url, url: item.url }).catch(() => { });
-    say('bookmarked ↑ first row');
+  d.append(act('★', 'bookmark at the end of the bar', false, async () => {
+    await chrome.bookmarks.create({ parentId: BAR, title: item.title || item.url, url: item.url }).catch(() => { });
+    say('bookmarked · last row');
     render();
   }));
   rowAction(d, async () => {
@@ -157,10 +157,10 @@ function tabRow(tab) {
   tag.textContent = tab.active ? 'active' : tab.pinned ? 'pinned' : tab.discarded ? 'asleep' : hostOf(tab.url);
   d.append(tag);
 
-  d.append(act('★', 'bookmark ⇄ tab · first row of the bar, then next open tab', false, async () => {
+  d.append(act('★', 'bookmark ⇄ tab · last row, keep tab and focus', false, async () => {
     await chrome.tabs.update(tab.id, { active: true });
     const r = await chrome.runtime.sendMessage({ action: 'favoriteTab', windowId: tab.windowId });
-    say(r?.count === -1 ? 'back in the tabs, at the top' : 'bookmarked ↑ first row');
+    say(r?.count === -1 ? 'bookmark removed · tab stays here' : 'bookmarked · last row · focus stays');
   }));
   d.append(act(tab.pinned ? '◆' : '◇', tab.pinned ? 'unpin' : 'pin to the sidebar squares', tab.pinned, async () => {
     await chrome.tabs.update(tab.id, { pinned: !tab.pinned });
@@ -272,10 +272,14 @@ async function render(revealActive = false) {
   const my = ++renderSeq;
   if (winId == null) winId = (await chrome.windows.getCurrent().catch(() => null))?.id ?? null;
 
-  const all = await chrome.tabs.query(winId != null ? { windowId: winId } : { currentWindow: true }).catch(() => []);
-  // ⌘D ставит свежую строку первой, поэтому панель обязана читать начало, а не хвост списка.
+  const [all, nativeGroups] = await Promise.all([
+    chrome.tabs.query(winId != null ? { windowId: winId } : { currentWindow: true }).catch(() => []),
+    chrome.tabGroups.query(winId != null ? { windowId: winId } : {}).catch(() => [])
+  ]);
+  // ⌘D дописывает строку в конец, поэтому показываем хвост в исходном порядке:
+  // новая закладка остаётся последней и видимой, старые позиции не прыгают.
   const allMarks = (await chrome.bookmarks.getChildren(BAR).catch(() => [])).filter(k => k.url);
-  const marks = allMarks.slice(0, 14);
+  const marks = allMarks.slice(Math.max(0, allMarks.length - 14));
   const openUrls = new Set(all.map(t => normUrl(t.url)).filter(Boolean));
   const bookmarkUrls = new Set(allMarks.map(m => normUrl(m.url)).filter(Boolean));
   const history = await smartHistory(openUrls, bookmarkUrls);
@@ -314,9 +318,10 @@ async function render(revealActive = false) {
   else appendGrouped(historyEl, history, historyRow);
 
   const rest = all.filter(t => !t.pinned).sort((a, b) => a.index - b.index);
+  const nativeNames = new Map(nativeGroups.map(g => [g.id, (g.title || '').trim() || 'group']));
   const buckets = new Map();
   for (const t of rest) {
-    const b = blockOf(t);
+    const b = nativeNames.get(t.groupId) || blockOf(t);
     if (!buckets.has(b)) buckets.set(b, []);
     buckets.get(b).push(t);
   }

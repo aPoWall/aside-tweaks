@@ -1,3 +1,10 @@
+aside tweaks 4.29.0 – 2026-09-28
+
+- ⌘D appends the page to the end of Bookmarks, keeps the tab in its native group and keeps focus; ⇧⌘D remains pin
+- the panel reads the newest bookmark rows from the end, shows native Aside group names first and folds commands into a compact drawer
+- refocusing Aside refreshes the active sidebar row without overriding an intentional tab switch
+- the live product model now demonstrates the real bookmark-at-the-end transition
+
 aside tweaks 4.28.0 – 2026-09-27
 
 - ⌘D is keep on top again: first bookmark row, pinned square and focus on the same page; a second press removes the row and square

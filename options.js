@@ -17,7 +17,7 @@ const DEFAULT_KEYMAP = {
 
 const DEFAULTS = {
   dedupAuto: false, dedupNotice: true, dedupIgnoreHash: true, dedupIgnoreUtm: true, dedupByTitle: true,
-  favoriteCloses: false, keepPins: true, favoriteMovesTab: true, favoriteRowTop: true, favoritePins: true, favoriteLeavesGroup: true, blockKeys: true, paletteOverlay: true, keymapEnabled: true, dimBehindPalette: true,
+  favoriteCloses: false, keepPins: true, favoriteMovesTab: false, favoriteRowTop: false, favoritePins: false, favoriteLeavesGroup: false, blockKeys: true, paletteOverlay: true, keymapEnabled: true, dimBehindPalette: true,
   tabPlacement: 'underCurrent', placementGuardMs: 2500, tidyMinGroup: 3,
   notesLimit: 3, notesClean: true, notesDate: true, notesOrder: 'modified',
   barMode: 'mark',
@@ -27,7 +27,7 @@ const DEFAULTS = {
 };
 
 const ACTIONS = [
-  ['favoriteTab', 'bookmark ⇄ tab', 'first row of the bar · press again and the tab returns to the top'],
+  ['favoriteTab', 'bookmark ⇄ tab', 'last row of the bar · tab and focus stay put'],
   ['pinTab', 'pin / unpin tab', 'the squares on top of the sidebar · native ⌃D'],
   ['tidyUp', 'tidy up – one sweep', 'clean, group by blocks, sort'],
   ['tidyDuplicates', 'review tabs before cleanup', 'native ⌃⇧D'],

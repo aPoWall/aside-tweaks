@@ -36,10 +36,10 @@ const DEFAULTS = {
   tabPlacement: 'underCurrent',     // underCurrent | end | browser
   placementGuardMs: 2500,           // сколько держим вкладку на месте, если Aside её двигает
   keepPins: true,
-  favoriteMovesTab: true,   // ⌘D поднимает вкладку первой строкой вкладок – как ⇧⌘D поднимает её в квадратики
-  favoriteRowTop: true,     // новая строка встаёт первой в панели закладок; выключено – уходит в конец, как было до 4.25
-  favoritePins: true,       // ⌘D сохраняет строку и поднимает страницу в квадратики наверху; выключается отдельной настройкой
-  favoriteLeavesGroup: true, // ⌘D выводит вкладку из блока: вне блока сайдбар Aside вплавляет её в строку закладки
+  favoriteMovesTab: false,  // ⌘D меняет только закладки; порядок живых вкладок остаётся на месте
+  favoriteRowTop: false,    // новая строка дописывается в конец панели закладок
+  favoritePins: false,      // pin остаётся отдельным жестом ⇧⌘D
+  favoriteLeavesGroup: false, // bookmark не разрывает нативный блок вкладки
   favoriteCloses: false,     // ⌘D оставляет вкладку открытой и выбранной, как pin в Arc; включённая настройка закрывает её
   blockKeys: true,           // ⌘1…⌘9 переключают на блок окна, ⇧⌘1…⇧⌘9 кладут вкладку в блок
   tidyMinGroup: 3,           // блок при уборке собирается от стольких вкладок; пары остаются россыпью
@@ -76,7 +76,7 @@ function upgradeKeymap(stored) {
   return changed ? map : null;
 }
 
-chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0, favoriteTopRev: 0, favoritePinRev: 0, favoriteUnpinRev: 0, favoriteRepinRev: 0, barModeRev: 0 }).then(s => {
+chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0, favoriteTopRev: 0, favoritePinRev: 0, favoriteUnpinRev: 0, favoriteRepinRev: 0, favoriteBookmarkTailRev: 0, barModeRev: 0 }).then(s => {
   // раскладку накладываем поверх дефолтной: иначе действия, добавленные позже,
   // остаются вообще без привязки – в хранилище лежит карта старой версии
   settings = { ...DEFAULTS, ...s, keymap: { ...DEFAULT_KEYMAP, ...(s.keymap || {}) } };
@@ -126,6 +126,27 @@ chrome.storage.sync.get({ ...DEFAULTS, keymapRev: 0, favoriteArcRev: 0, favorite
   if (!s.favoriteRepinRev) {
     settings.favoritePins = true;
     chrome.storage.sync.set({ favoriteUnpinRev: 1, favoriteRepinRev: 1, favoritePins: true }).catch(() => { });
+  }
+
+  // 4.29. ⌘D снова означает ровно bookmark: новая строка дописывается в конец,
+  // живая вкладка не pin'ится, не переезжает и не покидает свой блок. Фокус остаётся
+  // на ней. ⇧⌘D сохраняет отдельный, явный контракт pin. Миграция однократная.
+  if (!s.favoriteBookmarkTailRev) {
+    Object.assign(settings, {
+      favoriteCloses: false,
+      favoriteMovesTab: false,
+      favoriteRowTop: false,
+      favoritePins: false,
+      favoriteLeavesGroup: false
+    });
+    chrome.storage.sync.set({
+      favoriteBookmarkTailRev: 1,
+      favoriteCloses: false,
+      favoriteMovesTab: false,
+      favoriteRowTop: false,
+      favoritePins: false,
+      favoriteLeavesGroup: false
+    }).catch(() => { });
   }
 
   // Правило 47: режим smart снят и держит слот пустым; сохранённая настройка один раз
@@ -739,6 +760,23 @@ function saveActive() {
   chrome.storage.session.set({ activeByWindow: Object.fromEntries(currentActive) }).catch(() => { });
 }
 
+// Возврат из другого приложения/браузера не должен оставлять подсветку Aside на старой
+// строке. Если Chromium и наша память согласны, повторно активируем ту же вкладку – это
+// переутверждает состояние нативного сайдбара. Если человек уже выбрал другую, принимаем
+// новый выбор и ничего не откатываем.
+async function reassertActiveTab(windowId) {
+  const [active] = await chrome.tabs.query({ active: true, windowId }).catch(() => []);
+  if (!active) return false;
+  const remembered = currentActive.get(windowId);
+  if (remembered == null || remembered !== active.id) {
+    currentActive.set(windowId, active.id);
+    saveActive();
+    return false;
+  }
+  await chrome.tabs.update(active.id, { active: true }).catch(() => { });
+  return true;
+}
+
 chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
   currentActive.set(windowId, tabId);
   saveActive();
@@ -996,11 +1034,16 @@ function rootDomain(u) {
 // местами игнорируется: пока открыта палитра, «последнее окно» указывает на неё, и любой
 // перенос падает с «Tabs can only be moved to and from normal windows».
 let lastNormalWin = null;
+let focusRestoreTimer = null;
 
 chrome.windows.onFocusChanged.addListener(async id => {
   if (id === chrome.windows.WINDOW_ID_NONE) return;
   const w = await chrome.windows.get(id).catch(() => null);
-  if (w?.type === 'normal') lastNormalWin = w.id;
+  if (w?.type === 'normal') {
+    lastNormalWin = w.id;
+    clearTimeout(focusRestoreTimer);
+    focusRestoreTimer = setTimeout(() => reassertActiveTab(w.id), 80);
+  }
 });
 chrome.tabs.onActivated.addListener(async ({ windowId }) => {
   const w = await chrome.windows.get(windowId).catch(() => null);
@@ -1418,9 +1461,8 @@ async function favoriteTab(windowId) {
     return -1;
   }
 
-  // Строка встаёт первой в панели закладок – там же, где ⇧⌘D ставит квадратик.
-  // Конец панели (favoriteRowTop off) не съезжал по позициям, но уводил свежую строку
-  // вниз длинного списка: у полусотни закладок её приходилось искать прокруткой.
+  // По умолчанию строка дописывается в конец панели закладок. Панель расширения показывает
+  // хвост списка, поэтому новая строка остаётся видимой без перестановки старых закладок.
   // Адрес пишем как есть: Aside сличает его буквально и вплавляет открытую вкладку в строку.
   const made = await chrome.bookmarks.create({
     parentId: BAR, title: tab.title || tab.url, url: tab.url,
@@ -1441,9 +1483,8 @@ async function favoriteTab(windowId) {
   }
 
   const left = await leaveGroup(tab);
-  // Наверху сайдбара стоят квадратики закреплённых вкладок – туда же, куда ставит ⇧⌘D,
-  // ⌘D поднимает и сохранённую страницу. Строка закладки при этом остаётся: она переживёт
-  // закрытие вкладки, а квадрат – нет.
+  // Совместимость: старые ручные настройки по-прежнему могут связать bookmark с pin.
+  // Дефолт 4.29 оставляет pin отдельному жесту ⇧⌘D.
   const pinned = settings.favoritePins && !tab.pinned
     ? await chrome.tabs.update(tab.id, { pinned: true }).then(() => true).catch(() => false)
     : tab.pinned;

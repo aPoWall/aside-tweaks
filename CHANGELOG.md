@@ -1,5 +1,17 @@
 # Changelog
 
+## 4.29.0 – 2026-09-28
+
+- `⌘D` returns to the bookmark contract: the new row is appended to the end of Bookmarks, the open tab
+  stays in its native group and keeps focus, and no pinned square is created. `⇧⌘D` remains the dedicated
+  pin command. A one-time migration removes the three 4.28 keep-on-top defaults while preserving an
+  operator's later choices;
+- the panel shows the newest bookmark rows from the end of the bar, puts native Aside tab-group names
+  ahead of inferred blocks, and folds the full command catalogue into a compact drawer;
+- window refocus now reasserts the remembered active tab only when it is still the browser's active tab.
+  This refreshes the native sidebar highlight without overriding an intentional tab switch;
+- the product page demonstrates the same bookmark-at-the-end transition and names 4.29 consistently.
+
 ## 4.28.0 – 2026-09-27
 
 - `⌘D` is one keep-on-top gesture again: it writes the durable row first in the bookmarks bar, pins the
