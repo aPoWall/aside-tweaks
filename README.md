@@ -66,7 +66,7 @@ For each product family you can:
 
 Review opens as an inspection screen. Its first row says **nothing closes on this screen**; clusters then expose keep, source, protect and inspect actions. A destructive row always opens one more preview that lists `will close` and `stays` before it runs. Every confirmed batch writes a local receipt with the canonical URL and closed URLs.
 
-Duplicate cleanup is the same executor everywhere: `⌥⌘D` and the popup tile show the number that the confirmation will actually close, with the same protections applied.
+**Remove Duplicates** in the panel, popup and palette opens the exact/empty preview for the current window. `⌥⌘D` opens the wider family review. Both routes reach the same explicit confirmation and protection checks; no command closes another window from a current-window preview.
 
 ### Cleanup contract
 
@@ -116,11 +116,13 @@ AIM apps rule 37 fixes `⌘K` as the palette key for the whole family. In a brow
 
 `⌘D` appends the active page to the **last native Bookmarks row**. If the page sits inside a tab group, the extension takes it out so Aside can fold the live page into that one saved row; the page remains selected. A second `⌘D` removes the bookmark and returns the page to Tabs. `⇧⌘D` separately owns the Pin square at the top. Existing 4.28 keep-on-top switches stay available as compatibility settings, but 4.30 turns them off once. Aside's native **Chats** section and system-owned `⌘W` / `⌘V` behavior are outside the extension API.
 
+Aside's **vertical Sidebar is the canonical tab UI**. Its top squares are Pins, its Bookmarks section is backed by Chromium bookmarks, and `Add Tab to Group` manages native saved Tab Groups for live work. These are separate stores. Bookmark folders can be created in the native Bookmark Manager; `⌘D` intentionally appends to the root Bookmarks list so the saved page lands at the visible bottom. Aside Tweaks mirrors the native rows and groups for search and review; it does not replace the Sidebar or silently create folders.
+
 ### Panel: active page, categories and smart history
 
 The active row is labelled and centred after a tab switch, window focus, panel reveal or sidebar reopen. The panel reads the last 14 Bookmarks rows in their native order, matching the place where `⌘D` appends a new one. Bookmarks and Pins are separate sections with explicit labels; repeated sites become one category and isolated sites stay in one compact `other` group.
 
-Smart history shows at most six local pages. It excludes URLs that are already open or bookmarked and ranks the rest from Chromium visit data plus the same decaying choice score used by the palette. Opening a history row strengthens that local score. Nothing is sent to a server.
+Smart history shows at most six local pages. It excludes URLs that are already open or bookmarked and ranks the rest from Chromium visit data plus the same decaying choice score used by the palette. Opening a history row strengthens that local score. Nothing is sent to a server. Aside's native **Clear** command closes tabs after confirmation; it does not erase browser history. Aside Tweaks never deletes browser history.
 
 ### Blocks under the number keys
 
@@ -254,6 +256,8 @@ and no API shows it. The snapshot needs the window raised on the current desktop
 7. Run the `lab-sites` preflight, commit only that site path, push `main`, and verify production.
 
 ### Migration and rollback
+
+**v4.30 → v4.31:** no bookmark, Pin, group, keymap or bridge data moves. Cleanup commands now stop at a current-window preview and `tidy up` rearranges that reviewed window after confirmation. The panel reads the existing local build stamp and asks for one extension reload when its HTML is newer than the running service worker. Rolling back to 4.30 restores the old global direct-cleanup behavior, so use its `review tabs` route before any close.
 
 **v4.29 → v4.30:** `favoriteBookmarkFoldRev` turns on `show the live page in the Bookmarks row` once. Direct upgrades from 4.28 also run the 4.29 split: `favoriteMovesTab`, `favoriteRowTop` and `favoritePins` become off, while `favoriteLeavesGroup` becomes on. Existing bookmark and pin order, keymaps, review state, receipts, bridge config and theme settings stay intact. Rolling back to 4.29 keeps every bookmark and pin; turn off `⌘D takes the tab out of its block` if you want the 4.29 grouped-tab behavior.
 

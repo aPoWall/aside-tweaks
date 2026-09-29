@@ -63,6 +63,15 @@
   .cmds .tile { padding: 8px 10px; }
   .cmds .tile-main { font-size: 11px; }
 
+  .review-bar {
+    display: flex; align-items: center; gap: 8px;
+    min-height: 34px; padding: 5px var(--pad);
+    border-bottom: 1px solid var(--line); background: var(--bg);
+  }
+  .review-bar .aim-shell-btn { min-height: 24px; font-size: 10px; font-weight: 650; }
+  .review-bar span { color: var(--muted); font-size: 9.5px; }
+  .runtime-notice { color: var(--accent); }
+
   .command-drawer { margin-top: 7px; border-top: 1px solid var(--line); }
   .command-drawer summary {
     display: flex; align-items: center; gap: 7px; cursor: pointer; list-style: none;
@@ -94,6 +103,12 @@
     <button class="aim-shell-btn" id="settings" title="settings of the extension">settings</button>
     <button class="aim-shell-btn aim-shell-icon" id="close-panel" title="close the panel · esc">×</button>
   </header>
+
+  <div class="review-bar">
+    <button class="aim-shell-btn" id="remove-duplicates" title="show exact duplicates and empty tabs before anything closes">− remove duplicates</button>
+    <span id="review-note">preview this window · one final confirmation</span>
+    <span class="runtime-notice" id="runtime-notice" role="status" hidden>update waiting · reload Aside Tweaks once</span>
+  </div>
 
   <main class="aim-shell-body">
     <div class="sec-hdr" title="native Aside Bookmarks rows; ⌘D appends the active page at the bottom"><span class="n">01</span> ★ Bookmarks · native rows · newest last <span id="nFav">0</span></div>

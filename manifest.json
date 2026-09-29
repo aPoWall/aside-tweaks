@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Aside Tweaks",
-  "version": "4.30.0",
+  "version": "4.31.0",
   "description": "Aside-native Bookmarks and Pins, a fast palette, local Obsidian search and protected tab-review previews.",
   "permissions": [
     "tabs",
@@ -86,10 +86,10 @@
       "description": "Review вкладок: что закроется и что останется"
     },
     "clean-duplicates": {
-      "description": "Убрать дубли и пустые вкладки сразу, без review"
+      "description": "Preview точных дублей и пустых вкладок перед закрытием"
     },
     "tidy-up": {
-      "description": "Уборка: чистка, плоский список, свежие наверх, блоки"
+      "description": "Preview уборки: затем плоский список, свежие наверх, блоки"
     },
     "bookmark-tab": {
       "description": "Legacy: обычная закладка браузера без строки Aside Bookmarks"

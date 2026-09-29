@@ -11,6 +11,22 @@ const TRACKING = /^(utm_|_gl$|gclid$|fbclid$|yclid$|mc_cid$|mc_eid$)/;
 
 let winId = null;
 let rules = [];
+let runtimeReady = true;
+
+async function checkRuntime() {
+  const expected = chrome.runtime.getManifest().version;
+  const { build = null } = await chrome.storage.local.get({ build: null }).catch(() => ({}));
+  const runtimeBuild = build?.version || '';
+  runtimeReady = runtimeBuild === expected;
+  const notice = document.getElementById('runtime-notice');
+  const note = document.getElementById('review-note');
+  const remove = document.getElementById('remove-duplicates');
+  if (notice) notice.hidden = runtimeReady;
+  if (note) note.hidden = !runtimeReady;
+  if (remove) remove.disabled = !runtimeReady;
+  if (!runtimeReady) say(`update waiting · worker ${runtimeBuild || 'older'} · files ${expected}`);
+  return runtimeReady;
+}
 
 function rootDomain(u) {
   try {
@@ -158,6 +174,7 @@ function tabRow(tab) {
   d.append(tag);
 
   d.append(act('★', 'save / remove in Aside Bookmarks · last row · keep focus', false, async () => {
+    if (!runtimeReady) { say('reload Aside Tweaks once · old worker is still active'); return; }
     await chrome.tabs.update(tab.id, { active: true });
     const r = await chrome.runtime.sendMessage({ action: 'favoriteTab', windowId: tab.windowId });
     say(r?.count === -1 ? 'removed from Bookmarks · page stays active' : 'saved in Bookmarks · last row · page stays active');
@@ -425,6 +442,7 @@ function renderCmds() {
     sub.textContent = c.sub;
     b.append(main, sub);
     b.addEventListener('click', async () => {
+      if (!runtimeReady) { say('reload Aside Tweaks once · old worker is still active'); return; }
       const res = await chrome.runtime.sendMessage({ action: c.action, windowId: winId });
       say(res?.ok ? `${c.title}: ${res.count ?? 'done'}` : 'error');
       rerender();
@@ -433,6 +451,14 @@ function renderCmds() {
   }
 }
 renderCmds();
+
+document.getElementById('remove-duplicates').addEventListener('click', async () => {
+  if (!runtimeReady) { say('reload Aside Tweaks once · old worker is still active'); return; }
+  const res = await chrome.runtime.sendMessage({ action: 'cleanDuplicates', windowId: winId }).catch(() => null);
+  say(res?.ok ? 'duplicate preview opened · nothing closed yet' : 'could not open duplicate preview');
+});
+
+checkRuntime();
 
 chrome.storage.sync.get({ groupRules: [] }).then(s => { rules = s.groupRules || []; render(); });
 chrome.storage.onChanged.addListener((ch, area) => {

@@ -27,8 +27,8 @@ const TWEAK_COMMANDS = [
     words: 'pin unpin squares', group: 'tab', on: ['palette', 'popup']
   },
   {
-    action: 'tidyUp', glyph: '✦', title: 'tidy up', short: 'tidy up', sub: 'runs the whole sweep', key: '⌥⌘T',
-    hint: 'runs it: closes exact duplicates and empty tabs, flattens the blocks, puts the recent loose tabs on top and rebuilds blocks from 3 tabs, then writes a receipt · protections hold and ⌥⌘D shows what a cleanup would take',
+    action: 'tidyUp', glyph: '✦', title: 'tidy up', short: 'tidy up', sub: 'preview the whole sweep', key: '⌥⌘T',
+    hint: 'opens a final preview for exact duplicates and empty tabs; after confirmation it flattens and rebuilds only this reviewed window and writes a receipt',
     words: 'tidy sweep clean order everything', group: 'window', on: ['panel', 'palette', 'popup']
   },
   {
@@ -37,9 +37,9 @@ const TWEAK_COMMANDS = [
     words: 'review dd dedup duplicates twins semantic siblings stale event research source cleanup', group: 'window', on: ['panel', 'palette', 'popup']
   },
   {
-    action: 'cleanDuplicates', glyph: '−', title: 'remove duplicates', short: 'remove dupes', sub: 'closes them now', key: '',
-    hint: 'closes the exact duplicates and the empty tabs of every window straight away, without opening review first · pinned, active, marked, unsaved-form and last-in-window tabs stay · every batch writes a receipt',
-    words: 'remove clean duplicates dupes dedup twins empty close now', group: 'window', on: ['panel', 'palette', 'popup']
+    action: 'cleanDuplicates', glyph: '−', title: 'remove duplicates', short: 'remove dupes', sub: 'preview exact / empty', key: '',
+    hint: 'opens the exact-duplicate preview for this window · pinned, active, marked, unsaved-form and last-in-window tabs stay · closing needs one explicit confirmation and writes a receipt',
+    words: 'remove clean duplicates dupes dedup twins empty close preview', group: 'window', on: ['panel', 'palette', 'popup']
   },
   {
     action: 'groupBySense', glyph: '✳', title: 'blocks by meaning', short: 'by meaning', sub: 'a model reads the titles', key: '',

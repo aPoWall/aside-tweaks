@@ -275,8 +275,8 @@ check('tidy: вкладка с закладкой остаётся вне бло
   !log.slice(mark).some(l => l.startsWith('group')) && TABS[0]?.id === 51, TABS.map(t => t.id).join(' '));
 MARKS = [];
 
-// 4.26: рабочие команды выполняют работу, а не открывают разбор.
-// Жалоба, из которой это выросло: «tidy up вызывает палитру, а не чистит».
+// 4.31: destructive commands always open a preview. The panel button, popup and shortcut
+// share this path, and the final confirmation stays inside the palette.
 MARKS = [];
 TABS = [
   { id: 71, windowId: 1, index: 0, pinned: false, active: true, url: 'https://keep.example/page', lastAccessed: 900 },
@@ -285,10 +285,13 @@ TABS = [
   { id: 74, windowId: 1, index: 3, pinned: false, url: 'chrome://newtab/' }
 ];
 await wait(500);
+LAYER_OK.add(71); sent.length = 0;
 const sweptNow = await call('cleanDuplicates', { windowId: 1 });
-check('remove duplicates закрывает сразу, без подтверждения в палитре',
-  sweptNow?.ok && sweptNow.count === 2 && TABS.length === 2 && TABS.some(t => t.id === 72), sweptNow?.count + ' · ' + TABS.map(t => t.id).join(' '));
+check('remove duplicates открывает exact preview и ничего не закрывает',
+  sweptNow?.ok && sweptNow.count === 0 && TABS.length === 4 && sent.some(m => m.type === 'palette' && m.view === 'duplicates'),
+  sweptNow?.count + ' · ' + TABS.map(t => t.id).join(' ') + ' · ' + JSON.stringify(sent.at(-1)));
 check('remove duplicates не тронул активную вкладку', TABS.find(t => t.id === 71)?.active === true, TABS.map(t => t.id + (t.active ? '·act' : '')).join(' '));
+LAYER_OK.delete(71);
 
 mark = log.length;
 TABS = [
@@ -300,10 +303,14 @@ TABS = [
   { id: 86, windowId: 1, index: 5, pinned: false, url: 'https://www.github.com/1/', lastAccessed: 50 }
 ];
 await wait(500);
+LAYER_OK.add(84); sent.length = 0;
 const ran = await call('tidyUp', { windowId: 1 });
-check('tidy up закрывает дубль сам', ran?.ok && ran.count === 1 && !TABS.some(t => t.id === 86), ran?.count + ' · ' + TABS.map(t => t.id).join(' '));
-check('tidy up расставляет: россыпь сверху, блок из трёх ниже', TABS.map(t => t.id).join(' ') === '82 84 81 83 85', TABS.map(t => t.id).join(' '));
-check('tidy up собирает ровно один блок', log.slice(mark).filter(l => l.startsWith('group')).join('|') === 'group 81,83,85', log.slice(mark).filter(l => l.startsWith('group')).join('|'));
+check('tidy up сначала открывает preview и ничего не меняет',
+  ran?.ok && ran.count === 0 && TABS.length === 6 && sent.some(m => m.type === 'palette' && m.view === 'review-tidy'),
+  ran?.count + ' · ' + TABS.map(t => t.id).join(' ') + ' · ' + JSON.stringify(sent.at(-1)));
+check('до подтверждения tidy не переставляет и не группирует',
+  TABS.map(t => t.id).join(' ') === '81 82 83 84 85 86' && !log.slice(mark).some(l => l.startsWith('group')), TABS.map(t => t.id).join(' '));
+LAYER_OK.delete(84);
 
 const pin = await call('pinTab', { windowId: 1 });
 check('pinTab закрепил', pin?.ok && pin.count === 1 && TABS.some(t => t.pinned));
@@ -620,29 +627,31 @@ TABS = [
 ];
 WINS[2] = { id: 2, type: 'normal' };
 
-const sweepPlan = await call('previewDuplicateCleanup');
-check('предпросмотр чистки видит копии во всех окнах',
-  sweepPlan?.data?.closes === 3 && sweepPlan.data.windows === 2, JSON.stringify(sweepPlan?.data?.closes) + ' · окон ' + sweepPlan?.data?.windows);
+const sweepPlan = await call('previewDuplicateCleanup', { windowId: 1 });
+check('предпросмотр чистки ограничен выбранным окном',
+  sweepPlan?.data?.closes === 1 && sweepPlan.data.windows === 1, JSON.stringify(sweepPlan?.data?.closes) + ' · окон ' + sweepPlan?.data?.windows);
 const statsClean = await call('getStats');
 check('число в попапе равно тому, что закроет подтверждение',
   statsClean?.data?.closable === sweepPlan.data.closes, `${statsClean?.data?.closable} vs ${sweepPlan?.data?.closes}`);
 check('закладка не защищает копию внутри точного кластера',
   sweepPlan.data.blocked.every(b => !b.reasons.includes('bookmarked')), JSON.stringify(sweepPlan.data.blocked));
 
-const swept = await call('applyDuplicateCleanup');
-check('подтверждение действительно закрывает дубли и пустую вкладку',
-  swept?.data?.closed === 3 && !TABS.some(t => [203, 204, 205].includes(t.id)), TABS.map(t => t.id).join(' '));
-check('хранитель, закреплённая и активная остались',
-  TABS.map(t => t.id).sort((a, b) => a - b).join(' ') === '201 202 206', TABS.map(t => t.id).join(' '));
-check('чистка пишет квитанцию с закрытыми и оставленными',
-  swept.data?.receipt?.closed?.length === 3 && swept.data.receipt.keptTabs?.length >= 1, JSON.stringify(swept.data?.receipt?.action));
-const emptyPlan = await call('previewDuplicateCleanup');
+const swept = await call('applyReviewBatch', { clusterKey: 'all-exact', intent: 'review', windowId: 1 });
+check('подтверждение закрывает только показанный дубль выбранного окна',
+  swept?.data?.closed === 1 && !TABS.some(t => t.id === 203) && TABS.some(t => t.id === 204), TABS.map(t => t.id).join(' '));
+check('другие окна, закреплённая и активная остались',
+  TABS.some(t => t.id === 201) && TABS.some(t => t.id === 204) && TABS.some(t => t.id === 205) && TABS.some(t => t.id === 206), TABS.map(t => t.id).join(' '));
+check('подтверждённая чистка пишет квитанцию',
+  swept.data?.receipt?.closed?.length === 1 && swept.data.receipt.keptTabs?.length >= 1, JSON.stringify(swept.data?.receipt?.action));
+const emptyPlan = await call('previewDuplicateCleanup', { windowId: 1 });
 check('после чистки закрывать больше нечего', emptyPlan?.data?.closes === 0, JSON.stringify(emptyPlan?.data?.closes));
 delete WINS[2];
 
 // команда ⌥⌘D остаётся входом в review и сама ничего не закрывает
+const beforeReviewIds = TABS.map(t => t.id).join(' ');
 const reviewOnly = await call('tidyDuplicates', { windowId: 1 });
-check('⌥⌘D открывает review, не закрывая вкладки', reviewOnly?.ok && TABS.length === 3, JSON.stringify(reviewOnly));
+check('⌥⌘D открывает review, не закрывая вкладки',
+  reviewOnly?.ok && TABS.map(t => t.id).join(' ') === beforeReviewIds, JSON.stringify(reviewOnly));
 
 // ---------- ⌘-цифра: блоки окна ----------
 MARKS = [];
@@ -713,8 +722,8 @@ const folded = await call('foldBlocks', { windowId: 1 });
 check('одна команда сворачивает все блоки окна', folded?.count === 1 && GROUPS.every(g => g.collapsed), JSON.stringify(GROUPS));
 
 
-// ---------- чистка не закрывает окно целиком ----------
-// второе окно целиком состоит из межоконных дублей: план обязан оставить в нём вкладку
+// ---------- preview never crosses a window boundary ----------
+// Copies in another window are outside this batch and remain untouched.
 TABS = [
   { id: 71, windowId: 1, index: 0, pinned: false, active: true, url: 'https://a.com/x', lastAccessed: 900 },
   { id: 72, windowId: 1, index: 1, pinned: false, url: 'https://b.com/y', lastAccessed: 800 },
@@ -723,12 +732,10 @@ TABS = [
 ];
 const crossPlan = await call('previewDuplicateCleanup');
 const leftIn = (wid, ids) => TABS.filter(t => t.windowId === wid && !ids.includes(t.id)).length;
-check('план чистки оставляет вкладку в каждом окне',
-  leftIn(2, crossPlan?.data?.closeIds || []) >= 1 && (crossPlan?.data?.closeIds || []).length === 1,
+check('межоконные копии не попадают в batch текущего окна',
+  leftIn(2, crossPlan?.data?.closeIds || []) === 2 && (crossPlan?.data?.closeIds || []).length === 0,
   JSON.stringify(crossPlan?.data?.closeIds));
-check('последняя вкладка окна попадает в blocked с причиной',
-  (crossPlan?.data?.blocked || []).some(b => b.reasons.includes('last tab in its window')),
-  JSON.stringify(crossPlan?.data?.blocked));
+check('чужое окно не появляется даже в blocked', (crossPlan?.data?.blocked || []).length === 0, JSON.stringify(crossPlan?.data?.blocked));
 
 // дубль плюс пустая в том же окне: тоже не опустошать
 TABS = [
@@ -737,8 +744,8 @@ TABS = [
   { id: 83, windowId: 2, index: 1, pinned: false, url: 'chrome://newtab/' }
 ];
 const mixedPlan = await call('previewDuplicateCleanup');
-check('дубль и пустая в одном окне не закрываются обе',
-  leftIn(2, mixedPlan?.data?.closeIds || []) >= 1, JSON.stringify(mixedPlan?.data?.closeIds));
+check('дубль и пустая другого окна не входят в preview',
+  leftIn(2, mixedPlan?.data?.closeIds || []) === 2 && (mixedPlan?.data?.closeIds || []).length === 0, JSON.stringify(mixedPlan?.data?.closeIds));
 
 // обычный случай не изменился: дубль и пустая внутри одного окна уходят
 TABS = [

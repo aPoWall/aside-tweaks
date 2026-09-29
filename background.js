@@ -733,23 +733,17 @@ async function applyReviewBatch({ clusterKey, intent = 'review' } = {}, windowId
     keptTabs,
     closed: closedTabs
   });
-  // Порядок как у прежнего одного жеста: чистка по всем окнам, затем группы
-  // расплетаются и окно собирается заново. Расплести надо до перестановок,
-  // иначе перемещения упираются в границы групп.
-  let swept = 0;
+  // Tidy acts only on the reviewed window. A previous version ran a second, global cleanup
+  // here, so tabs in other windows could close without appearing in this preview.
   if (intent === 'tidy') {
-    quiet = true;
-    try {
-      swept = (await applyDuplicateCleanup().catch(() => null))?.closed || 0;
-      const wid = await targetWindowId(windowId);
-      if (wid != null) { await ungroupAll(wid); await arrangeWindow(wid); }
-    } finally { quiet = false; }
+    const wid = await targetWindowId(windowId);
+    if (wid != null) { await ungroupAll(wid); await arrangeWindow(wid); }
   }
   flash(intent === 'tidy' ? 'TIDY' : '−' + closedTabs.length,
     intent === 'tidy'
-      ? `reviewed window tidied\n${closedTabs.length + swept} closed · receipt saved`
+      ? `reviewed window tidied\n${closedTabs.length} closed · receipt saved`
       : `${closedTabs.length} reviewed tab${closedTabs.length === 1 ? '' : 's'} closed\nreceipt saved`);
-  return { closed: closedTabs.length + swept, receipt };
+  return { closed: closedTabs.length, receipt };
 }
 
 // ---------- новые вкладки под текущей ----------
@@ -930,12 +924,13 @@ function keeperOf(a, b) {
   return a.id < b.id ? a : b;
 }
 
-// План чистки по всем окнам: точные близнецы и пустые вкладки, с теми же защитами,
+// План чистки одного окна: точные близнецы и пустые вкладки, с теми же защитами,
 // что и в review. До 4.21 этот расчёт жил внутри applyDuplicateCleanup, а сама функция
 // вызывалась только из applyTidyUp, которая ни к одной клавише и ни к одной строке
 // интерфейса привязана не была – отсюда «чистка перестала работать».
-async function planDuplicateCleanup() {
-  const all = await chrome.tabs.query({});
+async function planDuplicateCleanup(windowId) {
+  const wid = await targetWindowId(windowId);
+  const all = await chrome.tabs.query(wid == null ? {} : { windowId: wid });
   const loose = all.filter(t => !t.pinned);
   const [state, bar] = await Promise.all([reviewState(), chrome.bookmarks.getChildren(BAR).catch(() => [])]);
   const marks = bookmarkKeys(bar);
@@ -994,31 +989,8 @@ async function planDuplicateCleanup() {
 }
 
 // Предпросмотр для палитры и попапа: то же число, что закроет подтверждение.
-async function previewDuplicateCleanup() {
-  return planDuplicateCleanup();
-}
-
-// Исполнение: только после подтверждения в review. Пишет квитанцию, как любая партия.
-async function applyDuplicateCleanup() {
-  const plan = await planDuplicateCleanup();
-  const live = await Promise.all(plan.closeIds.map(id => chrome.tabs.get(id).catch(() => null)));
-  const closedTabs = live.filter(Boolean).map(t => ({ title: plainTitle(t.title), url: t.url }));
-  if (closedTabs.length) await chrome.tabs.remove(live.filter(Boolean).map(t => t.id));
-  const dups = closedTabs.length - plan.empties.length;
-  const receipt = await saveReceipt({
-    action: 'close exact duplicates in every window',
-    clusterKey: 'all-windows',
-    clusterName: 'exact duplicates · every window',
-    kept: plan.kept[0] || null,
-    keptTabs: plan.kept,
-    closed: closedTabs,
-    blocked: plan.blocked.length
-  });
-  const named = closedTabs.slice(0, 3).map(t => t.title.length > 40 ? t.title.slice(0, 39) + '…' : t.title).join(' · ');
-  flash(closedTabs.length ? '−' + closedTabs.length : '0', closedTabs.length
-    ? `closed ${closedTabs.length} · ${Math.max(dups, 0)} dupes, ${plan.empties.length} empty` + (named ? '\n' + named + (closedTabs.length > 3 ? ' …' : '') : '') + '\nreceipt saved'
-    : 'nothing to clean');
-  return { closed: closedTabs.length, receipt };
+async function previewDuplicateCleanup(windowId) {
+  return planDuplicateCleanup(windowId);
 }
 
 const SECOND_LEVEL = new Set(['co.uk', 'org.uk', 'com.br', 'com.au', 'co.jp', 'com.tr']);
@@ -1159,42 +1131,22 @@ async function sortByOpened(windowId) {
   return reorder(windowId, t => t.id, 'by when opened');
 }
 
-// Две разные двери, и это была ошибка 4.18 – сделать их одной. `review tabs` показывает,
-// что чистка считает лишним, и решение остаётся за человеком. `remove duplicates` и
-// `tidy up` – рабочие команды: они выполняют то, что написано на кнопке, и пишут квитанцию.
-// Защиты действуют в обоих случаях: закреплённая, активная, отмеченная, с несохранённой
-// формой и последняя вкладка окна не закрываются никогда.
+// Three review doors, one destructive protocol: every command opens a preview first.
+// The final confirmation lives inside the palette and writes the receipt.
 async function tidyDuplicates(windowId) {
   await openPalette(windowId, '', 'review');
   return 0;
 }
 
-// Прямая чистка точных дублей и пустых вкладок – без предварительного review.
-async function cleanDuplicates() {
-  const out = await applyDuplicateCleanup();
-  return out?.closed ?? 0;
+async function cleanDuplicates(windowId) {
+  await openPalette(windowId, '', 'duplicates');
+  return 0;
 }
 
-// Уборка одним проходом: чистка → плоский список → свежие вкладки наверх → блоки.
-// До 4.26 команда лишь открывала review и ничего не делала сама.
+// Tidy uses the same explicit batch preview, then arranges only the reviewed window.
 async function tidyUp(windowId) {
-  const wid = await targetWindowId(windowId);
-  if (wid == null) return 0;
-
-  const cleaned = await applyDuplicateCleanup();
-  const closed = cleaned?.closed || 0;
-
-  const all = await chrome.tabs.query({ windowId: wid }).catch(() => []);
-  const grouped = all.filter(t => t.groupId !== -1).map(t => t.id);
-  if (grouped.length) await chrome.tabs.ungroup(grouped).catch(() => { });
-
-  const arranged = await arrangeWindow(wid);
-  const parts = [];
-  if (closed) parts.push('closed ' + closed);
-  parts.push(arranged.loose + ' loose on top');
-  if (arranged.blocks) parts.push(arranged.blocks + ' block' + (arranged.blocks === 1 ? '' : 's'));
-  flash('✦', 'tidy up · ' + parts.join(' · ') + (closed ? '\nreceipt saved · ⌥⌘D shows what stays' : '\nnothing to close · ⌥⌘D shows why'));
-  return closed;
+  await openPalette(windowId, '', 'review-tidy');
+  return 0;
 }
 
 const recentOf = t => t.lastAccessed || 0;
@@ -1717,8 +1669,9 @@ async function openUrl({ url, windowId, groupName, pinned } = {}) {
 
 // dups – сколько вкладок закроет чистка прямо сейчас; twinOf – у какой вкладки сколько близнецов,
 // палитра рисует по этому «×N» на строке
-async function getStats() {
-  const all = await chrome.tabs.query({});
+async function getStats(windowId) {
+  const wid = await targetWindowId(windowId);
+  const all = await chrome.tabs.query(wid == null ? {} : { windowId: wid });
   let pinned = 0, empties = 0, dups = 0;
   const twinOf = {};
   for (const t of all) {
@@ -1732,7 +1685,7 @@ async function getStats() {
   }
   // `closable` – сколько вкладок закроет подтверждение, с теми же защитами.
   // Попап показывает именно это число, а не «дубли минус хранители».
-  const plan = await planDuplicateCleanup().catch(() => null);
+  const plan = await planDuplicateCleanup(wid).catch(() => null);
   return {
     total: all.length, dups, pinned, empties, twinOf,
     closable: plan?.closes ?? 0, blocked: plan?.blocked.length ?? 0
@@ -1994,7 +1947,6 @@ const ACTIONS = {
 };
 
 const REVIEW_ACTIONS = {
-  applyDuplicateCleanup,
   setReviewCanonical,
   setReviewProtection,
   renameReviewCluster,

@@ -50,7 +50,11 @@ let mouseLive = false;   // наведение выбирает строку т�
 let desk = null;         // мост к машине: { ok, vaults, worktrees } либо null – тогда заметок и агентов нет
 // как показывать заметки – карточка 09 настроек
 let notesPrefs = { notesLimit: 3, notesClean: true, notesDate: true, notesOrder: 'modified' };
-let view = view0 ? { kind: view0 === 'review-tidy' ? 'review' : view0, intent: view0 === 'review-tidy' ? 'tidy' : 'review' } : null;
+let view = view0
+  ? view0 === 'duplicates'
+    ? { kind: 'cluster', clusterKey: 'all-exact', intent: 'review' }
+    : { kind: view0 === 'review-tidy' ? 'review' : view0, intent: view0 === 'review-tidy' ? 'tidy' : 'review' }
+  : null;
 let menuCache = null;    // пункты меню Aside с моста – один раз на открытие палитры
 let currentQ = '';       // запрос, по которому построен список – для подсветки совпадений
 chrome.storage.sync.get(notesPrefs).then(s => { notesPrefs = { ...notesPrefs, ...s }; });
@@ -259,10 +263,7 @@ function reviewTabItem(tab, cluster = null, section = '') {
 }
 
 async function buildReview(q) {
-  const [review, sweep] = await Promise.all([
-    send('previewTabReview').then(r => r?.data),
-    send('previewDuplicateCleanup').then(r => r?.data)
-  ]);
+  const review = await send('previewTabReview').then(r => r?.data);
   const out = [];
   if (!review) return [{ kind: 'info', glyph: '○', title: 'review is unavailable', sub: 'reload the extension once', kindLabel: '', primary: 'back', run: () => { view = null; refresh(); } }];
 
@@ -270,7 +271,6 @@ async function buildReview(q) {
   // проскроллить все кластеры и все вкладки, и партия ни разу не была доведена до конца:
   // журнал квитанций на рабочем профиле оставался пустым.
   const closable = review.summary?.exactClosable || 0;
-  const swept = sweep?.closes || 0;
   out.push({
     kind: 'cmd', section: 'what this is', glyph: '◎',
     title: `safe review · nothing closes on this screen`,
@@ -285,18 +285,6 @@ async function buildReview(q) {
     kindLabel: 'preview', primary: closable ? 'preview' : 'done',
     run: () => { if (closable) { view = { kind: 'cluster', clusterKey: 'all-exact', intent: view?.intent || 'review' }; refresh(); } }
   });
-  if (swept) out.push({
-    kind: 'cmd', section: '', glyph: '≡',
-    title: `close ${swept} exact / empty tabs in every window`,
-    sub: `${sweep.windows} window${sweep.windows === 1 ? '' : 's'} · ${sweep.blocked.length} protected cop${sweep.blocked.length === 1 ? 'y' : 'ies'} stay · receipt saved`,
-    kindLabel: 'cleanup', primary: 'clean',
-    run: async () => {
-      const r = await send('applyDuplicateCleanup');
-      view = r?.data?.receipt ? { kind: 'receipt', receipt: r.data.receipt, back: 'review', intent: view?.intent } : { kind: 'review', intent: view?.intent };
-      refresh();
-    }
-  });
-
   const clusters = review.clusters || [];
   for (const kind of ['exact', 'related']) {
     const list = clusters.filter(c => c.kind === kind);
@@ -578,6 +566,11 @@ async function build(raw) {
           { label: 'review tab families', key: '↵', fn: null },
           { label: 'preview exact cleanup', key: '⇧↵', fn: () => { view = { kind: 'cluster', clusterKey: 'all-exact', intent: 'review' }; refresh(); } }
         ];
+      }
+      if (c.action === 'cleanDuplicates') {
+        row.primary = 'preview';
+        row.run = () => { view = { kind: 'cluster', clusterKey: 'all-exact', intent: 'review' }; refresh(); };
+        row.actions = [{ label: 'preview exact duplicates', key: '↵', fn: null }];
       }
       if (c.action === 'tidyUp') {
         row.primary = 'review';

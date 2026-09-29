@@ -1,5 +1,20 @@
 # Changelog
 
+## 4.31.0 – 2026-09-29
+
+- **Remove Duplicates** is now a visible panel action. It opens the exact/empty preview for the current
+  Aside window; the final row names every tab that will close and requires one explicit confirmation.
+  `tidy up` uses the same preview and only rearranges the reviewed window;
+- removed the old global cleanup path that could close tabs in another window after a current-window
+  review. Pinned, active, user-marked, unsaved-form and last-in-window tabs remain protected, and a
+  confirmed batch still writes its canonical/source receipt;
+- the panel compares the manifest with the service worker's build stamp. An unpacked update with an old
+  worker now says `update waiting · reload Aside Tweaks once` and disables cleanup instead of silently
+  running the previous command contract;
+- clarified the native ownership model: Aside's vertical Sidebar owns Pins, Bookmarks and saved Tab
+  Groups; the extension mirrors them, adds review and search, and keeps smart history as a local read-only
+  ranking. Browser history deletion is outside the cleanup command.
+
 ## 4.30.0 – 2026-09-29
 
 - `⌘D` now completes the native Aside move: it appends the active page to the bottom of **Bookmarks**, takes it out of a tab group so Aside can show one live saved row, and keeps that page selected. `⇧⌘D` remains the separate Pin square. The one-time `favoriteBookmarkFoldRev` migration clears the three 4.28 keep-on-top defaults and enables the native Bookmarks fold without changing existing bookmark order;

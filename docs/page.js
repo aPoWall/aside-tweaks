@@ -3,10 +3,10 @@
   const paletteData = {
     palette: [
       ['Recent'], ['AT', 'Aside Tweaks · product page', 'apps.aimindset.org', 'tab'], ['S', 'Space · working surface', 'space.aimindset.org', 'tab'],
-      ['Notes · edited today'], ['◇', 'aside product map', 'local Obsidian · edited today', 'note'], ['Commands'], ['★', 'save in Bookmarks', 'last native row · page stays active', '⌘D'], ['◎', 'review tab families', 'inspect first · nothing closes yet', '⌥⌘D']
+      ['Notes · edited today'], ['◇', 'aside product map', 'local Obsidian · edited today', 'note'], ['Commands'], ['★', 'save in Bookmarks', 'last native row · page stays active', '⌘D'], ['−', 'remove duplicates', 'preview exact / empty in this window', 'preview'], ['◎', 'review tab families', 'inspect first · nothing closes yet', '⌥⌘D']
     ],
     review: [
-      ['Safe review'], ['◎', 'Nothing closes on this screen', 'choose keep, source or inspect', 'guide'],
+      ['Safe review'], ['◎', 'Nothing closes on this screen', 'choose keep, source or inspect', 'guide'], ['Batch'], ['−', 'Remove 3 exact / empty tabs', 'final preview · one confirmation', 'preview'],
       ['Related product · Space'], ['S', 'AI Mindset {space} · evolution', 'canonical · protected', 'keep'], ['D', 'Space Dataflow', 'unsaved form · protected', 'keep'], ['L', 'Space local preview', 'eligible sibling', 'close'],
       ['Sources'], ['G', 'Space product source', 'github.com', 'bookmark']
     ]
@@ -53,14 +53,14 @@
     el.textContent = (document.documentElement.lang === 'ru' ? ru : en);
   };
   const productVersion = document.querySelector('.product-header > span');
-  if (productVersion) productVersion.textContent = '4.30.0';
+  if (productVersion) productVersion.textContent = '4.31.0';
   const bookmarkAction = actionMenu.querySelector('.action:nth-of-type(3)');
   if (bookmarkAction?.firstChild) bookmarkAction.firstChild.textContent = 'save selected tab in Bookmarks ';
-  setCopy(document.querySelector('.hero .eyebrow'), 'aside browser extension · version 4.30.0', 'расширение для aside · версия 4.30.0');
+  setCopy(document.querySelector('.hero .eyebrow'), 'aside browser extension · version 4.31.0', 'расширение для aside · версия 4.31.0');
   setCopy(document.querySelector('.hero .lead'),
-    '⌘D moves the active page into the last native Bookmarks row and keeps it selected. ⇧⌘D owns the Pin square. ⇧⌘K searches tabs, smart history, bookmarks, local Obsidian notes, Aside menu items and agents from one fast palette.',
-    '⌘D переносит активную страницу в последнюю нативную строку Bookmarks и оставляет её выбранной. ⇧⌘D отвечает за квадрат Pin. ⇧⌘K быстро ищет вкладки, умную историю, закладки, локальные заметки Obsidian, меню Aside и агентов.');
-  setCopy(document.querySelector('.hero .button.primary span'), 'get 4.30.0 on github', 'взять 4.30.0 на github');
+    '⌘D moves the active page into the last native Bookmarks row and keeps it selected. Remove Duplicates opens a current-window preview. ⇧⌘K searches tabs, smart history, bookmarks, local Obsidian notes, Aside menu items and agents from one fast palette.',
+    '⌘D переносит активную страницу в последнюю нативную строку Bookmarks и оставляет её выбранной. Remove Duplicates открывает превью текущего окна. ⇧⌘K быстро ищет вкладки, умную историю, закладки, локальные заметки Obsidian, меню Aside и агентов.');
+  setCopy(document.querySelector('.hero .button.primary span'), 'get 4.31.0 on github', 'взять 4.31.0 на github');
   const releaseDate = document.querySelector('[data-release-date]');
   if (releaseDate) releaseDate.textContent = '2026-09-29';
   setCopy(document.querySelector('#example .example-head p:nth-child(2) span'),
@@ -78,13 +78,13 @@
   setCopy(document.querySelector('#features article:nth-child(3) p:last-child'),
     'exact copies, related products, stale events and research sources stay separate. the first screen only inspects; every close batch gets its own final preview and local receipt.',
     'точные копии, связанные продукты, устаревшие события и исследовательские источники разделены. первый экран только проверяет; каждая пачка закрытия получает отдельное финальное превью и локальный чек.');
-  setCopy(document.querySelector('#install > .eyebrow'), 'unpacked extension · 4.30.0', 'распакованное расширение · 4.30.0');
+  setCopy(document.querySelector('#install > .eyebrow'), 'unpacked extension · 4.31.0', 'распакованное расширение · 4.31.0');
   setCopy(document.querySelector('#install h3 + p'),
-    'pull the repository and press reload on the extension card. 4.30.0 keeps keymaps, bookmark order, pins, review state, bridge config and theme settings. it moves ⌘D to the last native Bookmarks row once; rollback to 4.29 keeps every stored bookmark and pin.',
-    'обновите репозиторий и нажмите reload на карточке расширения. 4.30.0 сохраняет клавиши, порядок закладок, пины, ревью, bridge и тему. версия один раз переводит ⌘D на последнюю нативную строку Bookmarks; откат на 4.29 сохраняет все закладки и пины.');
+    'pull the repository and press reload on the extension card. 4.31.0 keeps keymaps, bookmark order, pins, groups, review state, bridge config and theme settings. cleanup now stops at a current-window preview; rollback to 4.30 restores the old global direct-cleanup path.',
+    'обновите репозиторий и нажмите reload на карточке расширения. 4.31.0 сохраняет клавиши, порядок закладок, пины, группы, ревью, bridge и тему. очистка теперь останавливается на превью текущего окна; откат на 4.30 возвращает старый глобальный direct-cleanup.');
   setCopy(document.querySelector('.privacy h3 + p'),
-    'version 4.30.0 uses the shared apps shell and keeps the panel state local. the character, product mark and toolbar icon come from the same checked exports.',
-    'версия 4.30.0 использует общую оболочку apps и хранит состояние панели локально. персонаж, знак продукта и иконка панели приходят из одних проверенных экспортов.');
+    'version 4.31.0 uses the shared apps shell and keeps the panel state local. the character, product mark and toolbar icon come from the same checked exports.',
+    'версия 4.31.0 использует общую оболочку apps и хранит состояние панели локально. персонаж, знак продукта и иконка панели приходят из одних проверенных экспортов.');
 
   function say(key) {
     demoText.dataset.key = key;

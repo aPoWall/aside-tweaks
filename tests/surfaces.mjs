@@ -51,12 +51,11 @@ const dedup = TWEAK_COMMANDS.find(c => c.action === 'tidyDuplicates');
 check('чистка дублей есть в панели, палитре и попапе',
   ['panel', 'palette', 'popup'].every(s => dedup.on.includes(s)), dedup.on.join(' '));
 
-// Чистка обязана быть достижимой с поверхности. Регрессия 4.20: applyDuplicateCleanup
-// вызывалась только из applyTidyUp, а та не висела ни на клавише, ни на строке, и «чистка
-// перестала работать» была не багом логики, а недостижимой функцией.
+// Чистка обязана быть достижимой с поверхности и проходить через явное preview.
 const reviewActions = (bg.match(/const REVIEW_ACTIONS = \{([\s\S]*?)\};/) || [])[1] || '';
-check('чистка дублей достижима с поверхности',
-  (known + reviewActions).includes('applyDuplicateCleanup') && palette.includes("send('applyDuplicateCleanup')"));
+check('чистка дублей достижима только через preview и подтверждение',
+  known.includes('cleanDuplicates') && reviewActions.includes('applyReviewBatch') &&
+  !reviewActions.includes('applyDuplicateCleanup') && palette.includes("clusterKey: 'all-exact'"));
 
 // и в фоне не остаётся функций, которых никто не зовёт – тот же класс поломки
 const surfaceMaps = known + reviewActions +

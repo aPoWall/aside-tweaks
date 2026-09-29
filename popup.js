@@ -3,6 +3,7 @@
 
 const LABELS = {
   tidyDuplicates: () => 'review opened',
+  cleanDuplicates: () => 'preview opened',
   pinTab: n => n === 1 ? 'pinned ↑' : 'unpinned',
   favoriteTab: n => n === 1 ? 'saved in Bookmarks · last row, page stays active' : 'removed from Bookmarks · page stays active',
   blockSelected: n => n ? `${n} tabs in one block` : 'select tabs first · shift-click',
@@ -14,7 +15,7 @@ const LABELS = {
   ungroupAll: n => n ? `${n} ungrouped` : 'no blocks',
   sortByDomain: n => `${n} ordered by site`,
   sortByOpened: n => `${n} ordered by open time`,
-  tidyUp: () => 'review opened',
+  tidyUp: () => 'preview opened',
   openPalette: () => 'palette'
 };
 

@@ -1,3 +1,10 @@
+aside tweaks 4.31.0 – 2026-09-29
+
+- Remove Duplicates is visible in the panel and opens an exact/empty preview for the current window; one explicit confirmation performs the close
+- tidy up uses the same preview and rearranges only the reviewed window; tabs in another window never join that batch
+- the panel detects an unpacked update whose old service worker is still alive and asks for one reload instead of running the previous command contract
+- native Aside remains the owner of Pins, Bookmarks and saved Tab Groups; smart history is a local read-only ranking and cleanup never erases browser history
+
 aside tweaks 4.30.0 – 2026-09-29
 
 - ⌘D appends the active page to the bottom of Bookmarks, folds it out of a tab group into one native saved row and keeps it selected; ⇧⌘D remains Pin
@@ -9,7 +16,7 @@ aside tweaks 4.29.0 – 2026-09-28
 - ⌘D appends the page to the end of Bookmarks, keeps the tab in its native group and keeps focus; ⇧⌘D remains pin
 - the panel reads the newest bookmark rows from the end, shows native Aside group names first and folds commands into a compact drawer
 - refocusing Aside refreshes the active sidebar row without overriding an intentional tab switch
-- the live product model now demonstrates the real bookmark-at-the-end transition
+- the live product model demonstrates the real bookmark-at-the-end transition
 
 aside tweaks 4.28.0 – 2026-09-27
 
@@ -22,89 +29,3 @@ aside tweaks 4.27.0 – 2026-09-24
 - ⌘D stops pinning: the row goes first in the bookmarks bar and the sidebar folds the open tab into it, so the page stands in the sidebar once and keeps the focus
 - the squares on top belong to ⇧⌘D; pinning on ⌘D stays a switch and is off by default
 - the panel names the row you are on – active, pinned, asleep or the host – and scrolls that row into the middle of its window on every render and every tab switch
-
-aside tweaks 4.26.0 – 2026-09-22
-
-- ⌘D puts the page where ⇧⌘D puts it: the row goes first in the bookmarks bar and the tab is pinned into the squares on top of the sidebar, with the focus still on it
-- a second ⌘D takes the row and the square out and leaves the tab open, selected and first in the list
-- remove duplicates is a command again: it closes the exact duplicates and the empty tabs of every window straight away, with the same protections and the same receipt
-- tidy up runs the sweep instead of opening the palette – cleanup, flatten, recent tabs on top, blocks from three tabs; review tabs stays the door into review
-- the palette shows the tab you are on first and marks it active
-
-aside tweaks 4.25.0 – 2026-09-22
-
-- ⌘D makes the same move as pin: the row goes first in the bookmarks bar, the open tab rises to the first row of the tabs and keeps the focus
-- one page stops showing twice in the sidebar – before this the row joined the end of the bar while the tab stayed at the bottom
-- both halves stay switches in settings and return to the 4.21 contract
-- testbed: a second Aside on its own profile checks ⌘D and ⇧⌘D in a real browser without touching the working window
-
-aside tweaks 4.24.0 – 2026-09-17
-
-- the toolbar button reads as a menu bar item: one click opens the surface, the next closes it, and the mode of the button is one list in settings – mark, mark and the tab count of this window, the count drawn as the button, or hidden
-- hidden asks first and says what it can do: the browser keeps the square in the toolbar and only a person unpins it, so the mode empties the drawing and the title points at the combination
-- one combination for open and close, read from the browser in every line of the product; the family default ⌥⌘A is refused by this browser for an extension command, so the shipped default is ⌥⇧A and a refused combination turns the settings row red and is never stored
-- the voxel character is back in the header of the popup and the panel at 40 px: it assembles in 700 ms, lifts under the cursor and steps its red cursor on a click; the flat mark stays on the toolbar button, in settings and on the favicons
-- aim-voxel.js and the shared voxel model file are vendored byte for byte and both digests are asserted by the surfaces test
-
-aside tweaks 4.23.0 – 2026-09-17
-
-- a number key always lands somewhere: ⌘1…⌘9 address the blocks of the window, and a number with no block selects the tab in that position, ⌘9 the last one, the way the same key reads in the browser
-- ⇧⌘ on the next free number opens a new block around the current tab
-- review says what it is on the surface: the first row reads what this window already repeats, with the reason on every row
-- REQUIREMENTS.md in the repository: every requirement of waves 3 to 9 with its status, the declared exceptions and the answers to the two open questions
-
-aside tweaks 4.22.0 – 2026-09-16
-
-- one shell: the popup, the panel and the palette take the header, the bottom line and the product mark from the shared export of the apps design system, vendored byte for byte and checked by sha-256
-- the toolbar icon and the header mark became one drawing from one source; icons rendered at 16, 32, 48 and 128 from the aside glyph
-- the voxel character left the extension surfaces and stays on this page as an illustration
-- the panel closes the same way from ×, esc and ⌘W
-- no browser surface takes a pin: the popup closes itself and cannot survive an outside click, the panel stays open until it is closed; both pin slots stay empty and the header order holds
-- the bottom line has the same three parts everywhere: keys, esc close, version or state
-- the popup lost the duplicate settings link and the separate readout; the counts moved into the header state line and the bottom line
-
-aside tweaks 4.21.0 – 2026-09-16
-
-- ⌘D follows Arc: the bookmark joins the end of the bar, the rows above keep their places, the tab stays open and selected, and a second ⌘D takes the row out; closing the tab after ⌘D became a setting and is off by default
-- ⇧⌘D keeps the focus on the tab after pinning and unpinning
-- fixed duplicate cleanup: the function had lost every caller, so no key and no surface could reach it. cleanup now runs from the review confirmation, covers every window and writes a receipt
-- the popup tile and review show the same number, the one the confirmation will actually close
-- cleanup counts what is left in every window: a window whose tabs are all cross-window duplicates keeps one of them, so no batch closes a window
-- a bookmarked page no longer protects each of its own copies inside an exact-duplicate cluster
-- review opens with the summary and the confirm line; a related cluster wider than 8 tabs offers no batch
-- ⌘1…⌘9 switch to the blocks of the window, ⇧⌘1…⇧⌘9 put the current tab into a block, and the palette lists what each number holds
-- added the Arc multi-select gesture: shift-click several tabs, then one command turns the selection into a named block; added fold and unfold for all blocks
-- the ⌘K action panel is the same on every row type, notes carry the reason they are on the list, and rows without a favicon get a monospace letter avatar
-
-aside tweaks 4.20.0 – 2026-09-14
-
-- added the live product mark: the aside voxel character sits in the panel and popup header, follows the cursor with a small depth parallax, and scatters and reassembles on click, Enter or Space while its red cursor steps to a neighbouring cell
-- vendored `vendor/aim-voxel.js` byte for byte from the AI Mindset apps export (`sites/apps/assets/aim-voxel.js`, sha-256 `9ed762d5…6eccb`); `vendor/aim-voxel-aside.json` is the aside model extracted from `voxel-models.json` of 2026-09-13 (sha-256 `346273ca…3ce1`); `mark.js` renders the character without inline scripts
-- reduced motion keeps the character static and only moves the red cursor
-- rebuilt the product page on the shared N1 structure with English by default and a Russian switch
-
-aside tweaks 4.19.0 – 2026-09-02
-
-- moved new `⌘D` bookmarks to the first row of the bookmarks bar
-- made post-close focus follow the next unpinned tab, with pinned tabs as fallback only
-- aligned settings, palette, popup and panel copy with the installed behavior
-- restored the product page's AI Mindset Apps engineering language and concise first viewport
-- added a draggable live palette, keyboard demo, animated keep transition and reactive Tab Keeper
-- kept semantic review as an explicit palette mode instead of presenting it as the whole product
-
-aside tweaks 4.18.0 – 2026-09-01
-
-- added product-aware tab review with exact, related, stale/event and research states
-- added persistent cluster names, canonical tabs, user protection, source bookmarks and local receipts
-- protected pinned, active, bookmarked, user-marked and unsaved-form tabs from batches
-- routed duplicate cleanup and tidy shortcuts through a final preview
-- retired destructive behavior from the legacy auto-dedupe preference
-- redesigned the product page around the live review workflow and Tab Keeper character
-- shortened the README and added operator, migration and rollback guidance
-
-aside tweaks 4.17.0 – 2026-08-28
-
-- added bookmark-and-close behavior for `⌘D`
-- added duplicate preview with reasons and selected keeper
-- added recent Obsidian notes with a today section
-- made Aside menu items searchable through the desk bridge
