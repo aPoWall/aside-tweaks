@@ -49,7 +49,7 @@ let blocks = [];
 let mouseLive = false;   // наведение выбирает строку только после реального движения мыши
 let desk = null;         // мост к машине: { ok, vaults, worktrees } либо null – тогда заметок и агентов нет
 // как показывать заметки – карточка 09 настроек
-let notesPrefs = { notesLimit: 3, notesClean: true, notesDate: true, notesOrder: 'modified' };
+let notesPrefs = { notesLimit: 3, notesClean: true, notesDate: true, notesOrder: 'modified', notesInAll: false };
 let view = view0
   ? view0 === 'duplicates'
     ? { kind: 'cluster', clusterKey: 'all-exact', intent: 'review' }
@@ -444,7 +444,7 @@ async function build(raw) {
   const wantTabs = scope === 'all' || scope === 'tabs';
   const wantHist = scope === 'all' || scope === 'history';
   const wantMarks = scope === 'all' || scope === 'bookmarks';
-  const wantNotes = (scope === 'all' || scope === 'notes') && desk?.ok;
+  const wantNotes = (scope === 'notes' || (scope === 'all' && notesPrefs.notesInAll)) && desk?.ok;
   const wantCmds = scope === 'all' || scope === 'commands';
 
   // открытые вкладки – по свежести, как ⌃⇥ в Arc: последняя, где был, первой;
@@ -1018,4 +1018,6 @@ if (embed) {
 renderScopes();
 if (q0) qEl.value = q0;
 qEl.focus();
+// Browser navigation paints immediately; the optional local bridge enriches it later.
+refresh();
 deskProbe().then(refresh);

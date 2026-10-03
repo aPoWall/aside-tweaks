@@ -1,5 +1,20 @@
 # Changelog
 
+## 4.33.0 – 2026-10-03
+
+- the navigation panel follows native Sidebar order: Pin squares, complete ordered Bookmarks with folders,
+  then Tabs. A saved live page is highlighted in Bookmarks and represented once; other live copies remain visible;
+- a local title/URL filter, keyboard navigation, Current button and display-only groups/sites/list selector
+  replace the long numbered tier labels. Active groups stay open, and focus/reopen events reveal the current row
+  against the actual scroll viewport. Coalesced tab updates no longer cancel an activation's reveal request;
+- recent history is an opt-in drawer. Notes are searched in the Notes scope by default; the desk settings can
+  include them in All again. Browser results paint before the optional bridge responds. No notes, history,
+  groups, bookmark order or tab protections are deleted;
+- the public demo now has synthetic inspect → preview → explicit confirmation → receipt → reset states,
+  showing 2 closed / 3 stays with pinned and bookmarked reasons. Release date corrected to October 3;
+- operator: reload the unpacked extension once. Panel display preferences are local; keymap and bridge
+  settings remain intact. Rollback to 4.32 restores the old panel; the new preferences may remain unused.
+
 ## 4.32.0 – 2026-10-03
 
 - exact cleanup now treats a native Bookmarks row as a protection inside an exact-duplicate cluster;

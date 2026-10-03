@@ -7,10 +7,10 @@
 <link rel="stylesheet" href="vendor/aim-app-shell.css">
 <link rel="stylesheet" href="instrument.css">
 <style>
-  :root { --pad: 11px; --row: 24px; }
-  :root[data-density="compact"] { --pad: 10px; --row: 23px; }
+  :root { --pad: 12px; --row: 36px; }
+  :root[data-density="compact"] { --pad: 10px; --row: 29px; }
   html, body { height: 100%; }
-  body { display: flex; flex-direction: column; overflow: hidden; font-size: 11px; }
+  body { display: flex; flex-direction: column; overflow: hidden; font-size: 12.5px; }
 
   /* шапка и подвал – общая оболочка (vendor/aim-app-shell.css); панель добавляет только линии */
   header { border-bottom: 1px solid var(--line); }
@@ -43,7 +43,7 @@
   }
   .row.flash { animation: flashrow 1.6s ease both; }
   .row.flash .t { color: inherit; }
-  .row img { width: 14px; height: 14px; flex: none; border-radius: 2px; }
+  .row img { width: 18px; height: 18px; flex: none; border-radius: 3px; }
   .row .glyph { width: 14px; text-align: center; flex: none; color: var(--dim); font-size: 10px; }
   .row .t { flex: 1; overflow: hidden; text-overflow: ellipsis; }
   .row.sleeping .t { color: var(--muted); }
@@ -55,7 +55,9 @@
     color: var(--muted); font: inherit; font-size: 11px; cursor: pointer; padding: 0 3px;
     transition: opacity .12s;
   }
-  .row:hover .act { opacity: 1; }
+  .row:hover .act, .row:focus-within .act { opacity: 1; }
+  .row:focus-within .tag { display: none; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   .row .act:hover { color: var(--fg); }
   .row .act.on { opacity: 1; color: var(--accent); }
 
@@ -92,6 +94,25 @@
   :root[data-look="aside"] .sec-hdr .n { color: var(--muted); }
   :root[data-look="aside"] .blk { font-size: 10.5px; letter-spacing: 0; }
   :root[data-look="aside"] .empty { font-size: 10.5px; }
+  .nav-tools { display: flex; gap: 6px; padding: 8px var(--pad); border-bottom: 1px solid var(--line); }
+  .nav-tools input { min-width: 0; flex: 1; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sel); color: var(--fg); font: inherit; }
+  .nav-tools select { max-width: 100px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); color: var(--fg); font: inherit; }
+  #pins { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; padding: 10px var(--pad) 4px; }
+  #pins .empty { grid-column: 1 / -1; }
+  .pin-square { height: 48px; border: 1px solid var(--line); border-radius: 10px; background: var(--line); color: var(--fg); cursor: pointer; }
+  .pin-square img { width: 21px; height: 21px; border-radius: 4px; }
+  .pin-square.active { background: var(--sel); box-shadow: inset 0 0 0 2px var(--accent); }
+  .nav-group { margin: 4px 6px; }
+  .nav-group summary { padding: 8px 6px; color: var(--muted); cursor: pointer; font-size: 11px; }
+  .nav-group .row { margin-left: 10px; }
+  .history-drawer { margin-top: 12px; border-top: 1px solid var(--line); }
+  .history-drawer > summary { padding: 12px var(--pad); color: var(--muted); cursor: pointer; }
+  .history-drawer > summary span { float: right; }
+  .review-bar #review-note { flex: 1; }
+  .review-bar { flex-wrap: wrap; }
+  .sec-hdr { margin-top: 8px; }
+  .row .tag:not(.now) { display: none; }
+  .row .act { width: 22px; min-height: 24px; padding: 0; }
 </style>
 </head>
 <body data-aim-surface="panel">
@@ -106,22 +127,26 @@
 
   <div class="review-bar">
     <button class="aim-shell-btn" id="remove-duplicates" title="show exact duplicates and empty tabs before anything closes">− remove duplicates</button>
-    <span id="review-note">preview this window · one final confirmation</span>
+    <span id="review-note">preview first</span>
+    <button class="aim-shell-btn" id="show-active" title="clear the filter and reveal the current page" aria-label="reveal current page">◎ current</button>
     <span class="runtime-notice" id="runtime-notice" role="status" hidden>update waiting · reload Aside Tweaks once</span>
   </div>
 
+  <div class="nav-tools">
+    <input type="search" id="panel-search" placeholder="filter this window · ⌘F" aria-label="filter tabs and bookmarks" autocomplete="off">
+    <select id="panel-grouping" aria-label="tab display grouping" title="display only · browser groups stay unchanged"><option value="native">groups</option><option value="sites">sites</option><option value="flat">list</option></select>
+  </div>
   <main class="aim-shell-body">
-    <div class="sec-hdr" title="native Aside Bookmarks rows; ⌘D appends the active page at the bottom"><span class="n">01</span> ★ Bookmarks · native rows · newest last <span id="nFav">0</span></div>
-    <div id="favs"></div>
-
-    <div class="sec-hdr" title="native pinned tabs; ⇧⌘D toggles the square"><span class="n">02</span> ◆ Pins · squares on top <span id="nPins">0</span></div>
+    <div class="sec-hdr" title="native pinned tabs; ⇧⌘D toggles the square">Pins <span id="nPins">0</span></div>
     <div id="pins"></div>
 
-    <div class="sec-hdr"><span class="n">03</span> ◴ smart history · local <span id="nHistory">0</span></div>
-    <div id="history"></div>
+    <div class="sec-hdr" title="native Aside Bookmarks rows; ⌘D appends the active page at the bottom">Bookmarks <span id="nFav">0</span></div>
+    <div id="favs"></div>
 
-    <div class="sec-hdr"><span class="n">04</span> ▤ tabs · native groups first <span id="nTabs">0</span></div>
+    <div class="sec-hdr">Tabs <span id="nTabs">0</span></div>
     <div id="tabs"></div>
+
+    <details id="history-drawer" class="history-drawer"><summary>Recent history <span id="nHistory">0</span></summary><div id="history"></div></details>
 
     <details class="command-drawer">
       <summary><span>⚡</span><span>commands for this window</span><span class="key">⇧⌘K</span></summary>
@@ -140,6 +165,7 @@
   <script src="vendor/aim-voxel.js"></script>
   <script src="shell.js"></script>
   <script src="commands.js"></script>
+  <script src="navigation.js"></script>
   <script src="panel.js"></script>
 </body>
 </html>

@@ -38,8 +38,12 @@ check('у команд попапа есть short и group', noShort.length ===
 // панель и палитра рендерят из общего списка
 check('панель рендерит из общего списка', panel.includes("commandsFor('panel')"));
 check('палитра рендерит из общего списка', palette.includes("commandsFor('palette')"));
-check('панель показывает хвост закладок, куда ⌘D дописывает свежую строку',
-  panel.includes('allMarks.slice(Math.max(0, allMarks.length - 14))'));
+check('панель показывает все закладки с папками и выделяет живую сохранённую страницу',
+  panel.includes('chrome.bookmarks.getSubTree(BAR)') && panel.includes('NAV.partition(all, markTree)') && panel.includes('favRow(mark, tab)'));
+check('поиск панели локален, а coalescing сохраняет запрос возврата к активной строке',
+  panel.includes("'panel-search'") && panel.includes('pendingReveal ||= revealActive === true') && panel.includes("document.querySelector('main').getBoundingClientRect()"));
+check('заметки по умолчанию отделены от All', palette.includes('notesInAll: false') && palette.includes('notesPrefs.notesInAll'));
+check('первый поиск вкладок не ждёт desk bridge', palette.includes('refresh();\ndeskProbe().then(refresh);'));
 check('панель держит компактную умную историю на сигналах палитры',
   panel.includes('const HISTORY_LIMIT = 6') && panel.includes('chrome.history.search') && panel.includes('twFrecency'));
 check('панель перечитывает окно и возвращает активную строку после раскрытия',

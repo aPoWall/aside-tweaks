@@ -385,7 +385,8 @@
           <button data-v="modified">last modified</button><button data-v="opened">last opened in Obsidian</button>
         </div>
       </div>
-      <small style="margin-bottom:9px">how many recent notes an empty query shows and in which order; the <b>notes</b> scope adds a «today» section with everything modified since midnight; a typed query always searches the vault by file name.</small>
+      <small style="margin-bottom:9px">the <b>notes</b> scope searches the vault by filename and shows recent edits. The default all scope stays focused on browser navigation.</small>
+      <label class="opt"><input type="checkbox" id="notesInAll"><span>include Obsidian notes in all<small>optional · recent files are disk edits, not necessarily pages relevant to the current tab</small></span></label>
       <label class="opt"><input type="checkbox" id="notesClean">
         <span>clean titles<small>vault names like <code>{AIM} {guide} Internal Mini-Deck Standard – 2026-08-27</code> read as <b>Internal Mini-Deck Standard</b> with <code>AIM</code> <code>guide</code> badges and the date on the right; off = the raw file name</small></span>
       </label>

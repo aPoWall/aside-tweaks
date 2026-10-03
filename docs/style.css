@@ -37,3 +37,16 @@ footer{display:flex;gap:25px;padding:24px 0 38px;border-top:1px solid var(--line
 .product-header{display:flex;align-items:center;gap:16px;padding:28px 0}.product-header h1{font-size:28px;letter-spacing:-.04em;margin:0}.product-header>span{font-size:12px;color:var(--muted)}.product-header>a{margin-left:auto}.product-voxel{display:grid;place-items:center;width:56px;height:56px;flex:0 0 56px;border-radius:8px;outline-offset:4px}.product-voxel img,.product-voxel svg{display:block;width:56px;height:56px;object-fit:contain}.product-voxel:focus-visible{outline:2px solid var(--signal)}
 .example{padding-top:0}.example-head{margin-top:24px}.hero{padding:32px 0}.hero-grid{display:block}.hero h2{font-size:clamp(28px,4vw,44px);line-height:1.2;max-width:800px;letter-spacing:-.04em}.hero .lead{max-width:900px}.site-head.apps-top{max-width:1160px}.site-head.apps-top .apps-brand-voxel{width:56px;height:56px}
 @media(max-width:620px){.product-header{gap:10px;flex-wrap:wrap}.product-header h1{font-size:23px}.product-header>a{margin-left:66px}.product-header>span{font-size:10px}}
+/* Explicit synthetic review actions retain the palette's native dimensions. */
+.demo-batch-action { margin: 8px 12px 4px; padding: 9px 12px; border: 1px solid var(--line, #bbb); border-radius: 7px; background: transparent; color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
+.demo-batch-action:hover, .demo-batch-action:focus-visible { background: var(--sel, #ddd); outline: 2px solid currentColor; outline-offset: 2px; }
+.palette-list { overflow-y: auto; min-height: 0; }
+.demo-batch-action { color: var(--ink); }
+.scopes[hidden] { display: none; }
+body[data-aim-profile="n1-dark"] { --paper: var(--aim-s-canvas, #000); --ink: var(--aim-s-text, #f2f2f2); --muted: var(--aim-s-text-secondary, #929292); --line: var(--aim-s-divider, #333); --fill: var(--aim-s-data, #1e1e1e); --hover: var(--aim-s-hover, #252525); --red: var(--aim-s-selection, #db303d); color-scheme: dark; }
+.demo-batch-controls { display: flex; flex-wrap: wrap; border-top: 1px solid var(--line); padding: 3px 0 7px; }
+.demo-batch-controls[hidden] { display: none; }
+body { color: var(--ink); }
+.palette-top input { color: var(--ink); }
+.demo-batch-action:hover, .demo-batch-action:focus-visible { background: var(--hover); color: var(--ink); }
+.button.primary, .aside-tab .ico { color: var(--paper); }

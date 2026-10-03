@@ -19,7 +19,7 @@ const DEFAULTS = {
   dedupAuto: false, dedupNotice: true, dedupIgnoreHash: true, dedupIgnoreUtm: true, dedupByTitle: true,
   favoriteCloses: false, keepPins: true, favoriteMovesTab: false, favoriteRowTop: false, favoritePins: false, favoriteLeavesGroup: true, blockKeys: true, paletteOverlay: true, keymapEnabled: true, dimBehindPalette: true,
   tabPlacement: 'underCurrent', placementGuardMs: 2500, tidyMinGroup: 3,
-  notesLimit: 3, notesClean: true, notesDate: true, notesOrder: 'modified',
+  notesLimit: 3, notesClean: true, notesDate: true, notesOrder: 'modified', notesInAll: false,
   barMode: 'mark',
   keymap: DEFAULT_KEYMAP,
   theme: { look: 'aside', mode: 'light', accent: '#111111', tint: 0, density: 'normal' },
@@ -420,7 +420,7 @@ async function renderBar() {
 
 // ---------- сборка ----------
 
-const TOGGLES = ['favoriteCloses', 'notesClean', 'notesDate', 'dedupNotice', 'dedupIgnoreHash', 'dedupIgnoreUtm', 'dedupByTitle', 'keepPins', 'favoriteMovesTab', 'favoriteRowTop', 'favoritePins', 'favoriteLeavesGroup', 'blockKeys', 'paletteOverlay', 'keymapEnabled', 'dimBehindPalette'];
+const TOGGLES = ['favoriteCloses', 'notesInAll', 'notesClean', 'notesDate', 'dedupNotice', 'dedupIgnoreHash', 'dedupIgnoreUtm', 'dedupByTitle', 'keepPins', 'favoriteMovesTab', 'favoriteRowTop', 'favoritePins', 'favoriteLeavesGroup', 'blockKeys', 'paletteOverlay', 'keymapEnabled', 'dimBehindPalette'];
 
 function renderAll() {
   for (const k of TOGGLES) document.getElementById(k).checked = !!state[k];

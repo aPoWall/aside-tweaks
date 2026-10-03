@@ -1,7 +1,6 @@
 // Aside Tweaks – панель (chrome.sidePanel)
-// Четыре яруса сверху вниз: bookmarks (хвост панели закладок), pinned
-// (нативные пины Chromium), smart history и tabs (нативные группы + правила).
-// Поиска здесь нет намеренно – он живёт в палитре ⇧⌘K.
+// Mirrors native navigation: Pins, ordered Bookmarks, then live Tabs.
+// Filtering and folding are display-only. They never rearrange browser data.
 
 const SECOND_LEVEL = new Set(['co.uk', 'org.uk', 'com.br', 'com.au', 'co.jp', 'com.tr']);
 const BAR = '1';           // Bookmarks Bar – закладки лежат в корне, без папки
@@ -9,9 +8,13 @@ const FLASH_WINDOW = 4000; // сколько времени свежий пин/
 const HISTORY_LIMIT = 6;   // история помогает вернуться, но не становится второй лентой вкладок
 const TRACKING = /^(utm_|_gl$|gclid$|fbclid$|yclid$|mc_cid$|mc_eid$)/;
 
-let winId = null;
+let winId = Number(new URLSearchParams(location.search).get('win')) || null;
 let rules = [];
 let runtimeReady = true;
+let navigation = null;
+let revealRequested = false;
+let panelPrefs = { panelGrouping: 'native', panelHistory: false, panelCollapsed: [] };
+const NAV = AsideNavigation;
 
 async function checkRuntime() {
   const expected = chrome.runtime.getManifest().version;
@@ -88,6 +91,7 @@ function act(glyph, title, on, fn) {
   b.className = 'act' + (on ? ' on' : '');
   b.textContent = glyph;
   b.title = title;
+  b.setAttribute('aria-label', title);
   b.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
   return b;
 }
@@ -95,6 +99,7 @@ function act(glyph, title, on, fn) {
 function rowAction(row, fn) {
   row.tabIndex = 0;
   row.setAttribute('role', 'button');
+  row.setAttribute('aria-label', (row.title || row.textContent).split('\n')[0]);
   row.addEventListener('click', fn);
   row.addEventListener('keydown', e => {
     if (e.target !== row || (e.key !== 'Enter' && e.key !== ' ')) return;
@@ -105,21 +110,26 @@ function rowAction(row, fn) {
 
 // ---------- favorites ----------
 
-function favRow(mark) {
+function favRow(mark, tab) {
   const d = document.createElement('div');
-  d.className = 'row';
+  d.className = 'row' + (tab?.active ? ' active' : '');
+  if (tab?.active) d.setAttribute('aria-current', 'page');
   d.title = (mark.title || '') + '\n' + mark.url;
   const t = document.createElement('span');
   t.className = 't';
   t.textContent = mark.title || mark.url;
-  d.append(iconFor(mark.url), t);
+  d.append(iconFor(mark.url, tab?.favIconUrl), t);
+  if (tab?.active) {
+    const tag = document.createElement('span'); tag.className = 'tag now'; tag.textContent = 'active'; d.append(tag);
+  }
   d.append(act('×', 'remove from the bar', false, async () => {
     await chrome.bookmarks.remove(mark.id).catch(() => { });
     say('removed from the bar');
     render();
   }));
-  rowAction(d, () => {
-    chrome.runtime.sendMessage({ action: 'openUrl', url: mark.url, windowId: winId });
+  rowAction(d, async () => {
+    if (tab) await chrome.tabs.update(tab.id, { active: true });
+    else await chrome.runtime.sendMessage({ action: 'openUrl', url: mark.url, windowId: winId });
   });
   return d;
 }
@@ -286,6 +296,7 @@ async function smartHistory(openUrls, bookmarkUrls) {
 }
 
 async function render(revealActive = false) {
+  revealRequested ||= revealActive;
   const my = ++renderSeq;
   if (winId == null) winId = (await chrome.windows.getCurrent().catch(() => null))?.id ?? null;
 
@@ -293,16 +304,43 @@ async function render(revealActive = false) {
     chrome.tabs.query(winId != null ? { windowId: winId } : { currentWindow: true }).catch(() => []),
     chrome.tabGroups.query(winId != null ? { windowId: winId } : {}).catch(() => [])
   ]);
-  // ⌘D дописывает строку в конец, поэтому показываем хвост в исходном порядке:
-  // новая закладка остаётся последней и видимой, старые позиции не прыгают.
-  const allMarks = (await chrome.bookmarks.getChildren(BAR).catch(() => [])).filter(k => k.url);
-  const marks = allMarks.slice(Math.max(0, allMarks.length - 14));
+  const markTree = (await chrome.bookmarks.getSubTree(BAR).catch(() => []))[0]?.children || [];
+  const allMarks = NAV.leaves(markTree);
   const openUrls = new Set(all.map(t => normUrl(t.url)).filter(Boolean));
   const bookmarkUrls = new Set(allMarks.map(m => normUrl(m.url)).filter(Boolean));
-  const history = await smartHistory(openUrls, bookmarkUrls);
+  const history = panelPrefs.panelHistory ? await smartHistory(openUrls, bookmarkUrls) : [];
   const hi = await chrome.storage.session.get({ lastFavId: null, lastFavAt: 0, lastPinId: null, lastPinAt: 0 }).catch(() => ({}));
   if (my !== renderSeq) return;
 
+  navigation = { all, nativeGroups, markTree, allMarks, history, hi };
+  drawNavigation(revealRequested);
+  revealRequested = false;
+}
+
+function groupBox(root, name, id, items, rowFor, active = false) {
+  const box = document.createElement('details'); box.className = 'nav-group';
+  const filtered = document.getElementById('panel-search').value.trim();
+  box.open = active || !!filtered || !panelPrefs.panelCollapsed.includes(id);
+  const summary = document.createElement('summary'); summary.textContent = `${name} · ${items.length}`;
+  box.append(summary);
+  for (const item of items) box.append(rowFor(item));
+  root.append(box);
+  box.addEventListener('toggle', () => {
+    if (active && !box.open && !filtered) { box.open = true; return; }
+    if (filtered || !box.isConnected) return;
+    const collapsed = new Set(panelPrefs.panelCollapsed);
+    if (box.open) collapsed.delete(id); else collapsed.add(id);
+    panelPrefs.panelCollapsed = [...collapsed];
+    chrome.storage.local.set({ panelCollapsed: panelPrefs.panelCollapsed });
+  });
+}
+
+function drawNavigation(revealActive = false) {
+  if (!navigation) return;
+  const { all, nativeGroups, markTree, allMarks, history, hi } = navigation;
+  const query = document.getElementById('panel-search').value;
+  const match = item => NAV.matches(item, query);
+  const parts = NAV.partition(all, markTree);
   const now = Date.now();
   const freshFav = (now - (hi.lastFavAt || 0) < FLASH_WINDOW) ? hi.lastFavId : null;
   const freshPin = (now - (hi.lastPinAt || 0) < FLASH_WINDOW) ? hi.lastPinId : null;
@@ -316,40 +354,50 @@ async function render(revealActive = false) {
   historyEl.replaceChildren();
   tabsEl.replaceChildren();
 
-  if (!marks.length) favsEl.append(emptyLine('empty · ⌘D puts the current page here'));
-  else appendGrouped(favsEl, marks, m => {
-    const r = favRow(m);
-    if (m.id === freshFav) r.classList.add('flash');
-    return r;
-  });
+  function bookmarkRows(root, nodes) {
+    for (const mark of nodes) {
+      if (!mark.url) {
+        const found = NAV.leaves(mark.children || []).filter(match);
+        if (found.length) groupBox(root, mark.title || 'folder', `bookmark:${mark.id}`, found,
+          m => favRow(m, parts.saved.get(m.id)), found.some(m => parts.saved.get(m.id)?.active));
+      } else if (match(mark)) {
+        const row = favRow(mark, parts.saved.get(mark.id));
+        if (mark.id === freshFav) row.classList.add('flash');
+        root.append(row);
+      }
+    }
+  }
+  bookmarkRows(favsEl, markTree);
+  if (!favsEl.children.length) favsEl.append(emptyLine(query ? 'no matching bookmarks' : '⌘D saves the page here · newest last'));
 
-  const pins = all.filter(t => t.pinned).sort((a, b) => a.index - b.index);
+  const pins = parts.pins.filter(match);
   if (!pins.length) pinsEl.append(emptyLine('empty · ⇧⌘D pins to the squares on top'));
-  else appendGrouped(pinsEl, pins, t => {
-    const r = tabRow(t);
+  else for (const t of pins) {
+    const r = document.createElement('button'); r.className = 'pin-square' + (t.active ? ' active' : '');
+    r.title = t.title || t.url; r.setAttribute('aria-label', r.title);
+    if (t.active) r.setAttribute('aria-current', 'page');
+    r.append(iconFor(t.url, t.favIconUrl));
+    r.addEventListener('click', () => chrome.tabs.update(t.id, { active: true }));
     if (t.id === freshPin) r.classList.add('flash');
-    return r;
-  });
+    pinsEl.append(r);
+  }
 
   if (!history.length) historyEl.append(emptyLine('nothing useful outside open tabs and bookmarks'));
-  else appendGrouped(historyEl, history, historyRow);
+  else appendGrouped(historyEl, history.filter(match), historyRow);
 
-  const rest = all.filter(t => !t.pinned).sort((a, b) => a.index - b.index);
+  const rest = parts.tabs.filter(match);
   const nativeNames = new Map(nativeGroups.map(g => [g.id, (g.title || '').trim() || 'group']));
   const buckets = new Map();
   for (const t of rest) {
-    const b = nativeNames.get(t.groupId) || blockOf(t);
-    if (!buckets.has(b)) buckets.set(b, []);
-    buckets.get(b).push(t);
+    const b = panelPrefs.panelGrouping === 'flat' ? '' :
+      panelPrefs.panelGrouping === 'sites' ? hostOf(t.url) || 'other' : nativeNames.get(t.groupId) || '';
+    const id = panelPrefs.panelGrouping === 'native' && nativeNames.has(t.groupId) ? `native:${t.groupId}` : b;
+    if (!buckets.has(id)) buckets.set(id, { name: b, list: [] });
+    buckets.get(id).list.push(t);
   }
-  for (const [name, list] of buckets) {
-    if (buckets.size > 1) {
-      const h = document.createElement('div');
-      h.className = 'blk';
-      h.textContent = `${name} · ${list.length}`;
-      tabsEl.append(h);
-    }
-    for (const t of list) tabsEl.append(tabRow(t));
+  for (const [id, { name, list }] of buckets) {
+    if (name) groupBox(tabsEl, name, `tabs:${id}`, list, tabRow, list.some(t => t.active));
+    else for (const t of list) tabsEl.append(tabRow(t));
   }
   if (!rest.length) tabsEl.append(emptyLine('empty'));
 
@@ -357,7 +405,7 @@ async function render(revealActive = false) {
   // при полусотне вкладок «где я сейчас» приходится искать прокруткой.
   focusActiveRow(revealActive);
 
-  document.getElementById('nFav').textContent = marks.length === allMarks.length ? String(marks.length) : `${marks.length}/${allMarks.length}`;
+  document.getElementById('nFav').textContent = String(allMarks.filter(match).length);
   document.getElementById('nPins').textContent = String(pins.length);
   document.getElementById('nHistory').textContent = String(history.length);
   document.getElementById('nTabs').textContent = String(rest.length);
@@ -372,19 +420,22 @@ async function render(revealActive = false) {
 // на каждой перерисовке, а их здесь много: любое событие вкладок перерисовывает список.
 function focusActiveRow(force = false) {
   requestAnimationFrame(() => {
-    const row = document.querySelector('.row.active');
+    const row = document.querySelector('[aria-current="page"]');
     if (!row) return;
     const box = row.getBoundingClientRect();
-    const pad = 24;   // у самого края строка формально видна, но читается как «за кадром»
-    if (!force && box.top >= pad && box.bottom <= window.innerHeight - pad) return;
+    const viewport = document.querySelector('main').getBoundingClientRect();
+    const pad = 8;
+    if (!force && box.top >= viewport.top + pad && box.bottom <= viewport.bottom - pad) return;
     row.scrollIntoView({ block: 'center', behavior: force ? 'auto' : 'smooth' });
   });
 }
 
 let rerenderTimer = null;
+let pendingReveal = false;
 function rerender(revealActive = false) {
+  pendingReveal ||= revealActive === true;
   clearTimeout(rerenderTimer);
-  rerenderTimer = setTimeout(() => render(revealActive), 70);
+  rerenderTimer = setTimeout(() => { const reveal = pendingReveal; pendingReveal = false; render(reveal); }, 70);
 }
 
 for (const ev of ['onCreated', 'onRemoved', 'onUpdated', 'onMoved', 'onActivated', 'onDetached', 'onAttached', 'onReplaced']) {
@@ -397,7 +448,7 @@ window.addEventListener('focus', () => rerender(true));
 window.addEventListener('pageshow', () => rerender(true));
 document.addEventListener('visibilitychange', () => { if (!document.hidden) rerender(true); });
 for (const ev of ['onCreated', 'onRemoved', 'onChanged', 'onMoved']) {
-  chrome.bookmarks[ev]?.addListener(rerender);
+  chrome.bookmarks[ev]?.addListener(() => rerender());
 }
 
 // Одно закрытие (правило 33): ×, esc и ⌘W приходят сюда. Боковая панель – документ браузера,
@@ -413,7 +464,34 @@ async function closePanel() {
 }
 
 document.getElementById('close-panel').addEventListener('click', closePanel);
+document.getElementById('panel-search').addEventListener('input', () => drawNavigation());
+document.getElementById('panel-grouping').addEventListener('change', e => {
+  panelPrefs.panelGrouping = e.target.value;
+  chrome.storage.local.set({ panelGrouping: panelPrefs.panelGrouping }); drawNavigation();
+});
+document.getElementById('show-active').addEventListener('click', () => {
+  document.getElementById('panel-search').value = ''; drawNavigation(true);
+});
+document.getElementById('history-drawer').addEventListener('toggle', e => {
+  if (panelPrefs.panelHistory === e.target.open) return;
+  panelPrefs.panelHistory = e.target.open;
+  chrome.storage.local.set({ panelHistory: panelPrefs.panelHistory }); render();
+});
 document.addEventListener('keydown', (e) => {
+  if (['ArrowDown', 'ArrowUp'].includes(e.key)) {
+    const targets = [...document.querySelectorAll('main .row, main .pin-square')].filter(row => row.getClientRects().length);
+    const current = targets.indexOf(document.activeElement);
+    if (document.activeElement.id === 'panel-search' || current >= 0) {
+      e.preventDefault(); const step = e.key === 'ArrowDown' ? 1 : -1;
+      targets[current < 0 ? (step > 0 ? 0 : targets.length - 1) : (current + step + targets.length) % targets.length]?.focus(); return;
+    }
+  }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+    e.preventDefault(); document.getElementById('panel-search').focus(); return;
+  }
+  if (e.key === 'Escape' && document.getElementById('panel-search').value) {
+    e.preventDefault(); document.getElementById('panel-search').value = ''; drawNavigation(true); return;
+  }
   if (e.key === 'Escape' || (e.key.toLowerCase() === 'w' && (e.metaKey || e.ctrlKey))) {
     e.preventDefault();
     closePanel();
@@ -465,4 +543,9 @@ chrome.storage.onChanged.addListener((ch, area) => {
   if (area === 'sync' && ch.groupRules) { rules = ch.groupRules.newValue || []; render(); }
 });
 
-render();
+chrome.storage.local.get(panelPrefs).then(s => {
+  panelPrefs = { ...panelPrefs, ...s };
+  document.getElementById('panel-grouping').value = panelPrefs.panelGrouping;
+  document.getElementById('history-drawer').open = panelPrefs.panelHistory;
+  render(true);
+});

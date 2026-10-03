@@ -1,3 +1,12 @@
+aside tweaks 4.33.0 – 2026-10-03
+
+- native-shaped panel: Pin squares, complete Bookmarks with folders, Tabs
+- local filter, keyboard navigation, Current, display-only groups/sites/list
+- active bookmarked tabs appear once; focus events preserve their reveal request
+- history drawer and explicit Notes scope reduce default search noise
+- synthetic cleanup demo: preview, confirm, 2 closed / 3 stays, reset
+- reload once; rollback to 4.32 keeps browser data and existing settings
+
 aside tweaks 4.32.0 – 2026-10-03
 
 - native Bookmarks rows protect matching exact copies in the reviewed window

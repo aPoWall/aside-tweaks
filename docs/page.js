@@ -3,10 +3,12 @@
   const paletteData = {
     palette: [
       ['Recent'], ['AT', 'Aside Tweaks · product page', 'apps.aimindset.org', 'tab'], ['S', 'Space · working surface', 'space.aimindset.org', 'tab'],
+      ['Bookmarks'], ['★', 'AI Mindset apps', 'apps.aimindset.org · saved locally', 'bookmark'],
+      ['History'], ['◴', 'Calendar Control', 'apps.aimindset.org/calendar-control · visited locally', 'history'],
       ['Notes · edited today'], ['◇', 'aside product map', 'local Obsidian · edited today', 'note'], ['Commands'], ['★', 'save in Bookmarks', 'last native row · page stays active', '⌘D'], ['−', 'remove duplicates', 'preview exact / empty in this window', 'preview'], ['◎', 'review tab families', 'inspect first · nothing closes yet', '⌥⌘D']
     ],
     review: [
-      ['Safe review'], ['◎', 'Nothing closes on this screen', 'choose keep, source or inspect', 'guide'], ['Batch'], ['−', 'Remove 3 exact / empty tabs', 'final preview · one confirmation', 'preview'],
+      ['Safe review · synthetic window'], ['◎', 'Nothing closes on this screen', '5 demo tabs · no browser access', 'guide'], ['Batch'], ['−', 'Preview 2 exact copies', '3 protected tabs stay', 'preview'],
       ['Related product · Space'], ['S', 'AI Mindset {space} · evolution', 'canonical · protected', 'keep'], ['D', 'Space Dataflow', 'unsaved form · protected', 'keep'], ['L', 'Space local preview', 'eligible sibling', 'close'],
       ['Sources'], ['G', 'Space product source', 'github.com', 'bookmark']
     ]
@@ -24,7 +26,17 @@
   const demoText = document.getElementById('demoText');
   const productVoxel = document.querySelector('.product-voxel');
   if (!stage || !palette || !list || !query || !actionMenu || !demoText) return;
-  let mode = 'palette', selected = 0, kept = false;
+  const demoControls = document.createElement('div'); demoControls.className = 'demo-batch-controls'; demoControls.hidden = true;
+  palette.insertBefore(demoControls, palette.querySelector('.palette-foot'));
+  let mode = 'palette', selected = 0, kept = false, demoScope = 'all';
+  let reviewStep = 'inspect';
+  const demoTabs = [
+    ['◆', 'Space · pinned home', 'pinned · stays', 'protected'],
+    ['★', 'Space · saved page', 'bookmarked · stays', 'protected'],
+    ['★', 'Space · saved copy', 'bookmarked duplicate · stays', 'protected'],
+    ['−', 'Space · preview copy A', 'exact copy of pinned home · close', 'eligible'],
+    ['−', 'Space · preview copy B', 'exact copy of pinned home · close', 'eligible']
+  ];
 
   // Сцена повторяет реальный Aside: квадраты наверху принадлежат pinned, Bookmarks –
   // отдельный список, и новый bookmark появляется в его конце.
@@ -53,16 +65,16 @@
     el.textContent = (document.documentElement.lang === 'ru' ? ru : en);
   };
   const productVersion = document.querySelector('.product-header > span');
-  if (productVersion) productVersion.textContent = '4.32.0';
+  if (productVersion) productVersion.textContent = '4.33.0';
   const bookmarkAction = actionMenu.querySelector('.action:nth-of-type(3)');
   if (bookmarkAction?.firstChild) bookmarkAction.firstChild.textContent = 'save selected tab in Bookmarks ';
-  setCopy(document.querySelector('.hero .eyebrow'), 'aside browser extension · version 4.32.0', 'расширение для aside · версия 4.32.0');
+  setCopy(document.querySelector('.hero .eyebrow'), 'aside browser extension · version 4.33.0', 'расширение для aside · версия 4.33.0');
   setCopy(document.querySelector('.hero .lead'),
     '⌘D moves the active page into the last native Bookmarks row and keeps it selected. Remove Duplicates opens a current-window preview. ⇧⌘K searches tabs, smart history, bookmarks, local Obsidian notes, Aside menu items and agents from one fast palette.',
     '⌘D переносит активную страницу в последнюю нативную строку Bookmarks и оставляет её выбранной. Remove Duplicates открывает превью текущего окна. ⇧⌘K быстро ищет вкладки, умную историю, закладки, локальные заметки Obsidian, меню Aside и агентов.');
-  setCopy(document.querySelector('.hero .button.primary span'), 'get 4.32.0 on github', 'взять 4.32.0 на github');
+  setCopy(document.querySelector('.hero .button.primary span'), 'get 4.33.0 on github', 'взять 4.33.0 на github');
   const releaseDate = document.querySelector('[data-release-date]');
-  if (releaseDate) releaseDate.textContent = '2026-09-29';
+  if (releaseDate) releaseDate.textContent = '2026-10-03';
   setCopy(document.querySelector('#example .example-head p:nth-child(2) span'),
     '⌘D moves that page into the last Bookmarks row. ⌥⌘D opens an inspection screen where nothing closes yet.',
     '⌘D переносит страницу в последнюю строку Bookmarks. ⌥⌘D открывает экран проверки, где пока ничего не закрывается.');
@@ -78,13 +90,13 @@
   setCopy(document.querySelector('#features article:nth-child(3) p:last-child'),
     'exact copies, related products, stale events and research sources stay separate. the first screen only inspects; every close batch gets its own final preview and local receipt.',
     'точные копии, связанные продукты, устаревшие события и исследовательские источники разделены. первый экран только проверяет; каждая пачка закрытия получает отдельное финальное превью и локальный чек.');
-  setCopy(document.querySelector('#install > .eyebrow'), 'unpacked extension · 4.32.0', 'распакованное расширение · 4.32.0');
+  setCopy(document.querySelector('#install > .eyebrow'), 'unpacked extension · 4.33.0', 'распакованное расширение · 4.33.0');
   setCopy(document.querySelector('#install h3 + p'),
-    'pull the repository and press reload on the extension card. 4.32.0 keeps keymaps, bookmark order, pins, groups, review state, bridge config and theme settings. Bookmarks now protect exact copies; rollback to 4.31 restores the previous exact-cluster rule.',
-    'обновите репозиторий и нажмите reload на карточке расширения. 4.32.0 сохраняет клавиши, порядок закладок, пины, группы, ревью, bridge и тему. Bookmarks теперь защищают точные копии; откат на 4.31 возвращает прежнее правило exact-кластера.');
+    'pull the repository and press reload on the extension card. 4.33.0 adds Pin squares, ordered Bookmarks, a local filter and a Current action. Keymaps, browser data, bridge and theme stay intact. Rollback to 4.32 restores the previous panel.',
+    'обновите репозиторий и нажмите reload на карточке расширения. 4.33.0 добавляет квадраты Pins, полный Bookmarks, локальный фильтр и кнопку Current. Клавиши, данные браузера, bridge и тема сохраняются. Откат на 4.32 возвращает прежнюю панель.');
   setCopy(document.querySelector('.privacy h3 + p'),
-    'version 4.32.0 uses the shared apps shell and keeps the panel state local. the character, product mark and toolbar icon come from the same checked exports.',
-    'версия 4.32.0 использует общую оболочку apps и хранит состояние панели локально. персонаж, знак продукта и иконка панели приходят из одних проверенных экспортов.');
+    'version 4.33.0 uses the shared apps shell and keeps the panel state local. the character, product mark and toolbar icon come from the same checked exports.',
+    'версия 4.33.0 использует общую оболочку apps и хранит состояние панели локально. персонаж, знак продукта и иконка панели приходят из одних проверенных экспортов.');
 
   function say(key) {
     demoText.dataset.key = key;
@@ -97,7 +109,25 @@
 
   function rowsForMode() {
     const q = query.value.trim().toLowerCase();
-    return paletteData[mode === 'review' ? 'review' : 'palette'].filter(row => row.length === 1 || !q || row.join(' ').toLowerCase().includes(q));
+    if (mode === 'review' && reviewStep !== 'inspect') {
+      if (reviewStep === 'receipt') return [
+        [lang() === 'ru' ? 'Чек · только демо' : 'Receipt · demo only'],
+        ['✓', '2 closed / 3 stays', 'reviewed window · synthetic-01', 'receipt'],
+        ...demoTabs.slice(0, 3),
+        ['Closed'], ...demoTabs.slice(3).map(row => [row[0], row[1], 'closed after explicit confirmation', 'closed'])
+      ];
+      return [['Final preview · synthetic-01'], ...demoTabs];
+    }
+    const out = []; let section = null, added = false;
+    for (const row of paletteData[mode === 'review' ? 'review' : 'palette']) {
+      if (row.length === 1) { section = row; added = false; continue; }
+      const scope = { tab: 'tabs', note: 'notes', bookmark: 'bookmarks', history: 'history' }[row[3]] || 'commands';
+      if (mode !== 'review' && (demoScope === 'all' ? scope === 'notes' : scope !== demoScope)) continue;
+      if (mode !== 'review' && demoScope === 'all' && !q && ['bookmarks', 'history'].includes(scope)) continue;
+      if (q && !row.join(' ').toLowerCase().includes(q)) continue;
+      if (!added && section) { out.push(section); added = true; } out.push(row);
+    }
+    return out;
   }
   function draw() {
     const rows = rowsForMode(), selectable = rows.filter(row => row.length > 1);
@@ -109,14 +139,36 @@
       cells.forEach(([cls, text]) => { const s = document.createElement('span'); s.className = cls; s.textContent = text; el.append(s); });
       const own = optionIndex; el.addEventListener('click', () => { selected = own; draw(); }); list.append(el); optionIndex++;
     });
-    document.getElementById('primaryAction').textContent = mode === 'review' ? 'inspect' : 'open';
+    palette.dataset.demoState = mode === 'review' ? reviewStep : mode;
+    demoControls.hidden = mode !== 'review'; demoControls.replaceChildren();
+    query.disabled = mode === 'review' && reviewStep !== 'inspect';
+    if (mode === 'review') {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'demo-batch-action';
+      button.id = reviewStep === 'inspect' ? 'demo-preview' : reviewStep === 'preview' ? 'demo-confirm' : 'demo-reset';
+      button.textContent = reviewStep === 'inspect' ? (lang() === 'ru' ? 'Показать 2 копии →' : 'Preview 2 copies →') :
+        reviewStep === 'preview' ? (lang() === 'ru' ? 'Подтвердить закрытие 2 демо-вкладок' : 'Confirm close 2 demo tabs') :
+        (lang() === 'ru' ? 'Сбросить демо' : 'Reset demo');
+      button.addEventListener('click', () => {
+        reviewStep = reviewStep === 'inspect' ? 'preview' : reviewStep === 'preview' ? 'receipt' : 'inspect';
+        query.value = ''; selected = 0; draw();
+        demoText.textContent = reviewStep === 'receipt' ? (lang() === 'ru' ? '2 закрыто · 3 осталось · пины и закладки защищены. Всё синтетическое.' : '2 closed · 3 stays · pinned and bookmarked tabs protected. Synthetic data only.') :
+          reviewStep === 'preview' ? (lang() === 'ru' ? 'Проверь 5 демо-вкладок. Закроются только 2 указанные копии.' : 'Review all 5 demo tabs. Only the 2 listed copies will close.') : T[lang()].review;
+      });
+      demoControls.append(button);
+      if (reviewStep === 'preview') {
+        const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'demo-batch-action';
+        cancel.textContent = lang() === 'ru' ? 'Отмена' : 'Cancel';
+        cancel.addEventListener('click', () => { reviewStep = 'inspect'; draw(); say('review'); }); demoControls.append(cancel);
+      }
+    }
+    document.getElementById('primaryAction').textContent = mode === 'review' ? (reviewStep === 'receipt' ? 'receipt' : 'inspect') : 'open';
   }
   function togglePalette(open = true) {
     palette.classList.toggle('closed', !open); actionMenu.classList.remove('on');
     if (open) { setTimeout(() => query.focus({ preventScroll: true }), 180); say(mode === 'review' ? 'review' : 'palette'); }
   }
   function setMode(next) {
-    mode = next; selected = 0; query.value = '';
+    mode = next; selected = 0; query.value = ''; reviewStep = 'inspect';
     document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === next));
     document.getElementById('scopes').hidden = next === 'review'; draw();
     if (next === 'keep') { togglePalette(false); setTimeout(keepPage, 120); } else togglePalette(true);
@@ -149,7 +201,7 @@
   document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => setMode(button.dataset.mode)));
   document.querySelectorAll('#scopes button').forEach(button => button.addEventListener('click', () => {
     document.querySelectorAll('#scopes button').forEach(b => b.classList.toggle('on', b === button));
-    query.value = button.textContent === 'all' ? '' : button.textContent; selected = 0; draw();
+    demoScope = button.textContent.trim(); query.value = ''; selected = 0; draw();
   }));
   query.addEventListener('input', () => { selected = 0; draw(); });
   document.addEventListener('keydown', event => {
@@ -159,7 +211,7 @@
     if (event.metaKey && !event.shiftKey && key === 'k' && !palette.classList.contains('closed')) { event.preventDefault(); actionMenu.classList.toggle('on'); say(actionMenu.classList.contains('on') ? 'actionsOn' : 'actionsOff'); return; }
     if (event.key === 'Escape') { togglePalette(false); return; }
     if (!palette.classList.contains('closed') && ['ArrowDown', 'ArrowUp'].includes(event.key)) {
-      event.preventDefault(); const count = rowsForMode().filter(row => row.length > 1).length; selected = (selected + (event.key === 'ArrowDown' ? 1 : -1) + count) % count; draw();
+      event.preventDefault(); const count = rowsForMode().filter(row => row.length > 1).length; if (!count) return; selected = (selected + (event.key === 'ArrowDown' ? 1 : -1) + count) % count; draw();
     }
   }, true);
   let drag = null;
