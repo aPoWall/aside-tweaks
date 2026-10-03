@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.32.0 – 2026-10-03
+
+- exact cleanup now treats a native Bookmarks row as a protection inside an exact-duplicate cluster;
+  matching live copies stay in the reviewed window until the bookmark is removed or a row is handled
+  explicitly;
+- the confirmed receipt records the reviewed window, every tab that actually closed and every canonical
+  or protected row that actually stayed. A stale tab id from another window is ignored at commit time;
+- the batch remains current-window only and still requires the visible palette confirmation. Pins, the
+  active page, user marks and unsaved forms keep their existing protections.
+
 ## 4.31.0 – 2026-09-29
 
 - **Remove Duplicates** is now a visible panel action. It opens the exact/empty preview for the current

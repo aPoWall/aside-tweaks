@@ -1,3 +1,10 @@
+aside tweaks 4.32.0 – 2026-10-03
+
+- native Bookmarks rows protect matching exact copies in the reviewed window
+- pinned, active, marked and unsaved-form tabs keep their protections
+- confirmation rechecks the live tab, URL and window before every close
+- receipts record the reviewed window plus actual closed, stayed and skipped rows
+
 aside tweaks 4.31.0 – 2026-09-29
 
 - Remove Duplicates is visible in the panel and opens an exact/empty preview for the current window; one explicit confirmation performs the close

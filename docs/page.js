@@ -53,14 +53,14 @@
     el.textContent = (document.documentElement.lang === 'ru' ? ru : en);
   };
   const productVersion = document.querySelector('.product-header > span');
-  if (productVersion) productVersion.textContent = '4.31.0';
+  if (productVersion) productVersion.textContent = '4.32.0';
   const bookmarkAction = actionMenu.querySelector('.action:nth-of-type(3)');
   if (bookmarkAction?.firstChild) bookmarkAction.firstChild.textContent = 'save selected tab in Bookmarks ';
-  setCopy(document.querySelector('.hero .eyebrow'), 'aside browser extension · version 4.31.0', 'расширение для aside · версия 4.31.0');
+  setCopy(document.querySelector('.hero .eyebrow'), 'aside browser extension · version 4.32.0', 'расширение для aside · версия 4.32.0');
   setCopy(document.querySelector('.hero .lead'),
     '⌘D moves the active page into the last native Bookmarks row and keeps it selected. Remove Duplicates opens a current-window preview. ⇧⌘K searches tabs, smart history, bookmarks, local Obsidian notes, Aside menu items and agents from one fast palette.',
     '⌘D переносит активную страницу в последнюю нативную строку Bookmarks и оставляет её выбранной. Remove Duplicates открывает превью текущего окна. ⇧⌘K быстро ищет вкладки, умную историю, закладки, локальные заметки Obsidian, меню Aside и агентов.');
-  setCopy(document.querySelector('.hero .button.primary span'), 'get 4.31.0 on github', 'взять 4.31.0 на github');
+  setCopy(document.querySelector('.hero .button.primary span'), 'get 4.32.0 on github', 'взять 4.32.0 на github');
   const releaseDate = document.querySelector('[data-release-date]');
   if (releaseDate) releaseDate.textContent = '2026-09-29';
   setCopy(document.querySelector('#example .example-head p:nth-child(2) span'),
@@ -78,13 +78,13 @@
   setCopy(document.querySelector('#features article:nth-child(3) p:last-child'),
     'exact copies, related products, stale events and research sources stay separate. the first screen only inspects; every close batch gets its own final preview and local receipt.',
     'точные копии, связанные продукты, устаревшие события и исследовательские источники разделены. первый экран только проверяет; каждая пачка закрытия получает отдельное финальное превью и локальный чек.');
-  setCopy(document.querySelector('#install > .eyebrow'), 'unpacked extension · 4.31.0', 'распакованное расширение · 4.31.0');
+  setCopy(document.querySelector('#install > .eyebrow'), 'unpacked extension · 4.32.0', 'распакованное расширение · 4.32.0');
   setCopy(document.querySelector('#install h3 + p'),
-    'pull the repository and press reload on the extension card. 4.31.0 keeps keymaps, bookmark order, pins, groups, review state, bridge config and theme settings. cleanup now stops at a current-window preview; rollback to 4.30 restores the old global direct-cleanup path.',
-    'обновите репозиторий и нажмите reload на карточке расширения. 4.31.0 сохраняет клавиши, порядок закладок, пины, группы, ревью, bridge и тему. очистка теперь останавливается на превью текущего окна; откат на 4.30 возвращает старый глобальный direct-cleanup.');
+    'pull the repository and press reload on the extension card. 4.32.0 keeps keymaps, bookmark order, pins, groups, review state, bridge config and theme settings. Bookmarks now protect exact copies; rollback to 4.31 restores the previous exact-cluster rule.',
+    'обновите репозиторий и нажмите reload на карточке расширения. 4.32.0 сохраняет клавиши, порядок закладок, пины, группы, ревью, bridge и тему. Bookmarks теперь защищают точные копии; откат на 4.31 возвращает прежнее правило exact-кластера.');
   setCopy(document.querySelector('.privacy h3 + p'),
-    'version 4.31.0 uses the shared apps shell and keeps the panel state local. the character, product mark and toolbar icon come from the same checked exports.',
-    'версия 4.31.0 использует общую оболочку apps и хранит состояние панели локально. персонаж, знак продукта и иконка панели приходят из одних проверенных экспортов.');
+    'version 4.32.0 uses the shared apps shell and keeps the panel state local. the character, product mark and toolbar icon come from the same checked exports.',
+    'версия 4.32.0 использует общую оболочку apps и хранит состояние панели локально. персонаж, знак продукта и иконка панели приходят из одних проверенных экспортов.');
 
   function say(key) {
     demoText.dataset.key = key;

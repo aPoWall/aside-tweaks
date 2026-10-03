@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Aside Tweaks",
-  "version": "4.31.0",
+  "version": "4.32.0",
   "description": "Aside-native Bookmarks and Pins, a fast palette, local Obsidian search and protected tab-review previews.",
   "permissions": [
     "tabs",

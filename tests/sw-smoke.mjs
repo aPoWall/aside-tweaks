@@ -623,26 +623,42 @@ TABS = [
   { id: 203, windowId: 1, index: 2, pinned: false, url: 'https://www.doc.example/a/', title: 'Doc', lastAccessed: 700 },
   { id: 204, windowId: 2, index: 0, pinned: false, url: 'https://doc.example/a?utm_source=x', title: 'Doc', lastAccessed: 600 },
   { id: 205, windowId: 2, index: 1, pinned: false, url: 'chrome://newtab/', title: 'New tab' },
-  { id: 206, windowId: 2, index: 2, pinned: true, url: 'https://doc.example/a', title: 'Doc pinned', lastAccessed: 500 }
+  { id: 206, windowId: 2, index: 2, pinned: true, url: 'https://doc.example/a', title: 'Doc pinned', lastAccessed: 500 },
+  { id: 207, windowId: 1, index: 3, pinned: false, url: 'https://clean.example/a', title: 'Clean', lastAccessed: 400 },
+  { id: 208, windowId: 1, index: 4, pinned: false, url: 'https://www.clean.example/a/', title: 'Clean', lastAccessed: 300 },
+  { id: 209, windowId: 1, index: 5, pinned: true, url: 'https://pin.example/a', title: 'Pinned keep', lastAccessed: 250 },
+  { id: 210, windowId: 1, index: 6, pinned: false, url: 'https://www.pin.example/a/', title: 'Pinned keep', lastAccessed: 100 }
 ];
 WINS[2] = { id: 2, type: 'normal' };
 
 const sweepPlan = await call('previewDuplicateCleanup', { windowId: 1 });
 check('предпросмотр чистки ограничен выбранным окном',
-  sweepPlan?.data?.closes === 1 && sweepPlan.data.windows === 1, JSON.stringify(sweepPlan?.data?.closes) + ' · окон ' + sweepPlan?.data?.windows);
+  sweepPlan?.data?.closes === 2 && sweepPlan.data.windows === 1, JSON.stringify(sweepPlan?.data?.closes) + ' · окон ' + sweepPlan?.data?.windows);
 const statsClean = await call('getStats');
 check('число в попапе равно тому, что закроет подтверждение',
   statsClean?.data?.closable === sweepPlan.data.closes, `${statsClean?.data?.closable} vs ${sweepPlan?.data?.closes}`);
-check('закладка не защищает копию внутри точного кластера',
-  sweepPlan.data.blocked.every(b => !b.reasons.includes('bookmarked')), JSON.stringify(sweepPlan.data.blocked));
+check('закладка защищает exact-копии, а pinned остаётся canonical',
+  sweepPlan.data.blocked.some(b => b.reasons.includes('bookmarked')) &&
+  sweepPlan.data.kept.some(t => t.url === 'https://pin.example/a'), JSON.stringify({ blocked: sweepPlan.data.blocked, kept: sweepPlan.data.kept }));
+
+const guardedPreview = await call('previewTabReview', { windowId: 1 });
+const bookmarkedCluster = guardedPreview.data.clusters.find(c => c.tabs.some(t => t.id === 202));
+check('интерактивный preview показывает bookmarked-кластер как stays',
+  bookmarkedCluster?.closeIds.length === 0 && bookmarkedCluster.tabs.every(t => t.protections.includes('bookmarked')),
+  JSON.stringify(bookmarkedCluster));
 
 const swept = await call('applyReviewBatch', { clusterKey: 'all-exact', intent: 'review', windowId: 1 });
-check('подтверждение закрывает только показанный дубль выбранного окна',
-  swept?.data?.closed === 1 && !TABS.some(t => t.id === 203) && TABS.some(t => t.id === 204), TABS.map(t => t.id).join(' '));
+check('подтверждение закрывает только показанные безопасные дубли выбранного окна',
+  swept?.data?.closed === 2 && !TABS.some(t => t.id === 208) && !TABS.some(t => t.id === 210) &&
+  TABS.some(t => t.id === 203) && TABS.some(t => t.id === 204), TABS.map(t => t.id).join(' '));
 check('другие окна, закреплённая и активная остались',
-  TABS.some(t => t.id === 201) && TABS.some(t => t.id === 204) && TABS.some(t => t.id === 205) && TABS.some(t => t.id === 206), TABS.map(t => t.id).join(' '));
-check('подтверждённая чистка пишет квитанцию',
-  swept.data?.receipt?.closed?.length === 1 && swept.data.receipt.keptTabs?.length >= 1, JSON.stringify(swept.data?.receipt?.action));
+  TABS.some(t => t.id === 201) && TABS.some(t => t.id === 204) && TABS.some(t => t.id === 205) &&
+  TABS.some(t => t.id === 206) && TABS.some(t => t.id === 209), TABS.map(t => t.id).join(' '));
+check('квитанция правдиво пишет окно, closed и protected stays',
+  swept.data?.receipt?.windowId === 1 && swept.data.receipt.closed.map(t => t.id).sort().join(',') === '208,210' &&
+  swept.data.receipt.keptTabs.some(t => t.id === 203 && t.protections.includes('bookmarked')) &&
+  swept.data.receipt.keptTabs.some(t => t.id === 209 && t.protections.includes('pinned')),
+  JSON.stringify(swept.data?.receipt));
 const emptyPlan = await call('previewDuplicateCleanup', { windowId: 1 });
 check('после чистки закрывать больше нечего', emptyPlan?.data?.closes === 0, JSON.stringify(emptyPlan?.data?.closes));
 delete WINS[2];

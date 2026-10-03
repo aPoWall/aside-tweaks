@@ -534,16 +534,16 @@ function bookmarkKeys(list) {
   return new Set((list || []).filter(x => x.url).map(x => normalizeUrl(x.url)).filter(Boolean));
 }
 
-// `exact` говорит, что вкладка стоит в кластере точных близнецов. Там закладка защитой не
-// работает: строка панели держит адрес, а не каждую его копию, и пока она считалась защитой,
-// три копии одной закладки оставались открытыми и чистка отказывалась их трогать.
-async function protectionFor(tab, state, marks, exact = false) {
+// Bookmarks is a durable keep decision. Exact twins share one normalized address, so the
+// browser cannot tell which live copy the row represents; the safe contract keeps every
+// matching copy until the person removes the bookmark or closes a row explicitly.
+async function protectionFor(tab, state, marks) {
   const key = normalizeUrl(tab.url);
   const reasons = [];
   if (tab.pinned) reasons.push('pinned');
   if (tab.active) reasons.push('active');
   if (key && state.reviewProtected[key]) reasons.push('marked');
-  if (!exact && key && marks.has(key)) reasons.push('bookmarked');
+  if (key && marks.has(key)) reasons.push('bookmarked');
   if (await dirtyForm(tab)) reasons.push('unsaved form');
   return reasons;
 }
@@ -570,11 +570,24 @@ function isResearchReference(tab) {
   return REVIEW_REFERENCE.test(hay) || /\.(dev|ai)\//i.test(tab.url || '');
 }
 
-function chooseCanonical(tabs, clusterKey, state) {
+function chooseCanonical(tabs, clusterKey, state, protections = new Map()) {
+  const preferred = list => list.reduce((best, tab) => {
+    const rank = item => {
+      const reasons = protections.get(item.id) || [];
+      if (item.active) return 5;
+      if (item.pinned) return 4;
+      if (reasons.includes('unsaved form')) return 3;
+      if (reasons.includes('marked')) return 2;
+      if (reasons.includes('bookmarked')) return 1;
+      return 0;
+    };
+    const a = rank(best), b = rank(tab);
+    return a === b ? keeperOf(best, tab) : b > a ? tab : best;
+  });
   const saved = state.reviewCanonicals[clusterKey];
-  const exact = saved && tabs.find(t => normalizeUrl(t.url) === saved);
-  if (exact) return exact;
-  return tabs.reduce(keeperOf);
+  const exact = saved && tabs.filter(t => normalizeUrl(t.url) === saved);
+  if (exact?.length) return preferred(exact);
+  return preferred(tabs);
 }
 
 async function previewTabReview(windowId) {
@@ -583,11 +596,8 @@ async function previewTabReview(windowId) {
   const all = await chrome.tabs.query({ windowId: wid });
   const [state, bar] = await Promise.all([reviewState(), chrome.bookmarks.getChildren(BAR).catch(() => [])]);
   const marks = bookmarkKeys(bar);
-  // кто стоит в кластере точных близнецов – считаем до защит: там закладка защитой не работает
-  const exactMembers = new Set();
-  for (const twins of twinClusters(all)) if (twins.length >= 2) for (const t of twins) exactMembers.add(t.id);
   const protections = new Map(await Promise.all(all.map(async tab =>
-    [tab.id, await protectionFor(tab, state, marks, exactMembers.has(tab.id))])));
+    [tab.id, await protectionFor(tab, state, marks)])));
 
   const exactClusters = [];
   const exactExtra = new Set();
@@ -596,7 +606,7 @@ async function previewTabReview(windowId) {
   for (const twins of twinClusters(all)) {
     if (twins.length < 2) continue;
     const key = reviewClusterKey('exact', twins);
-    const keep = chooseCanonical(twins, key, state);
+    const keep = chooseCanonical(twins, key, state, protections);
     inExact.add(keep.id);
     unique.push(keep);
     twins.filter(t => t.id !== keep.id).forEach(t => exactExtra.add(t.id));
@@ -611,7 +621,7 @@ async function previewTabReview(windowId) {
 
   const relatedClusters = semanticTabClusters(unique).map(tabsRaw => {
     const key = reviewClusterKey('related', tabsRaw);
-    const keep = chooseCanonical(tabsRaw, key, state);
+    const keep = chooseCanonical(tabsRaw, key, state, protections);
     const tabs = tabsRaw.map(t => reviewTab(t, protections.get(t.id), t.id === keep.id));
     const wide = tabs.length > RELATED_BATCH_MAX;
     return {
@@ -719,19 +729,54 @@ async function applyReviewBatch({ clusterKey, intent = 'review' } = {}, windowId
     ids = [...new Set([...clusters.flatMap(c => c.closeIds), ...review.empties.filter(t => t.safeToClose).map(t => t.id)])];
   }
   if (!ids.length && intent !== 'tidy') return { closed: 0, receipt: null };
-  const live = await Promise.all(ids.map(id => chrome.tabs.get(id).catch(() => null)));
-  const closedTabs = live.filter(Boolean).map(t => ({ title: plainTitle(t.title), url: t.url }));
-  if (closedTabs.length) await chrome.tabs.remove(live.filter(Boolean).map(t => t.id));
+  const reviewedTabs = clusterKey === 'all-exact'
+    ? [...clusters.flatMap(c => c.tabs), ...review.empties]
+    : selected?.tabs || [];
+  const planned = new Map(reviewedTabs.filter(t => ids.includes(t.id)).map(t => [t.id, t]));
+  const [state, bar] = await Promise.all([reviewState(), chrome.bookmarks.getChildren(BAR).catch(() => [])]);
+  const marks = bookmarkKeys(bar);
+  const checked = await Promise.all(ids.map(async id => {
+    const tab = await chrome.tabs.get(id).catch(() => null);
+    const row = planned.get(id);
+    if (!tab) return { tab: null, reason: 'tab is gone' };
+    if (tab.windowId !== review.windowId) return { tab, reason: 'tab moved to another window' };
+    if (!row || tab.url !== row.url) return { tab, reason: 'page changed after preview' };
+    const reasons = await protectionFor(tab, state, marks);
+    return { tab, reason: reasons.join(', ') };
+  }));
+  const eligible = checked.filter(x => x.tab && !x.reason).map(x => x.tab);
+  const removal = await Promise.all(eligible.map(async tab => ({
+    tab, removed: await chrome.tabs.remove(tab.id).then(() => true).catch(() => false)
+  })));
+  const closedTabs = removal.filter(x => x.removed).map(({ tab }) => ({
+    id: tab.id, windowId: tab.windowId, title: plainTitle(tab.title), url: tab.url
+  }));
   const kept = selected?.tabs.find(t => t.id === selected.canonicalId) || null;
-  const keptTabs = clusterKey === 'all-exact'
-    ? clusters.map(c => c.tabs.find(t => t.id === c.canonicalId)).filter(Boolean).map(t => ({ title: t.title, url: t.url }))
-    : kept ? [{ title: kept.title, url: kept.url }] : [];
+  const reviewedById = new Map(reviewedTabs.map(t => [t.id, t]));
+  const remaining = await chrome.tabs.query({ windowId: review.windowId });
+  const keptTabs = await Promise.all(remaining.filter(t => reviewedById.has(t.id)).map(async tab => {
+    const row = reviewedById.get(tab.id);
+    return {
+      id: tab.id, windowId: tab.windowId, title: plainTitle(tab.title), url: tab.url,
+      canonical: !!row.canonical, protections: await protectionFor(tab, state, marks)
+    };
+  }));
+  const skipped = [
+    ...checked.filter(x => x.reason).map(({ tab, reason }) => ({
+      id: tab?.id || null, windowId: tab?.windowId || null,
+      title: tab ? plainTitle(tab.title) : '', url: tab?.url || '', reason
+    })),
+    ...removal.filter(x => !x.removed).map(({ tab }) => ({
+      id: tab.id, windowId: tab.windowId, title: plainTitle(tab.title), url: tab.url, reason: 'close failed'
+    }))
+  ];
   const receipt = await saveReceipt({
     action: intent === 'tidy' && !closedTabs.length ? 'tidy reviewed window' : clusterKey === 'all-exact' ? 'close exact duplicates' : 'close reviewed siblings',
-    clusterKey, clusterName: selected?.name || 'exact duplicates',
+    windowId: review.windowId, clusterKey, clusterName: selected?.name || 'exact duplicates',
     kept: kept ? { title: kept.title, url: kept.url } : null,
     keptTabs,
-    closed: closedTabs
+    closed: closedTabs,
+    skipped
   });
   // Tidy acts only on the reviewed window. A previous version ran a second, global cleanup
   // here, so tabs in other windows could close without appearing in this preview.
@@ -929,62 +974,35 @@ function keeperOf(a, b) {
 // вызывалась только из applyTidyUp, которая ни к одной клавише и ни к одной строке
 // интерфейса привязана не была – отсюда «чистка перестала работать».
 async function planDuplicateCleanup(windowId) {
-  const wid = await targetWindowId(windowId);
-  const all = await chrome.tabs.query(wid == null ? {} : { windowId: wid });
-  const loose = all.filter(t => !t.pinned);
-  const [state, bar] = await Promise.all([reviewState(), chrome.bookmarks.getChildren(BAR).catch(() => [])]);
-  const marks = bookmarkKeys(bar);
-
-  const clusters = [];
-  const empties = [];
-  const kept = [];
-  const closeIds = [];
-  const blocked = [];
-
-  // сколько вкладок останется в окне: один счётчик на оба прохода, иначе межоконные
-  // близнецы могут опустошить окно целиком и оно закроется вместе с ними
-  const perWindow = new Map();
-  for (const t of all) perWindow.set(t.windowId, (perWindow.get(t.windowId) || 0) + 1);
-  const canClose = (t) => (perWindow.get(t.windowId) || 0) > 1;
-  const takeOne = (t) => perWindow.set(t.windowId, (perWindow.get(t.windowId) || 0) - 1);
-
-  for (const twins of twinClusters(loose)) {
-    if (twins.length < 2) continue;
-    const keep = twins.reduce(keeperOf);
-    kept.push({ title: plainTitle(keep.title), url: keep.url });
-    const rows = [];
-    for (const t of twins) {
-      if (t.id === keep.id) continue;
-      const reasons = await protectionFor(t, state, marks, true);
-      if (reasons.length) { blocked.push({ title: plainTitle(t.title), url: t.url, reasons }); continue; }
-      if (!canClose(t)) { blocked.push({ title: plainTitle(t.title), url: t.url, reasons: ['last tab in its window'] }); continue; }
-      takeOne(t);
-      closeIds.push(t.id);
-      rows.push({ id: t.id, title: plainTitle(t.title), url: t.url, asleep: !!t.discarded });
-    }
-    if (rows.length) clusters.push({
-      reason: new Set(twins.map(t => normalizeUrl(t.url))).size === 1 ? 'same address' : 'same site and title',
-      windows: new Set(twins.map(t => t.windowId)).size,
-      keep: { id: keep.id, title: plainTitle(keep.title), url: keep.url },
-      close: rows
-    });
-  }
-
-  // пустые убираем целиком; последнюю вкладку окна не трогаем, иначе окно закроется
-  for (const t of loose.filter(isEmptyTab)) {
-    if (closeIds.includes(t.id)) continue;
-    if (t.active) { blocked.push({ title: 'empty tab', url: t.url || '', reasons: ['active'] }); continue; }
-    if (!canClose(t)) { blocked.push({ title: 'empty tab', url: t.url || '', reasons: ['last tab in its window'] }); continue; }
-    takeOne(t);
-    closeIds.push(t.id);
-    empties.push({ id: t.id, title: 'empty tab', url: t.url || '' });
-  }
-
+  const review = await previewTabReview(windowId);
+  const exact = review.clusters.filter(c => c.kind === 'exact');
+  const closeIds = [...new Set([
+    ...exact.flatMap(c => c.closeIds),
+    ...review.empties.filter(t => t.safeToClose).map(t => t.id)
+  ])];
+  const clusters = exact.map(c => {
+    const keep = c.tabs.find(t => t.id === c.canonicalId);
+    return {
+      reason: c.reason, windows: 1,
+      keep: keep ? { id: keep.id, title: keep.title, url: keep.url } : null,
+      close: c.tabs.filter(t => c.closeIds.includes(t.id)).map(t => ({
+        id: t.id, title: t.title, url: t.url, asleep: t.asleep
+      }))
+    };
+  }).filter(c => c.close.length);
+  const blocked = [
+    ...exact.flatMap(c => c.tabs.filter(t => t.id !== c.canonicalId && !t.safeToClose).map(t => ({
+      title: t.title, url: t.url, reasons: t.protections
+    }))),
+    ...review.empties.filter(t => !t.safeToClose).map(t => ({
+      title: t.title, url: t.url, reasons: t.protections
+    }))
+  ];
   return {
-    clusters, empties, kept, blocked,
-    closeIds: [...new Set(closeIds)],
-    closes: new Set(closeIds).size,
-    windows: new Set(all.map(t => t.windowId)).size
+    clusters,
+    empties: review.empties.filter(t => t.safeToClose).map(t => ({ id: t.id, title: t.title, url: t.url })),
+    kept: exact.map(c => c.tabs.find(t => t.id === c.canonicalId)).filter(Boolean).map(t => ({ title: t.title, url: t.url })),
+    blocked, closeIds, closes: closeIds.length, windows: review.windowId == null ? 0 : 1
   };
 }
 
@@ -1678,7 +1696,7 @@ async function getStats(windowId) {
     if (t.pinned) pinned++;
     else if (isEmptyTab(t)) empties++;
   }
-  for (const twins of twinClusters(all.filter(t => !t.pinned))) {
+  for (const twins of twinClusters(all)) {
     if (twins.length < 2) continue;
     dups += twins.length - 1;
     for (const t of twins) twinOf[t.id] = twins.length;

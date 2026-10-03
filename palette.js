@@ -203,9 +203,18 @@ const switchTo = tab => async () => {
 const receiptText = receipt => {
   if (!receipt) return 'no tabs changed';
   const keepers = receipt.keptTabs?.length ? receipt.keptTabs : receipt.kept ? [receipt.kept] : [];
-  const kept = keepers.length ? keepers.map(t => `keep · ${t.title}\n${t.url}`).join('\n') : 'keep · none';
+  const kept = keepers.length ? keepers.map(t => {
+    const why = [t.canonical ? 'canonical' : '', ...(t.protections || [])].filter(Boolean).join(', ');
+    return `keep${why ? ` · ${why}` : ''} · ${t.title}\n${t.url}`;
+  }).join('\n') : 'keep · none';
   const closed = (receipt.closed || []).map(t => `close · ${t.title}\n${t.url}`).join('\n');
-  return [`aside tweaks receipt · ${receipt.at || new Date().toISOString()}`, `action · ${receipt.action}`, kept, closed].filter(Boolean).join('\n');
+  const skipped = (receipt.skipped || []).map(t => `skip · ${t.reason} · ${t.title}\n${t.url}`).join('\n');
+  return [
+    `aside tweaks receipt · ${receipt.at || new Date().toISOString()}`,
+    `action · ${receipt.action}`,
+    receipt.windowId != null ? `window · ${receipt.windowId}` : '',
+    kept, closed, skipped
+  ].filter(Boolean).join('\n');
 };
 
 async function copyStay(text) {
@@ -418,7 +427,7 @@ async function build(raw) {
     const text = receiptText(view.receipt);
     return [{
       kind: 'receipt', section: 'saved receipt', glyph: '✓', title: view.receipt?.action || 'review complete',
-      sub: `${view.receipt?.closed?.length || 0} closed · canonical and sources recorded`, tags: ['receipt'],
+      sub: `${view.receipt?.closed?.length || 0} closed · ${view.receipt?.keptTabs?.length || 0} stayed · reviewed window recorded`, tags: ['receipt'],
       kindLabel: 'saved', primary: 'copy', run: () => copyStay(text),
       actions: [
         { label: 'copy receipt', key: '↵', fn: null },
