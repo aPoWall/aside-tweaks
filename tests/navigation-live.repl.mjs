@@ -1,4 +1,5 @@
 // Run with: aside repl "$(< tests/navigation-live.repl.mjs)"
+// Start scripts/preview.mjs on port 8927 first.
 // Creates only a task window and task bookmark folder. Existing browser data is read-only.
 const navControl = await openTab('chrome-extension://biahbgkjdbjnidodbpekgoigldpmpjpg/panel.html');
 console.log((await snapshot(navControl, { interactive: true, selector: 'header' })).tree);
@@ -8,7 +9,7 @@ try {
     const prefs = await chrome.storage.local.get(['panelGrouping', 'panelHistory', 'panelCollapsed']);
     const theme = (await chrome.storage.sync.get('theme')).theme;
     const before = (await chrome.tabs.query({})).length;
-    const urls = ['pin', 'saved', 'work'].map(n => 'http://127.0.0.1:8926/docs/preview.html?navqa=' + n);
+    const urls = ['pin', 'saved', 'work'].map(n => 'http://127.0.0.1:8927/aside-tweaks/preview.html?navqa=' + n);
     let win, folder;
     try {
     win = await chrome.windows.create({ url: urls, focused: false });
